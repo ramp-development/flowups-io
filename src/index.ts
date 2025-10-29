@@ -1,7 +1,9 @@
-import { greetUser } from '$utils/greet';
+import MultiStepForm from './form';
 
 window.Webflow ||= [];
 window.Webflow.push(() => {
-  const name = 'John Doe';
-  greetUser(name);
+  const form = document.querySelector('form[data-form-element="form"]');
+  if (!form || !(form instanceof HTMLElement)) return;
+
+  new MultiStepForm({ element: form });
 });
