@@ -87,7 +87,14 @@ The system supports both combined and separate attribute syntax:
 - `submit` - Submit button
 - `error` - Error message container
 
-**ID Priority:**
+**Form ID:**
+Add `data-form-id` to your form element to reference it via the JavaScript API:
+```html
+<form data-form-element="form" data-form-id="onboarding">
+```
+Then access it: `api.getForm('onboarding')`
+
+**Step ID Priority:**
 1. Explicit ID in combined syntax: `data-form-element="step:my-step"`
 2. Explicit title attribute: `data-form-step-title="My Step"`
 3. If no title provided, step has no name/title data
@@ -854,11 +861,25 @@ window.form.off('step:changed', handler);
 
 ## Usage Example
 
-### Complete HTML Structure
+### Webflow Setup
+
+#### 1. Add Script to Site Settings
+
+In Webflow Project Settings → Custom Code → Head Code:
+
+```html
+<!-- Add to <head> -->
+<script src="https://cdn.jsdelivr.net/npm/@your-org/motif-forms@latest/dist/index.js"></script>
+```
+
+#### 2. Build Form in Webflow Designer
+
+Create your form structure using Webflow's visual editor and add the required data attributes:
 
 ```html
 <form
   data-form-element="form"
+  data-form-id="onboarding"
   data-form-persist="local"
   data-form-validate-on="blur"
   data-form-error-display="inline"
@@ -1025,26 +1046,23 @@ window.form.off('step:changed', handler);
 </form>
 ```
 
-### JavaScript Initialization
+**Important:** Add `data-form-id` to your form element for easy reference in JavaScript.
 
-```typescript
-import { MultiStepForm } from '$form/multi-step-form';
+#### 3. Add Custom JavaScript (Optional)
 
-// Wait for Webflow
-window.Webflow ||= [];
-window.Webflow.push(() => {
-  // Find form element
-  const formElement = document.querySelector('[data-form-element="form"]');
-  if (!formElement) return;
+If you need to customize form behavior, add to Project Settings → Custom Code → Footer Code:
 
-  // Initialize form (all config is in HTML attributes)
-  const form = new MultiStepForm({
-    element: formElement,
-    autoInit: true, // Auto-initialize on construction
-  });
+```html
+<!-- Add before </body> -->
+<script>
+// Initialize Motif Forms API
+window.MotifForms ||= [];
+window.MotifForms.push(function(api) {
+  // Get reference to specific form by ID
+  const onboardingForm = api.getForm('onboarding');
 
-  // Subscribe to events via window.form API
-  window.form.on('step:changed', ({ to, stepTitle }) => {
+  // Subscribe to form events
+  onboardingForm.on('step:changed', ({ to, stepTitle }) => {
     console.log(`Navigated to step ${to}: ${stepTitle}`);
 
     // Track analytics
@@ -1056,54 +1074,147 @@ window.Webflow.push(() => {
     }
   });
 
-  window.form.on('input:changed', ({ field, value }) => {
+  onboardingForm.on('input:changed', ({ field, value }) => {
     console.log(`${field} changed to:`, value);
+
+    // Custom logic based on field changes
+    if (field === 'country') {
+      console.log('Country selected:', value);
+    }
   });
 
-  window.form.on('submit:started', ({ formData }) => {
+  onboardingForm.on('submit:started', ({ formData }) => {
     console.log('Submitting form data:', formData);
   });
 
-  window.form.on('submit:success', (response) => {
+  onboardingForm.on('submit:success', (response) => {
     // Redirect to thank you page
     window.location.href = '/thank-you';
   });
 
-  window.form.on('submit:error', ({ error }) => {
+  onboardingForm.on('submit:error', ({ error }) => {
     console.error('Form submission failed:', error);
     alert('Something went wrong. Please try again.');
   });
+});
+</script>
+```
+
+### API Reference
+
+#### Accessing Forms
+
+The library automatically initializes all forms with `data-form-element="form"` on page load. Access forms via the global API:
+
+```javascript
+window.MotifForms ||= [];
+window.MotifForms.push(function(api) {
+  // Get form by data-form-id
+  const form = api.getForm('onboarding');
+
+  // Get form by element
+  const formElement = document.querySelector('[data-form-id="onboarding"]');
+  const form2 = api.getFormByElement(formElement);
+
+  // Get all initialized forms
+  const allForms = api.getAllForms();
+});
+```
+
+#### Event Subscription
+
+```javascript
+// Subscribe to event
+const unsubscribe = form.on('step:changed', (data) => {
+  console.log(data);
+});
+
+// One-time subscription
+form.once('submit:success', (data) => {
+  console.log('Form submitted once');
+});
+
+// Unsubscribe
+unsubscribe();
+// or
+form.off('step:changed', handler);
+```
+
+#### Programmatic Control
+
+```javascript
+window.MotifForms.push(function(api) {
+  const form = api.getForm('onboarding');
+
+  // Navigate to specific step
+  form.goToStep(2); // Go to step index 2 (3rd step)
+
+  // Navigate by step ID
+  form.goToStepById('preferences');
+
+  // Navigate forward/backward
+  form.nextStep();
+  form.prevStep();
+
+  // Get form data
+  const data = form.getFormData();
+  console.log('Current form data:', data);
+
+  // Set field value programmatically
+  form.setFieldValue('email', 'user@example.com');
+
+  // Get current step info
+  const currentStep = form.getCurrentStep();
+  console.log('Current step:', currentStep);
+
+  // Validate current step
+  const isValid = await form.validateCurrentStep();
+
+  // Reset form
+  form.reset();
+
+  // Destroy form (cleanup)
+  form.destroy();
 });
 ```
 
 ### Custom Form Submission
 
-```typescript
-// Override default form submission
-window.form.on('submit:started', async ({ formData }) => {
-  try {
-    // Custom API call
-    const response = await fetch('/api/submit', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
+You can override the default form submission behavior to integrate with your own API:
 
-    if (!response.ok) {
-      throw new Error('Submission failed');
+```html
+<script>
+window.MotifForms ||= [];
+window.MotifForms.push(function(api) {
+  const form = api.getForm('onboarding');
+
+  // Intercept submit event and handle manually
+  form.on('submit:started', async ({ formData }) => {
+    try {
+      // Custom API call
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Submission failed');
+      }
+
+      const result = await response.json();
+
+      // Success! Form will emit 'submit:success' automatically
+      console.log('Submission successful:', result);
+    } catch (error) {
+      // Error! Form will emit 'submit:error' automatically
+      console.error('Submission failed:', error);
     }
-
-    const result = await response.json();
-
-    // Manually trigger success event
-    window.form.emit('submit:success', result);
-  } catch (error) {
-    // Manually trigger error event
-    window.form.emit('submit:error', { error });
-  }
+  });
 });
+</script>
 ```
 
 ## Implementation Checklist
