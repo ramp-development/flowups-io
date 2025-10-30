@@ -1010,7 +1010,7 @@ If you need to customize form behavior, add to Project Settings → Custom Code 
   window.Flowups ||= [];
   window.Flowups.push((Flowups) => {
     // Get reference to specific form by ID
-    const onboardingForm = Flowups.getForm('onboarding');
+    const onboardingForm = Flowups.Forms.get('onboarding');
 
     // Subscribe to form events
     onboardingForm.on('step:changed', ({ to, stepTitle }) => {
@@ -1061,16 +1061,45 @@ The library automatically initializes all forms with `data-form-element="form"` 
 window.Flowups ||= [];
 window.Flowups.push((Flowups) => {
   // Get form by data-form-id
-  const form = Flowups.getForm('onboarding');
+  const form = Flowups.Forms.get('onboarding');
 
   // Get form by element
   const formElement = document.querySelector('[data-form-id="onboarding"]');
-  const form2 = Flowups.getFormByElement(formElement);
+  const form2 = Flowups.Forms.getByElement(formElement);
 
   // Get all initialized forms
-  const allForms = Flowups.getAllForms();
+  const allForms = Flowups.Forms.getAll();
 });
 ```
+
+#### Accessing Form Data & Metadata
+
+Forms expose two read-only properties for accessing state:
+
+```javascript
+window.Flowups.push((Flowups) => {
+  const form = Flowups.Forms.get('onboarding');
+
+  // form.data - Field values only
+  form.data.email           // 'user@example.com'
+  form.data.firstName       // 'John'
+  form.data.country         // 'US'
+
+  // form.meta - Form state and metadata
+  form.meta.totalSteps      // 5
+  form.meta.currentStep     // 2 (1-based, for display)
+  form.meta.stepIndex       // 1 (0-based, for code)
+  form.meta.stepTitle       // "Personal Information"
+  form.meta.stepId          // "personal-information"
+  form.meta.stepsComplete   // 1
+  form.meta.progress        // 40 (0-100)
+  form.meta.isValid         // true
+  form.meta.isDirty         // false
+  form.meta.isSubmitting    // false
+});
+```
+
+**Note:** `form.data` and `form.meta` are read-only. Use methods like `setFieldValue()` to modify data.
 
 #### Event Subscription
 
@@ -1095,7 +1124,7 @@ form.off('step:changed', handler);
 
 ```javascript
 window.Flowups.push((Flowups) => {
-  const form = Flowups.getForm('onboarding');
+  const form = Flowups.Forms.get('onboarding');
 
   // Navigate to specific step
   form.goToStep(2); // Go to step index 2 (3rd step)
@@ -1107,12 +1136,21 @@ window.Flowups.push((Flowups) => {
   form.nextStep();
   form.prevStep();
 
-  // Get form data
-  const data = form.getFormData();
-  console.log('Current form data:', data);
+  // Access form data (field values only)
+  console.log('Email:', form.data.email);
+  console.log('All form data:', form.data);
+
+  // Access form metadata
+  console.log('Current step:', form.meta.currentStep);
+  console.log('Total steps:', form.meta.totalSteps);
+  console.log('Progress:', form.meta.progress);
+  console.log('Is valid:', form.meta.isValid);
 
   // Set field value programmatically
   form.setFieldValue('email', 'user@example.com');
+
+  // Get field value
+  const email = form.getFieldValue('email');
 
   // Get current step info
   const currentStep = form.getCurrentStep();
@@ -1136,8 +1174,8 @@ You can override the default form submission behavior to integrate with your own
 ```html
 <script>
   window.Flowups ||= [];
-  window.Flowups.push(function (Flowups) {
-    const form = Flowups.getForm('onboarding');
+  window.Flowups.push((Flowups) => {
+    const form = Flowups.Forms.get('onboarding');
 
     // Intercept submit event and handle manually
     form.on('submit:started', async ({ formData }) => {
