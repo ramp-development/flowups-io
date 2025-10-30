@@ -7,43 +7,43 @@ import type {
 } from '.';
 
 /**
- * Multi-Step Form Configuration
+ * Form Configuration
  * Top-level configuration for the form component
  */
 export interface MultiStepFormConfig {
-  /** Form element */
-  element: HTMLFormElement;
+  /** Form name (from name attribute) */
+  name: string;
 
   /** Form behavior mode (v1.0: byField only) */
-  behavior?: FormBehavior;
+  behavior: FormBehavior;
 
   /** Transition type */
-  transition?: TransitionType;
+  transition: TransitionType;
 
   /** Transition duration in milliseconds */
-  transitionDuration?: number;
+  transitionDuration: number;
 
   /** Validation timing */
-  validateOn?: ValidationTiming;
+  validateOn: ValidationTiming;
 
   /** Allow navigation with invalid fields */
-  allowInvalid?: boolean;
+  allowInvalid: boolean;
 
   /** Error display mode */
-  errorDisplay?: ErrorDisplayMode;
+  errorDisplay: ErrorDisplayMode;
 
   /** Enable ARIA announcements */
-  ariaAnnounce?: boolean;
+  ariaAnnounce: boolean;
 
   /** Focus first input on field change */
-  focusOnChange?: boolean;
+  focusOnChange: boolean;
 
   /** Auto-initialize (future feature) */
-  autoInit?: boolean;
+  autoInit: boolean;
 
   /** State persistence (future feature) */
-  persist?: StorageType;
+  persist: StorageType;
 
   /** Debug mode */
-  debug?: boolean;
+  debug: boolean;
 }

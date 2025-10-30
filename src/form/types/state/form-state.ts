@@ -1,3 +1,5 @@
+import type { StateValue } from '$lib/types';
+
 /**
  * Form State Interface
  *
@@ -5,6 +7,8 @@
  * progress tracking, and form data.
  */
 export interface FormState {
+  // Index signature required by ComponentState
+  [key: string]: StateValue;
   // ============================================
   // Navigation State
   // ============================================
@@ -38,9 +42,6 @@ export interface FormState {
 
   /** Previous field index (for navigation history, null if first) */
   previousFieldIndex: number | null;
-
-  /** Current navigation behavior mode (v1.0: byField only) */
-  behavior: 'byField'; // Future: 'byCard' | 'bySet' | 'byGroup' | 'byField'
 
   // ============================================
   // Progress Tracking - Completion

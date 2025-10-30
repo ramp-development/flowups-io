@@ -1,4 +1,4 @@
-import type { AttributeConfig } from './attribute-config';
+import type { BaseAttributeConfig } from './base-attribute-config';
 
 /**
  * Element Discovery Result
@@ -24,5 +24,5 @@ export interface ElementDiscoveryResult {
   parentId?: string;
 
   /** Raw attribute config */
-  config: AttributeConfig;
+  config: BaseAttributeConfig;
 }

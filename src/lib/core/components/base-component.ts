@@ -212,10 +212,11 @@ export abstract class BaseComponent implements ComponentLifecycle {
    */
   protected createError(
     message: string,
-    phase: 'init' | 'runtime' | 'destroy' = 'runtime'
+    phase: 'init' | 'runtime' | 'destroy' = 'runtime',
+    cause?: unknown
   ): ComponentError {
     // @ts-expect-error - ComponentError is defined in types
-    return new ComponentError(`[${this.id}] ${message}`, this.id, phase);
+    return new ComponentError(`[${this.id}] ${message}`, this.id, phase, cause);
   }
 
   /**

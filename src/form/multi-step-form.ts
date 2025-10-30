@@ -6,8 +6,25 @@
  */
 
 import { StatefulComponent } from '$lib/core/components/stateful-component';
-import type { FormState, MultiStepFormConfig, FormBehavior } from './types';
-import { parseBooleanAttribute, parseNumberAttribute } from './utils';
+
+import { FORM_INTIAL_STATE } from './form-intial-state';
+import type {
+  FormAttributeConfig,
+  FormBehavior,
+  FormState,
+  MultiStepFormConfig,
+  StorageType,
+} from './types';
+import type { MultiStepFormProps } from './types/config/multi-step-form-props';
+import {
+  getConfigAttributes,
+  isValidBehaviorType,
+  isValidTransitionType,
+  parseBooleanAttribute,
+  parseNumberAttribute,
+} from './utils';
+import { isValidErrorModeType } from './utils/validation/error-mode-type-validators';
+import { isValidStorageType } from './utils/validation/storage-type-validators';
 
 /**
  * Multi-Step Form Component
@@ -26,17 +43,8 @@ export class MultiStepForm extends StatefulComponent<FormState> {
   // Properties
   // ============================================
 
-  /** Form element */
-  private formElement: HTMLFormElement;
-
-  /** Form name (from name attribute) */
-  private formName: string;
-
-  /** Form behavior mode */
-  private behavior: FormBehavior = 'byField';
-
   /** Configuration */
-  private config: MultiStepFormConfig;
+  protected config: MultiStepFormConfig;
 
   // ============================================
   // Managers (to be initialized in Phase 1 Step 3)
@@ -62,27 +70,21 @@ export class MultiStepForm extends StatefulComponent<FormState> {
   /**
    * Create a new MultiStepForm instance
    *
-   * @param config - Form configuration
+   * @param props - Props for the MultiStepForm component
    */
-  constructor(config: MultiStepFormConfig) {
-    // Initialize StatefulComponent with form element
+  constructor(props: MultiStepFormProps) {
+    // Initialize StatefulComponent
     super({
-      element: config.element,
       autoInit: false, // We'll manually call init()
+      debug: props.debug,
+      state: FORM_INTIAL_STATE,
     });
 
-    // Store config
-    this.config = config;
-    this.formElement = config.element;
+    // Set the form element as the root element
+    this.setRootElement(props.element);
 
-    // Get form name from name attribute
-    this.formName = this.formElement.getAttribute('name') || 'untitled-form';
-
-    // Parse configuration from attributes and merge with config
-    this.parseConfiguration();
-
-    // Configure state keys
-    this.configureStateKeys();
+    // Parse configuration from attributes
+    this.config = this.parseConfiguration();
   }
 
   // ============================================
@@ -93,257 +95,145 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    * Parse configuration from data-form-* attributes
    * Attributes override config object
    */
-  private parseConfiguration(): void {
-    // Get behavior
-    const behaviorAttr = this.formElement.getAttribute('data-form-behavior');
-    if (behaviorAttr === 'byField') {
-      this.behavior = behaviorAttr;
+  private parseConfiguration(): MultiStepFormConfig {
+    // Get all data-form-* attributes (type-safe with FormAttributeConfig)
+    const attrs = getConfigAttributes<FormAttributeConfig>(this.rootElement as HTMLElement);
+
+    // Parse name
+    if (!attrs.name) {
+      throw this.createError(`Invalid configuration: No name is provided for form`, 'init', {
+        cause: {
+          element: this.rootElement as HTMLElement,
+          name: attrs.name,
+        },
+      });
     }
 
-    // Parse other configuration
-    const transitionAttr = this.formElement.getAttribute('data-form-transition');
-    if (transitionAttr === 'fade' || transitionAttr === 'slide' || transitionAttr === 'none') {
-      this.config.transition = transitionAttr;
+    // Parse behavior
+    if (attrs.behavior && !isValidBehaviorType(attrs.behavior)) {
+      throw this.createError(`Invalid configuration: Behavior must be "byField" for v1.0`, 'init', {
+        cause: {
+          behavior: attrs.behavior,
+        },
+      });
     }
 
-    const transitionDurationAttr = this.formElement.getAttribute('data-form-transitionduration');
-    if (transitionDurationAttr) {
-      this.config.transitionDuration = parseNumberAttribute(transitionDurationAttr, 300);
+    // Parse transition type
+    if (attrs.transition && !isValidTransitionType(attrs.transition)) {
+      throw this.createError(
+        `Invalid configuration: Transition must be "fade", "slide", or "none"`,
+        'init',
+        {
+          cause: {
+            transition: attrs.transition,
+          },
+        }
+      );
     }
 
-    const ariaAnnounceAttr = this.formElement.getAttribute('data-form-ariaannounce');
-    if (ariaAnnounceAttr !== null) {
-      this.config.ariaAnnounce = parseBooleanAttribute(ariaAnnounceAttr, true);
+    // Parse transition duration
+    if (attrs.transitionduration && isNaN(parseFloat(attrs.transitionduration))) {
+      throw this.createError(
+        `Invalid configuration: Transition duration must be a number`,
+        'init',
+        {
+          cause: {
+            transitionDuration: attrs.transitionduration,
+          },
+        }
+      );
     }
 
-    const focusOnChangeAttr = this.formElement.getAttribute('data-form-focusonchange');
-    if (focusOnChangeAttr !== null) {
-      this.config.focusOnChange = parseBooleanAttribute(focusOnChangeAttr, true);
+    // Parse allow invalid
+    if (attrs.allowinvalid && !['true', 'false', ''].includes(attrs.allowinvalid)) {
+      throw this.createError(
+        `Invalid configuration: Allow invalid must be 'true' or 'false'`,
+        'init',
+        {
+          cause: {
+            allowInvalid: attrs.allowinvalid,
+          },
+        }
+      );
+    }
+
+    // Parse error display mode
+    if (attrs.errordisplay && !isValidErrorModeType(attrs.errordisplay)) {
+      throw this.createError(`Invalid configuration: Error display mode must be 'native'`, 'init', {
+        cause: { errordisplay: attrs.errordisplay },
+      });
+    }
+
+    // Parse aria announce
+    if (attrs.ariaannounce && !['true', 'false', ''].includes(attrs.ariaannounce)) {
+      throw this.createError(
+        `Invalid configuration: Aria announce must be 'true' or 'false'`,
+        'init',
+        {
+          cause: {
+            ariaAnnounce: attrs.ariaannounce,
+          },
+        }
+      );
+    }
+
+    // Parse focus on change
+    if (attrs.focusonchange && !['true', 'false', ''].includes(attrs.focusonchange)) {
+      throw this.createError(
+        `Invalid configuration: Focus on change must be 'true' or 'false'`,
+        'init',
+        {
+          cause: {
+            focusOnChange: attrs.focusonchange,
+          },
+        }
+      );
+    }
+
+    // Parse auto init
+    if (attrs.autoinit && !['true', 'false', ''].includes(attrs.autoinit)) {
+      throw this.createError(`Invalid configuration: Auto init must be 'true' or 'false'`, 'init', {
+        cause: { autoInit: attrs.autoinit },
+      });
+    }
+
+    // Parse storage type
+    if (attrs.persist && !isValidStorageType(attrs.persist)) {
+      throw this.createError(`Invalid configuration: Persist must be 'memory'`, 'init', {
+        cause: { persist: attrs.persist },
+      });
     }
 
     // Set defaults if not provided
-    this.config.transition = this.config.transition || 'fade';
-    this.config.transitionDuration = this.config.transitionDuration || 300;
-    this.config.ariaAnnounce = this.config.ariaAnnounce ?? true;
-    this.config.focusOnChange = this.config.focusOnChange ?? true;
-    this.config.debug = this.config.debug ?? false;
+    return {
+      name: attrs.name || 'untitled-form',
+      behavior: attrs.behavior || 'byField',
+      transition: attrs.transition || 'none',
+      transitionDuration: parseNumberAttribute(attrs.transitionduration, 300),
+      validateOn: attrs.validateon || 'blur',
+      allowInvalid: parseBooleanAttribute(attrs.allowinvalid, false),
+      errorDisplay: attrs.errordisplay || 'native',
+      ariaAnnounce: parseBooleanAttribute(attrs.ariaannounce, true),
+      focusOnChange: parseBooleanAttribute(attrs.focusonchange, true),
+      autoInit: parseBooleanAttribute(attrs.autoinit, false),
+      persist: (attrs.persist as StorageType) || 'memory',
+      debug: parseBooleanAttribute(attrs.debug, false),
+    };
   }
 
+  // ============================================
+  // Event Listeners
+  // ============================================
+
   /**
-   * Configure state keys with default values
+   * Set up event listeners
+   * Required by InteractiveComponent
    */
-  private configureStateKeys(): void {
-    // Navigation state
-    this.configureState({
-      key: 'currentCardIndex',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'currentSetIndex',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'currentGroupIndex',
-      defaultValue: -1, // -1 if no groups
-    });
-
-    this.configureState({
-      key: 'currentFieldIndex',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'currentCardId',
-      defaultValue: '',
-    });
-
-    this.configureState({
-      key: 'currentSetId',
-      defaultValue: '',
-    });
-
-    this.configureState({
-      key: 'currentGroupId',
-      defaultValue: '',
-    });
-
-    this.configureState({
-      key: 'previousCardIndex',
-      defaultValue: null,
-    });
-
-    this.configureState({
-      key: 'previousSetIndex',
-      defaultValue: null,
-    });
-
-    this.configureState({
-      key: 'previousFieldIndex',
-      defaultValue: null,
-    });
-
-    this.configureState({
-      key: 'behavior',
-      defaultValue: this.behavior,
-    });
-
-    // Progress tracking
-    this.configureState({
-      key: 'completedCards',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'completedSets',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'completedGroups',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'completedFields',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'visitedCards',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'visitedSets',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'visitedGroups',
-      defaultValue: new Set<string>(),
-    });
-
-    this.configureState({
-      key: 'visitedFields',
-      defaultValue: new Set<string>(),
-    });
-
-    // Totals
-    this.configureState({
-      key: 'totalCards',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'totalSets',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'totalGroups',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'totalFields',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'cardsComplete',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'setsComplete',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'groupsComplete',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'fieldsComplete',
-      defaultValue: 0,
-    });
-
-    // Progress percentages
-    this.configureState({
-      key: 'formProgress',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'cardProgress',
-      defaultValue: 0,
-    });
-
-    this.configureState({
-      key: 'setProgress',
-      defaultValue: 0,
-    });
-
-    // Titles
-    this.configureState({
-      key: 'currentCardTitle',
-      defaultValue: '',
-    });
-
-    this.configureState({
-      key: 'currentSetTitle',
-      defaultValue: '',
-    });
-
-    this.configureState({
-      key: 'currentGroupTitle',
-      defaultValue: '',
-    });
-
-    // Form data
-    this.configureState({
-      key: 'formData',
-      defaultValue: {},
-    });
-
-    this.configureState({
-      key: 'setValidity',
-      defaultValue: {},
-    });
-
-    this.configureState({
-      key: 'fieldValidity',
-      defaultValue: {},
-    });
-
-    this.configureState({
-      key: 'fieldErrors',
-      defaultValue: {},
-    });
-
-    this.configureState({
-      key: 'isValid',
-      defaultValue: true,
-    });
-
-    // Status
-    this.configureState({
-      key: 'isSubmitting',
-      defaultValue: false,
-    });
-
-    this.configureState({
-      key: 'isInitialized',
-      defaultValue: false,
-    });
-
-    this.configureState({
-      key: 'isTransitioning',
-      defaultValue: false,
-    });
+  protected async setupEventListeners(): Promise<void> {
+    // TODO Phase 1 Step 3:
+    // - Set up form submit listener
+    // - Delegate button clicks to NavigationManager
+    // - Set up conditional visibility triggers
   }
 
   // ============================================
@@ -358,7 +248,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
     await super.onInit();
 
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Initializing form: ${this.formName}`);
+      console.log(`[MultiStepForm] Initializing form: ${this.config.name}`);
     }
 
     // TODO Phase 1 Step 3:
@@ -370,7 +260,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
     this.setState('isInitialized', true);
 
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Form initialized: ${this.formName}`);
+      console.log(`[MultiStepForm] Form initialized: ${this.config.name}`);
     }
   }
 
@@ -380,7 +270,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    */
   protected async onDestroy(): Promise<void> {
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Destroying form: ${this.formName}`);
+      console.log(`[MultiStepForm] Destroying form: ${this.config.name}`);
     }
 
     // TODO Phase 1 Step 3:
@@ -418,14 +308,14 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    * Get form name
    */
   public getFormName(): string {
-    return this.formName;
+    return this.config.name;
   }
 
   /**
    * Get current behavior
    */
   public getBehavior(): FormBehavior {
-    return this.behavior;
+    return this.config.behavior;
   }
 
   /**

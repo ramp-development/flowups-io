@@ -4,9 +4,8 @@
  * Parse data-form-element attribute with combined or simple syntax.
  */
 
-import { VALID_ELEMENT_TYPES } from '../../constants';
 import type { ParsedElementData } from '../../types/config';
-import { isValidElementType } from '../validation/element-type-validator';
+import { assertValidElementType } from '../validation';
 
 /**
  * Parse data-form-element attribute
@@ -29,11 +28,8 @@ export function parseElementAttribute(value: string): ParsedElementData {
     const parts = trimmed.split(':');
     const type = parts[0].trim();
 
-    if (!isValidElementType(type)) {
-      throw new Error(
-        `Invalid element type "${type}". Valid types are: ${VALID_ELEMENT_TYPES.join(', ')}`
-      );
-    }
+    // Assert throws error with helpful message if invalid
+    assertValidElementType(type);
 
     return {
       type,
@@ -42,11 +38,8 @@ export function parseElementAttribute(value: string): ParsedElementData {
   }
 
   // Simple syntax (just element type)
-  if (!isValidElementType(trimmed)) {
-    throw new Error(
-      `Invalid element type "${trimmed}". Valid types are: ${VALID_ELEMENT_TYPES.join(', ')}`
-    );
-  }
+  // Assert throws error with helpful message if invalid
+  assertValidElementType(trimmed);
 
   return {
     type: trimmed,
