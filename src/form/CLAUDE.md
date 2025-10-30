@@ -32,7 +32,7 @@ MultiStepForm (extends StatefulComponent)
 │   └── AccessibilityManager - ARIA attributes, announcements, focus management
 │
 └── Public API
-    └── window.form - Event subscription interface
+    └── window.Flowups.push() - Event subscription interface
 ```
 
 ### Design Principles
@@ -794,7 +794,7 @@ Used for manager-to-manager communication within the form component:
 'form:submit:error' - { error: Error }
 ```
 
-### Public Events (window.form API)
+### Public Events (window.Flowups.push() API)
 
 User-friendly event names for external code:
 
@@ -810,45 +810,6 @@ User-friendly event names for external code:
 'submit:started' - { formData: Record<string, unknown> }
 'submit:success' - { response: unknown }
 'submit:error' - { error: Error }
-```
-
-### Window API Usage
-
-```typescript
-// Subscribe to events
-window.form.on('step:changed', (data) => {
-  console.log(`Moved to step ${data.to}: ${data.stepTitle}`);
-});
-
-window.form.on('input:changed', ({ field, value, formData }) => {
-  console.log(`${field} changed to:`, value);
-  // Update external UI, trigger analytics, etc.
-});
-
-window.form.on('validation:error', ({ field, errors }) => {
-  // Custom error handling
-  console.error(`Validation failed for ${field}:`, errors);
-});
-
-window.form.on('submit:started', ({ formData }) => {
-  // Show loading spinner
-  console.log('Submitting:', formData);
-});
-
-window.form.on('submit:success', ({ response }) => {
-  // Show success message, redirect, etc.
-  console.log('Form submitted successfully:', response);
-});
-
-// One-time subscription
-window.form.once('submit:success', (data) => {
-  window.location.href = '/thank-you';
-});
-
-// Unsubscribe
-const handler = (data) => console.log(data);
-window.form.on('step:changed', handler);
-window.form.off('step:changed', handler);
 ```
 
 ## Usage Example
@@ -1053,9 +1014,61 @@ If you need to customize form behavior, add to Project Settings → Custom Code 
 
 ### API Reference
 
+#### How the Flowups API Works
+
+The Flowups API uses a queue-based initialization pattern to ensure your code runs after the library has fully loaded, similar to how Google Analytics and other third-party libraries work.
+
+**The Pattern:**
+
+```javascript
+// 1. Initialize the queue (before library loads)
+window.Flowups ||= [];
+
+// 2. Queue callbacks (these will execute after library loads)
+window.Flowups.push((Flowups) => {
+  // Your code here has access to the Flowups API
+  const form = Flowups.Forms.get('onboarding');
+});
+```
+
+**How It Works:**
+
+1. **Before library loads**: `window.Flowups ||= []` creates an empty array if it doesn't exist
+2. **Queue callbacks**: `window.Flowups.push(callback)` adds your callback to the queue
+3. **Library loads**: The Flowups library script loads asynchronously
+4. **Auto-initialization**: Library finds all forms with `data-form-element="form"` and initializes them (unless `data-form-auto-init="false"`)
+5. **Process queue**: Library replaces the array with the API object and executes all queued callbacks
+6. **Future calls**: Any subsequent `push()` calls execute immediately
+
+**Benefits:**
+
+- ✅ No race conditions - callbacks always execute after initialization
+- ✅ Works with async script loading (`<script defer>` or `<script async>`)
+- ✅ Multiple scripts can queue callbacks independently
+- ✅ Simple, predictable API
+
+**Preventing Auto-Initialization:**
+
+To prevent a form from initializing automatically (useful for forms in modals or conditional UI):
+
+```html
+<form data-form-element="form" data-form-id="modal-form" data-form-auto-init="false">
+  <!-- Form will not auto-initialize -->
+</form>
+```
+
+Then manually initialize when needed:
+
+```javascript
+window.Flowups.push((Flowups) => {
+  // Initialize form manually when modal opens
+  const form = Flowups.Forms.initialize('modal-form');
+});
+```
+
 #### Accessing Forms
 
-The library automatically initializes all forms with `data-form-element="form"` on page load. Access forms via the global API:
+Access initialized forms via the namespaced API:
 
 ```javascript
 window.Flowups ||= [];
@@ -1081,21 +1094,21 @@ window.Flowups.push((Flowups) => {
   const form = Flowups.Forms.get('onboarding');
 
   // form.data - Field values only
-  form.data.email           // 'user@example.com'
-  form.data.firstName       // 'John'
-  form.data.country         // 'US'
+  form.data.email; // 'user@example.com'
+  form.data.firstName; // 'John'
+  form.data.country; // 'US'
 
   // form.meta - Form state and metadata
-  form.meta.totalSteps      // 5
-  form.meta.currentStep     // 2 (1-based, for display)
-  form.meta.stepIndex       // 1 (0-based, for code)
-  form.meta.stepTitle       // "Personal Information"
-  form.meta.stepId          // "personal-information"
-  form.meta.stepsComplete   // 1
-  form.meta.progress        // 40 (0-100)
-  form.meta.isValid         // true
-  form.meta.isDirty         // false
-  form.meta.isSubmitting    // false
+  form.meta.totalSteps; // 5
+  form.meta.currentStep; // 2 (1-based, for display)
+  form.meta.stepIndex; // 1 (0-based, for code)
+  form.meta.stepTitle; // "Personal Information"
+  form.meta.stepId; // "personal-information"
+  form.meta.stepsComplete; // 1
+  form.meta.progress; // 40 (0-100)
+  form.meta.isValid; // true
+  form.meta.isDirty; // false
+  form.meta.isSubmitting; // false
 });
 ```
 
@@ -1217,7 +1230,7 @@ You can override the default form submission behavior to integrate with your own
 - [ ] InputManager - discovery and value tracking
 - [ ] NavigationManager - button states and basic guards
 - [ ] RenderManager - text and style updates
-- [ ] Window API setup (window.form.on/off/once)
+- [ ] Window API setup (window.Flowups.push())
 - [ ] Basic event emission (step:changed, input:changed)
 
 ### Phase 2: Validation & Errors
@@ -1351,7 +1364,682 @@ class RenderManager {
 
 ## Future Features
 
-### Phase 2+
+### Phase 2: CalculationManager
+
+**Goal:** Enable dynamic computed values that can be displayed and optionally submitted with form data.
+
+#### Use Cases
+
+- Calculate totals, subtotals, taxes, discounts
+- Display derived values (e.g., monthly payment from total)
+- Submit calculated values to backend
+- Real-time price calculations in checkout flows
+
+#### Token Namespacing
+
+All tokens will be namespaced to clarify their source and prevent naming collisions:
+
+```html
+<!-- Form metadata (library-managed, read-only) -->
+<div data-form-text="{meta.totalSteps}"></div>
+<div data-form-text="{meta.currentStep}"></div>
+<div data-form-text="{meta.progress}%"></div>
+
+<!-- Form field data (user input values) -->
+<div data-form-text="{data.email}"></div>
+<div data-form-text="{data.firstName}"></div>
+
+<!-- Calculated values (user-defined computed values) -->
+<div data-form-text="{calc.subtotal}"></div>
+<div data-form-text="{calc.tax}"></div>
+<div data-form-text="{calc.total}"></div>
+```
+
+**Token Replacement Rules:**
+
+1. **Single token** `{data.field}` → Replace with value (`2`)
+2. **Multiple tokens** `{data.quantity} × {data.cost}` → Replace each token (`2 × 100`)
+3. **Expression** `{data.quantity * data.cost}` → Evaluate and render result (`200`)
+4. **Inline expressions are display-only** (not submitted)
+
+#### API Design
+
+**Defining Calculations:**
+
+```javascript
+window.Flowups.push((Flowups) => {
+  const form = Flowups.Forms.get('checkout');
+
+  // Simple calculation
+  form.calculations.define('subtotal', {
+    // Compute function receives { data, meta, calc }
+    compute: ({ data }) => {
+      const quantity = parseFloat(data.quantity) || 0;
+      const price = parseFloat(data.price) || 0;
+      return quantity * price;
+    },
+
+    // Format for display (affects UI and submit if submit: 'formatted')
+    format: (value) => value.toFixed(2),
+
+    // Submit options: false | 'raw' | 'formatted' | custom function
+    submit: 'formatted',  // Submit "150.00" as string
+
+    // Optional: debounce recalculation (ms)
+    debounce: 300,
+  });
+
+  // Calculation with custom submit format
+  form.calculations.define('total', {
+    compute: ({ data, calc }) => {
+      const subtotal = parseFloat(calc.subtotal?.raw) || 0;
+      const taxRate = parseFloat(data.taxRate) || 0;
+      const shipping = parseFloat(data.shipping) || 0;
+      return subtotal + (subtotal * taxRate) + shipping;
+    },
+
+    // Display format (UI only)
+    format: (value) => `$${value.toFixed(2)}`,  // "$165.00"
+
+    // Custom submit format (different from display)
+    submit: (value) => Math.round(value * 100),  // Convert to cents: 16500
+  });
+
+  // Display-only calculation (not submitted)
+  form.calculations.define('savingsPercent', {
+    compute: ({ data }) => {
+      const original = parseFloat(data.originalPrice) || 0;
+      const current = parseFloat(data.currentPrice) || 0;
+      if (original === 0) return 0;
+      return ((original - current) / original) * 100;
+    },
+
+    format: (value) => `${Math.round(value)}% OFF`,
+    submit: false,  // Not included in form submission
+  });
+});
+```
+
+**Configuration Options:**
+
+```typescript
+interface CalculationContext {
+  data: Record<string, any>;      // Form field values
+  meta: FormMeta;                  // Form metadata (totalSteps, currentStep, etc.)
+  calc: Record<string, CalculationResult>;  // Other calculation results
+}
+
+interface CalculationConfig {
+  compute: (context: CalculationContext) => any;
+  submit?: false | 'raw' | 'formatted' | ((value: any) => any);
+  format?: (value: any) => string;
+  dependencies?: string[] | false;  // Auto-detect if undefined, false for manual only
+  debounce?: number;                // Debounce recalculation (ms)
+  validate?: (value: any) => boolean;
+}
+
+interface CalculationResult {
+  raw: any;           // Unformatted computed value
+  formatted: string;  // Formatted value (if format function provided)
+  submit: any;        // Value that will be submitted (based on submit option)
+  isValid: boolean;   // Result of validate function
+}
+```
+
+**Accessing Calculated Values:**
+
+```javascript
+// In JavaScript
+const subtotal = form.calc.subtotal.raw;        // 150
+const subtotalFormatted = form.calc.subtotal.formatted;  // "150.00"
+const subtotalSubmit = form.calc.subtotal.submit;        // "150.00"
+
+// In HTML (automatically updates via RenderManager)
+<div data-form-text="{calc.subtotal}">150.00</div>
+<div data-form-text="{calc.subtotal.raw}">150</div>
+<div data-form-text="Total: {calc.total}">Total: $165.00</div>
+```
+
+**Form Submission Behavior:**
+
+When a form is submitted, calculations with `submit` not set to `false` are included:
+
+```javascript
+form.on('submit:started', ({ formData }) => {
+  console.log(formData);
+  // {
+  //   quantity: 10,
+  //   price: 15,
+  //   subtotal: "150.00",     // submit: 'formatted'
+  //   total: 16500,           // submit: custom function (cents)
+  //   // savingsPercent not included (submit: false)
+  // }
+});
+```
+
+#### Dependency Management
+
+**Auto-Detection (Default):**
+
+The library automatically detects dependencies by parsing the compute function:
+
+```javascript
+form.calculations.define('total', {
+  compute: ({ data, calc }) => {
+    return calc.subtotal.raw + data.shipping;
+  },
+  // Dependencies auto-detected: ['calc.subtotal', 'data.shipping']
+});
+```
+
+**How Auto-Detection Works:**
+
+```typescript
+private detectDependencies(computeFn: Function): string[] {
+  // 1. Convert function to string representation
+  const fnString = computeFn.toString();
+
+  const dependencies = new Set<string>();
+
+  // 2. Define regex patterns for each namespace
+  const patterns = [
+    /\bdata\.(\w+)/g,      // Matches: data.quantity, data.price, data.email
+    /\bcalc\.(\w+)/g,      // Matches: calc.subtotal, calc.tax, calc.total
+    /\bmeta\.(\w+)/g,      // Matches: meta.currentStep, meta.totalSteps
+  ];
+
+  // 3. Extract property accesses from function string
+  patterns.forEach((pattern, index) => {
+    const namespace = ['data', 'calc', 'meta'][index];
+    let match;
+
+    // Use regex.exec() in a loop to find all matches
+    while ((match = pattern.exec(fnString)) !== null) {
+      // match[0] = full match (e.g., "data.quantity")
+      // match[1] = captured property name (e.g., "quantity")
+      dependencies.add(`${namespace}.${match[1]}`);
+    }
+  });
+
+  // 4. Return as array for consistency
+  return Array.from(dependencies);
+}
+
+// Example usage:
+const fn = ({ data, calc }) => calc.subtotal.raw + data.shipping + data.tax;
+detectDependencies(fn);
+// Returns: ['calc.subtotal', 'data.shipping', 'data.tax']
+```
+
+**Limitations of Auto-Detection:**
+
+Auto-detection works well for direct property access but cannot detect:
+
+1. **Dynamic property access:**
+   ```javascript
+   compute: ({ data }) => data[fieldName]  // Can't detect which field
+   ```
+
+2. **Computed property names:**
+   ```javascript
+   compute: ({ data }) => data['field' + index]  // Can't detect
+   ```
+
+3. **Properties accessed in nested functions:**
+   ```javascript
+   compute: ({ data }) => {
+     const helper = () => data.quantity;  // Might miss nested access
+     return helper();
+   }
+   ```
+
+For these cases, manually specify dependencies.
+
+**Manual Override:**
+
+```javascript
+form.calculations.define('total', {
+  compute: ({ data }) => {
+    // Complex logic with dynamic property access
+    const field = data.useAlternate ? 'altPrice' : 'price';
+    return data[field];
+  },
+  // Manually specify dependencies (can't be auto-detected)
+  dependencies: ['data.useAlternate', 'data.price', 'data.altPrice'],
+});
+
+// Or disable dependency tracking (manual recalculation only)
+form.calculations.define('manual', {
+  compute: ({ data }) => data.value * 2,
+  dependencies: false,  // Only recalculates when form.calculations.recalculate('manual') is called
+});
+```
+
+**Circular Dependency Detection:**
+
+The library automatically detects circular dependencies on initialization:
+
+```javascript
+// ❌ This will throw an error
+form.calculations.define('a', {
+  compute: ({ calc }) => calc.b.raw + 1,
+});
+
+form.calculations.define('b', {
+  compute: ({ calc }) => calc.a.raw + 1,
+});
+
+// Console: ⚠️ Circular dependency detected: calc.a → calc.b → calc.a
+// Throws: Error: Circular dependency detected in calculations involving: a
+```
+
+**How Circular Dependency Detection Works:**
+
+Uses **Depth-First Search (DFS)** with a recursion stack to detect cycles in the dependency graph:
+
+```typescript
+private detectCircularDependencies(): void {
+  // 1. Build dependency graph (only track calc dependencies, not data/meta)
+  const graph = new Map<string, Set<string>>();
+
+  this.calculations.forEach((config, name) => {
+    const deps = this.detectDependencies(config.compute);
+
+    // Filter to only calc dependencies (data/meta can't create cycles)
+    const calcDeps = deps
+      .filter(d => d.startsWith('calc.'))
+      .map(d => d.replace('calc.', ''));  // Remove 'calc.' prefix
+
+    graph.set(name, new Set(calcDeps));
+  });
+
+  // 2. Use DFS to detect cycles
+  const visited = new Set<string>();
+  const recursionStack = new Set<string>();
+
+  const hasCycle = (node: string, path: string[] = []): boolean => {
+    // Mark node as visited and add to recursion stack
+    visited.add(node);
+    recursionStack.add(node);
+    path.push(node);
+
+    // Check all neighbors (dependencies)
+    const neighbors = graph.get(node) || new Set();
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        // Recurse on unvisited neighbors
+        if (hasCycle(neighbor, [...path])) return true;
+      } else if (recursionStack.has(neighbor)) {
+        // Found a cycle! Neighbor is in current recursion path
+        const cyclePath = [...path, neighbor].join(' → ');
+        console.error(`⚠️ Circular dependency detected: calc.${cyclePath}`);
+        return true;
+      }
+    }
+
+    // Remove from recursion stack (backtrack)
+    recursionStack.delete(node);
+    return false;
+  };
+
+  // 3. Check all calculations (start DFS from each unvisited node)
+  for (const name of this.calculations.keys()) {
+    if (!visited.has(name)) {
+      if (hasCycle(name)) {
+        throw new Error(
+          `Circular dependency detected in calculations involving: ${name}`
+        );
+      }
+    }
+  }
+}
+
+// Example cycle detection:
+// calc.a depends on calc.b
+// calc.b depends on calc.c
+// calc.c depends on calc.a
+//
+// DFS path: a → b → c → a (found in recursion stack!)
+// Error: Circular dependency detected: calc.a → calc.b → calc.c → calc.a
+```
+
+**Why Only Track `calc.*` Dependencies:**
+
+- `data.*` and `meta.*` are external inputs (user fields and form state)
+- They can't create circular dependencies since they don't depend on calculations
+- Only `calc.*` dependencies can create cycles (calculations depending on other calculations)
+
+**Graph Visualization Example:**
+
+```javascript
+// Given these calculations:
+form.calculations.define('subtotal', {
+  compute: ({ data }) => data.quantity * data.price,  // No calc deps
+});
+
+form.calculations.define('tax', {
+  compute: ({ calc }) => calc.subtotal.raw * 0.1,  // Depends on: calc.subtotal
+});
+
+form.calculations.define('total', {
+  compute: ({ calc }) => calc.subtotal.raw + calc.tax.raw,  // Depends on: calc.subtotal, calc.tax
+});
+
+// Dependency graph (calc dependencies only):
+// subtotal: []
+// tax: [subtotal]
+// total: [subtotal, tax]
+//
+// DFS traversal finds no cycles ✓
+```
+
+**Execution Order:**
+
+Calculations are executed in topological order (dependencies first):
+
+```javascript
+// Defined in any order:
+form.calculations.define('total', { /* depends on: calc.subtotal, calc.tax */ });
+form.calculations.define('subtotal', { /* depends on: data.quantity, data.price */ });
+form.calculations.define('tax', { /* depends on: calc.subtotal */ });
+
+// Executed in correct order: subtotal → tax → total
+```
+
+**How Execution Order is Determined:**
+
+Uses **Kahn's Algorithm** for topological sorting to determine the correct execution order:
+
+```typescript
+private getCalculationOrder(): string[] {
+  // 1. Build graph and calculate in-degree (number of dependencies)
+  const graph = new Map<string, Set<string>>();
+  const inDegree = new Map<string, number>();
+
+  // Build adjacency list and count calc dependencies for each node
+  this.calculations.forEach((config, name) => {
+    const deps = this.detectDependencies(config.compute);
+    const calcDeps = deps
+      .filter(d => d.startsWith('calc.'))
+      .map(d => d.replace('calc.', ''));
+
+    graph.set(name, new Set(calcDeps));
+    inDegree.set(name, calcDeps.length);
+  });
+
+  // 2. Start with calculations that have no calc dependencies (in-degree = 0)
+  const queue: string[] = [];
+  const result: string[] = [];
+
+  inDegree.forEach((degree, name) => {
+    if (degree === 0) {
+      queue.push(name);  // Can execute immediately (no dependencies)
+    }
+  });
+
+  // 3. Process queue using BFS
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    result.push(current);  // Add to execution order
+
+    // 4. Reduce in-degree for all nodes that depend on current
+    this.calculations.forEach((config, name) => {
+      const dependencies = graph.get(name) || new Set();
+
+      if (dependencies.has(current)) {
+        // This calculation depends on current, so reduce its in-degree
+        const newDegree = (inDegree.get(name) || 0) - 1;
+        inDegree.set(name, newDegree);
+
+        // If all dependencies satisfied, add to queue
+        if (newDegree === 0) {
+          queue.push(name);
+        }
+      }
+    });
+  }
+
+  // 5. If result doesn't contain all calculations, there's a cycle
+  // (This shouldn't happen if detectCircularDependencies() ran first)
+  if (result.length !== this.calculations.size) {
+    throw new Error('Unable to determine calculation order (possible circular dependency)');
+  }
+
+  return result;
+}
+
+// Example execution:
+// Given: subtotal (no calc deps), tax (depends on subtotal), total (depends on subtotal + tax)
+//
+// Initial state:
+//   inDegree = { subtotal: 0, tax: 1, total: 2 }
+//   queue = [subtotal]
+//
+// Step 1: Process 'subtotal'
+//   result = [subtotal]
+//   Reduce in-degree for: tax (1→0), total (2→1)
+//   queue = [tax]
+//
+// Step 2: Process 'tax'
+//   result = [subtotal, tax]
+//   Reduce in-degree for: total (1→0)
+//   queue = [total]
+//
+// Step 3: Process 'total'
+//   result = [subtotal, tax, total]
+//   queue = []
+//
+// Final execution order: subtotal → tax → total ✓
+```
+
+**When Calculations Are Recalculated:**
+
+1. **On dependency change**: When `data.*` or `meta.*` changes, recalculate dependent calculations in topological order
+2. **On calc dependency change**: When a calculation updates, recalculate calculations that depend on it
+3. **On manual trigger**: `form.calculations.recalculate('name')` or `form.calculations.recalculate()` (all)
+
+**Optimization - Only Recalculate Affected Calculations:**
+
+```typescript
+private recalculateDependents(changedKey: string): void {
+  const order = this.getCalculationOrder();
+
+  // Only recalculate calculations that depend on changedKey
+  order.forEach(name => {
+    const config = this.calculations.get(name)!;
+    const deps = this.detectDependencies(config.compute);
+
+    if (deps.includes(changedKey)) {
+      this.recalculate(name);
+    }
+  });
+}
+
+// Example: If data.quantity changes
+// - Recalculate: subtotal (depends on data.quantity)
+// - Recalculate: tax (depends on calc.subtotal, which just changed)
+// - Recalculate: total (depends on calc.subtotal and calc.tax, which just changed)
+// - Skip: savingsPercent (doesn't depend on data.quantity)
+```
+
+#### Dev Mode Testing
+
+Enable dev mode by adding `?flowups-forms=dev` to the URL.
+
+**Features:**
+
+- Detailed console logging for all calculations
+- Test helpers for validating calculation logic
+- Dependency visualization
+- Performance metrics
+- Error details
+
+**Testing Individual Calculations:**
+
+```javascript
+window.Flowups.push((Flowups) => {
+  const form = Flowups.Forms.get('checkout');
+
+  form.calculations.define('total', {
+    compute: ({ data, calc }) => {
+      const subtotal = parseFloat(calc.subtotal?.raw) || 0;
+      const tax = parseFloat(data.tax) || 0;
+      return subtotal + tax;
+    },
+    format: (value) => `$${value.toFixed(2)}`,
+    submit: (value) => Math.round(value * 100),
+  });
+
+  // Test with mock data (only runs with ?flowups-forms=dev)
+  form.calculations.test('total', {
+    data: { tax: 10 },
+    calc: { subtotal: { raw: 100, formatted: '$100.00' } },
+  });
+});
+```
+
+**Console Output:**
+
+```
+✓ Calculation: total
+  Raw: 110
+  Formatted: "$110.00"
+  Submit: 11000
+  Dependencies (auto-detected): data.tax, calc.subtotal
+  Valid: true
+```
+
+**Testing All Calculations:**
+
+```javascript
+form.calculations.testAll({
+  data: { quantity: 10, price: 15, tax: 15 },
+  calc: {},
+});
+```
+
+**Console Output:**
+
+```
+🧪 Testing All Calculations
+  Execution Order: subtotal → tax → total
+  ---
+  ✓ Calculation: subtotal
+    Raw: 150
+    Formatted: "150.00"
+    Submit: "150.00"
+    Dependencies: data.quantity, data.price
+    Debounce: 300ms
+  ✓ Calculation: tax
+    Raw: 15
+    Formatted: "15.00"
+    Submit: "15.00"
+    Dependencies: calc.subtotal
+  ✓ Calculation: total
+    Raw: 165
+    Formatted: "$165.00"
+    Submit: 16500
+    Dependencies: calc.subtotal, data.tax
+    Valid: true
+```
+
+**Auto-Logging in Dev Mode:**
+
+When `?flowups-forms=dev` is present, the library logs:
+
+```
+📋 Form Initialized: checkout
+  Form ID: checkout
+  Total Steps: 3
+  Calculations: subtotal, tax, total
+  Auto-init: true
+
+🔄 Recalculated: total → $165.00 (took 2ms)
+
+📊 data.quantity changed: 5 → 10
+  ↳ Triggering: calc.subtotal, calc.total
+
+⚠️ Circular dependency detected: calc.a → calc.b → calc.a
+
+⚡ Calculation "total" took 150ms (threshold: 100ms)
+```
+
+**Query Param Variants:**
+
+- `?flowups-forms=dev` - Enable all dev features
+- `?flowups-forms=debug` - Same as dev
+- `?flowups-forms=test` - Enable test helpers only
+- `?flowups-forms=performance` - Enable performance metrics only
+
+#### Implementation Architecture
+
+**CalculationManager Class:**
+
+```typescript
+class CalculationManager {
+  private calculations: Map<string, CalculationConfig>;
+  private cache: Map<string, CalculationResult>;
+  private debounceTimers: Map<string, NodeJS.Timeout>;
+
+  // Public API
+  define(name: string, config: CalculationConfig): void;
+  get(name: string): CalculationResult | undefined;
+  recalculate(name?: string): void;
+  remove(name: string): void;
+  getSubmittableValues(): Record<string, any>;
+
+  // Dev mode helpers
+  test(name: string, mockContext: Partial<CalculationContext>): void;
+  testAll(mockContext: Partial<CalculationContext>): void;
+
+  // Internal methods
+  private detectDependencies(computeFn: Function): string[];
+  private detectCircularDependencies(): void;
+  private getCalculationOrder(): string[];
+  private buildContext(form: FormInstance): CalculationContext;
+  private getSubmitValue(raw: any, formatted: string, submit: any): any;
+  private isDevMode(): boolean;
+}
+```
+
+**Integration with RenderManager:**
+
+The RenderManager will handle token replacement for `{calc.*}` tokens and automatically update the UI when calculations change.
+
+**Integration with Form Submission:**
+
+When a form is submitted, the library includes all calculation values where `submit` is not `false`:
+
+```typescript
+class FormInstance {
+  async submit(): Promise<void> {
+    const formData = {
+      ...this.data,  // Field values
+      ...this.calculations.getSubmittableValues(),  // Calculated values
+    };
+
+    this.emit('submit:started', { formData });
+    // ... submission logic
+  }
+}
+```
+
+#### Checklist
+
+- [ ] Implement CalculationManager core class
+- [ ] Auto-detect dependencies from compute functions
+- [ ] Detect circular dependencies on init
+- [ ] Topological sort for execution order
+- [ ] Debounce support for recalculation
+- [ ] Integrate with RenderManager for token updates
+- [ ] Add `form.calc.*` API for accessing results
+- [ ] Include calculated values in form submission
+- [ ] Dev mode testing helpers
+- [ ] Dev mode auto-logging
+- [ ] Documentation and examples
+- [ ] TypeScript type definitions
+
+### Phase 3+
 
 - [ ] Custom validation rules via window API
 - [ ] Toast notification error display
