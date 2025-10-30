@@ -2,7 +2,7 @@
 
 ## Overview
 
-A flexible, attribute-driven multi-step form system for Webflow built on the Motif component toolkit. Forms are configured entirely through data attributes, with specialized managers handling different concerns (navigation, validation, progress tracking, conditional visibility).
+A flexible, attribute-driven multi-step form system for Webflow built on the Flowups component toolkit. Forms are configured entirely through data attributes, with specialized managers handling different concerns (navigation, validation, progress tracking, conditional visibility).
 
 ## Architecture
 
@@ -79,6 +79,7 @@ The system supports both combined and separate attribute syntax:
 ```
 
 **Element Types:**
+
 - `form` - Form wrapper (required)
 - `step` - Step container
 - `group` - Input group
@@ -89,12 +90,15 @@ The system supports both combined and separate attribute syntax:
 
 **Form ID:**
 Add `data-form-id` to your form element to reference it via the JavaScript API:
+
 ```html
-<form data-form-element="form" data-form-id="onboarding">
+<form data-form-element="form" data-form-id="onboarding"></form>
 ```
+
 Then access it: `api.getForm('onboarding')`
 
 **Step ID Priority:**
+
 1. Explicit ID in combined syntax: `data-form-element="step:my-step"`
 2. Explicit title attribute: `data-form-step-title="My Step"`
 3. If no title provided, step has no name/title data
@@ -129,6 +133,7 @@ Variables are always wrapped in `{}`, spaces around operators for readability:
 ```
 
 **Available Variables:**
+
 - `{current-step}` - Current step index (1-based)
 - `{total-steps}` - Total number of steps
 - `{steps-complete}` - Number of completed steps
@@ -143,23 +148,17 @@ Variables wrapped in `{}`, spaces around operators, supports `&&` and `||`:
 
 ```html
 <!-- Simple field equality -->
-<div data-form-show-if="{country} = US">
-  Only shown when country field equals "US"
-</div>
+<div data-form-show-if="{country} = US">Only shown when country field equals "US"</div>
 
 <!-- Numeric comparisons -->
 <div data-form-show-if="{age} > 18">Adult content</div>
 <div data-form-show-if="{quantity} >= 10">Bulk discount</div>
 
 <!-- Compound conditions (AND) -->
-<div data-form-show-if="{country} = US && {state} = CA">
-  California specific content
-</div>
+<div data-form-show-if="{country} = US && {state} = CA">California specific content</div>
 
 <!-- Compound conditions (OR) -->
-<div data-form-show-if="{subscribe} = true || {newsletter} = true">
-  Marketing preferences
-</div>
+<div data-form-show-if="{subscribe} = true || {newsletter} = true">Marketing preferences</div>
 
 <!-- Complex conditions -->
 <div data-form-show-if="({age} >= 18 && {country} = US) || {guardian-consent} = true">
@@ -167,12 +166,8 @@ Variables wrapped in `{}`, spaces around operators, supports `&&` and `||`:
 </div>
 
 <!-- Form state conditions (namespaced with form.) -->
-<div data-form-show-if="{form.currentStep} > 2">
-  Shown after step 2
-</div>
-<div data-form-show-if="{form.stepsComplete} >= 3">
-  Need 3 completed steps
-</div>
+<div data-form-show-if="{form.currentStep} > 2">Shown after step 2</div>
+<div data-form-show-if="{form.stepsComplete} >= 3">Need 3 completed steps</div>
 
 <!-- Pattern matching -->
 <div data-form-show-if="{email} *= @company.com">Company email</div>
@@ -180,12 +175,11 @@ Variables wrapped in `{}`, spaces around operators, supports `&&` and `||`:
 <div data-form-show-if="{url} $= .com">Dot com domain</div>
 
 <!-- Hide if condition met -->
-<div data-form-hide-if="{subscribe} = false">
-  Hidden when unchecked
-</div>
+<div data-form-hide-if="{subscribe} = false">Hidden when unchecked</div>
 ```
 
 **Operators:**
+
 - `=` - Equals
 - `!=` - Not equals
 - `>` - Greater than
@@ -209,50 +203,30 @@ The system auto-detects native HTML5 validation (required, type, pattern, etc.):
 <input type="number" name="age" min="18" max="120" />
 
 <!-- Custom validation rules -->
-<input
-  name="username"
-  required
-  data-form-validate="min:3,max:20,pattern:^[a-z0-9_]+$"
-/>
+<input name="username" required data-form-validate="min:3,max:20,pattern:^[a-z0-9_]+$" />
 
 <!-- Custom format patterns (for display, not validation) -->
-<input
-  type="tel"
-  name="phone"
-  data-form-validate-format="(XXX) XXX-XXXX"
-/>
+<input type="tel" name="phone" data-form-validate-format="(XXX) XXX-XXXX" />
 
 <!-- Future: Email blocklist -->
-<input
-  type="email"
-  name="email"
-  data-form-validate-blocklist="hotmail.com,yahoo.com"
-/>
+<input type="email" name="email" data-form-validate-blocklist="hotmail.com,yahoo.com" />
 ```
 
 **Validation Timing** (cascades from form → step → group → input):
 
 ```html
 <!-- Form level defaults -->
-<form
-  data-form-element="form"
-  data-form-validate-on="blur"
->
-
-<!-- Step level override -->
-<div
-  data-form-element="step:payment"
-  data-form-validate-on="change"
->
-
-<!-- Input level override -->
-<input
-  name="cardNumber"
-  data-form-validate-on="input"
-/>
+<form data-form-element="form" data-form-validate-on="blur">
+  <!-- Step level override -->
+  <div data-form-element="step:payment" data-form-validate-on="change">
+    <!-- Input level override -->
+    <input name="cardNumber" data-form-validate-on="input" />
+  </div>
+</form>
 ```
 
 **Validation Timing Options:**
+
 - `blur` - Validate when input loses focus (default for text inputs)
 - `change` - Validate on value change (default for select/radio/checkbox)
 - `input` - Validate on every keystroke (for real-time feedback)
@@ -261,6 +235,7 @@ The system auto-detects native HTML5 validation (required, type, pattern, etc.):
 - Multiple: `blur,change` - Validate on multiple events
 
 **Smart Defaults by Input Type:**
+
 - Text, email, password, textarea → `blur`
 - Select, radio, checkbox → `change`
 - Number, range → `input`
@@ -272,22 +247,13 @@ Control whether validation is required to advance (cascades from form → step �
 
 ```html
 <!-- Form level: Require valid fields to advance (default) -->
-<form
-  data-form-element="form"
-  data-form-allow-invalid="false"
->
-
-<!-- Step level: Allow skipping this step even if invalid -->
-<div
-  data-form-element="step:optional-preferences"
-  data-form-allow-invalid="true"
->
-
-<!-- Group level: This group must be complete to advance -->
-<div
-  data-form-element="group:required-info"
-  data-form-allow-invalid="false"
->
+<form data-form-element="form" data-form-allow-invalid="false">
+  <!-- Step level: Allow skipping this step even if invalid -->
+  <div data-form-element="step:optional-preferences" data-form-allow-invalid="true">
+    <!-- Group level: This group must be complete to advance -->
+    <div data-form-element="group:required-info" data-form-allow-invalid="false"></div>
+  </div>
+</form>
 ```
 
 ### Error Handling
@@ -303,15 +269,17 @@ Control whether validation is required to advance (cascades from form → step �
   data-form-error-class="is-invalid"
   data-form-error-class-target="parent"
   data-form-error-display="native"
->
+></form>
 ```
 
 **Error Display Modes:**
+
 - `native` - Browser native validation messages (default)
 - `inline` - Custom inline error containers via `data-form-element="error"`
 - `toast` - Toast notifications (future)
 
 **Error Class Targets:**
+
 - `parent` - Apply error class to input's parent element (default)
 - `self` - Apply error class to input itself
 - `{selector}` - Apply to specific element (ID, class, or data attribute)
@@ -322,10 +290,7 @@ Control whether validation is required to advance (cascades from form → step �
 <div class="input-wrapper">
   <label>Email</label>
   <input type="email" name="email" required />
-  <div
-    data-form-element="error"
-    data-error-for="email"
-  ></div>
+  <div data-form-element="error" data-error-for="email"></div>
 </div>
 
 <!-- Error class "is-invalid" applied to .input-wrapper when validation fails -->
@@ -363,18 +328,18 @@ All configuration via attributes (no JSON objects):
 
 **Configuration Options:**
 
-| Attribute | Values | Default | Description |
-|-----------|--------|---------|-------------|
-| `data-form-persist` | `local`, `session`, `cookie`, `false` | `false` | Storage type for form data |
-| `data-form-validate-on` | `blur`, `change`, `input`, `next`, `submit` | `blur` | When to validate inputs |
-| `data-form-allow-invalid` | `true`, `false` | `false` | Allow advancing with errors |
-| `data-form-error-display` | `native`, `inline`, `toast` | `native` | Error display mode |
-| `data-form-error-class` | string | - | CSS class for error state |
-| `data-form-error-class-target` | `parent`, `self`, `{selector}` | `parent` | Where to apply error class |
-| `data-form-transition` | `fade`, `slide`, `none` | `fade` | Step transition type |
-| `data-form-transition-duration` | number (ms) | `300` | Transition duration |
-| `data-form-aria-announce` | `true`, `false` | `true` | Announce step changes |
-| `data-form-focus-on-change` | `true`, `false` | `true` | Focus first input on step change |
+| Attribute                       | Values                                      | Default  | Description                      |
+| ------------------------------- | ------------------------------------------- | -------- | -------------------------------- |
+| `data-form-persist`             | `local`, `session`, `cookie`, `false`       | `false`  | Storage type for form data       |
+| `data-form-validate-on`         | `blur`, `change`, `input`, `next`, `submit` | `blur`   | When to validate inputs          |
+| `data-form-allow-invalid`       | `true`, `false`                             | `false`  | Allow advancing with errors      |
+| `data-form-error-display`       | `native`, `inline`, `toast`                 | `native` | Error display mode               |
+| `data-form-error-class`         | string                                      | -        | CSS class for error state        |
+| `data-form-error-class-target`  | `parent`, `self`, `{selector}`              | `parent` | Where to apply error class       |
+| `data-form-transition`          | `fade`, `slide`, `none`                     | `fade`   | Step transition type             |
+| `data-form-transition-duration` | number (ms)                                 | `300`    | Transition duration              |
+| `data-form-aria-announce`       | `true`, `false`                             | `true`   | Announce step changes            |
+| `data-form-focus-on-change`     | `true`, `false`                             | `true`   | Focus first input on step change |
 
 ## State Management
 
@@ -406,15 +371,16 @@ interface FormState {
   isInitialized: boolean;
 
   // Progress
-  formProgress: number;      // 0-100
-  stepProgress: number;      // 0-100
-  stepsComplete: number;     // Count of completed steps
+  formProgress: number; // 0-100
+  stepProgress: number; // 0-100
+  stepsComplete: number; // Count of completed steps
 }
 ```
 
 ### State Updates
 
 All state changes trigger:
+
 1. Component state update via `setState()`
 2. Automatic persistence (if configured)
 3. EventBus emission for internal manager communication
@@ -428,6 +394,7 @@ All state changes trigger:
 **Purpose:** Manage step lifecycle, discovery, and transitions
 
 **Responsibilities:**
+
 - Discover all `[data-form-element="step"]` elements
 - Parse step IDs from attributes or titles
 - Initialize step metadata (index, id, title)
@@ -437,6 +404,7 @@ All state changes trigger:
 - Coordinate with NavigationManager for guards
 
 **API:**
+
 ```typescript
 goToStep(index: number): Promise<void>
 nextStep(): Promise<void>
@@ -451,6 +419,7 @@ markStepComplete(stepId: string): void
 ```
 
 **Performance Notes:**
+
 - Only activates event listeners for current step
 - Deactivates listeners when leaving step
 
@@ -459,6 +428,7 @@ markStepComplete(stepId: string): void
 **Purpose:** Track and manage all form inputs with smart event binding
 
 **Responsibilities:**
+
 - Auto-discover all inputs in form
 - Group inputs by `[data-form-element="group"]`
 - Lazy event binding (only active step inputs)
@@ -469,6 +439,7 @@ markStepComplete(stepId: string): void
 - Trigger condition re-evaluation on change
 
 **API:**
+
 ```typescript
 registerInput(input: HTMLInputElement): void
 unregisterInput(input: HTMLInputElement): void
@@ -483,6 +454,7 @@ getActiveInputs(): HTMLInputElement[]
 ```
 
 **Performance Notes:**
+
 - Only binds events to inputs in active step
 - Unbinds events when step becomes inactive
 - Smart event selection based on input type
@@ -492,6 +464,7 @@ getActiveInputs(): HTMLInputElement[]
 **Purpose:** Validate inputs, groups, and steps
 
 **Responsibilities:**
+
 - Auto-detect native HTML5 validation (required, type, pattern, min, max)
 - Parse custom `[data-form-validate]` rules
 - Execute validation on demand or based on timing config
@@ -502,6 +475,7 @@ getActiveInputs(): HTMLInputElement[]
 - Integrate with ErrorManager for display
 
 **API:**
+
 ```typescript
 validateInput(name: string, showErrors?: boolean): ValidationResult
 validateGroup(groupId: string, showErrors?: boolean): ValidationResult
@@ -513,6 +487,7 @@ isFieldValid(name: string): boolean
 ```
 
 **Validation Result:**
+
 ```typescript
 interface ValidationResult {
   valid: boolean;
@@ -531,6 +506,7 @@ interface ValidationError {
 **Purpose:** Handle conditional visibility with performance optimization
 
 **Responsibilities:**
+
 - Discover all `[data-form-show-if]` / `[data-form-hide-if]` elements
 - Parse condition expressions (handle `{}`, operators, `&&`, `||`)
 - Build dependency graph (which elements depend on which fields)
@@ -541,6 +517,7 @@ interface ValidationError {
 - Handle form state conditions (`{form.*}`)
 
 **API:**
+
 ```typescript
 evaluateConditions(): void
 evaluateCondition(element: HTMLElement): boolean
@@ -550,6 +527,7 @@ clearCache(): void
 ```
 
 **Performance Implementation:**
+
 ```typescript
 class ConditionManager {
   // Map: fieldName -> Set of elements with conditions depending on that field
@@ -563,7 +541,7 @@ class ConditionManager {
     const affectedElements = this.affectedFields.get(fieldName);
     if (!affectedElements) return;
 
-    affectedElements.forEach(element => {
+    affectedElements.forEach((element) => {
       const isVisible = this.evaluateCondition(element);
       const wasVisible = this.conditionCache.get(element);
 
@@ -581,6 +559,7 @@ class ConditionManager {
 **Purpose:** Manage navigation buttons and enforce guards
 
 **Responsibilities:**
+
 - Discover all prev/next/submit buttons
 - Handle button click events
 - Update button states (enabled/disabled/loading)
@@ -590,6 +569,7 @@ class ConditionManager {
 - Handle loading states during async operations
 
 **API:**
+
 ```typescript
 updateButtonStates(): void
 disableNavigation(): void
@@ -604,6 +584,7 @@ canNavigatePrev(): boolean
 **Purpose:** Handle all dynamic text and style updates
 
 **Responsibilities:**
+
 - Discover all `[data-form-text]` elements
 - Discover all `[data-form-style-*]` elements
 - Evaluate expressions with variables
@@ -613,6 +594,7 @@ canNavigatePrev(): boolean
 - Handle expression parsing (variables, operators, math)
 
 **API:**
+
 ```typescript
 updateAllRenders(): void
 updateTextRenders(): void
@@ -623,6 +605,7 @@ registerStyleElement(element: HTMLElement, property: string): void
 ```
 
 **Expression Evaluation:**
+
 ```typescript
 // Context includes all available variables
 const context = {
@@ -646,6 +629,7 @@ const context = {
 **Purpose:** Handle step transition animations
 
 **Responsibilities:**
+
 - Manage transition types (fade, slide, typeform, none)
 - Handle transition timing and duration
 - Coordinate with StepManager for step changes
@@ -654,6 +638,7 @@ const context = {
 - Future: Support for custom transition types
 
 **API:**
+
 ```typescript
 transitionStep(fromStep: HTMLElement, toStep: HTMLElement, direction: 'forward' | 'backward'): Promise<void>
 setTransitionType(type: 'fade' | 'slide' | 'none'): void
@@ -661,10 +646,12 @@ setTransitionDuration(ms: number): void
 ```
 
 **Current Implementation (v1):**
+
 - `fade` - Simple opacity fade in/out
 - `none` - Instant switch (no animation)
 
 **Future Transitions:**
+
 - `slide` - Horizontal slide left/right
 - `typeform` - Typeform-style single question
 - Custom transitions via CSS classes
@@ -674,6 +661,7 @@ setTransitionDuration(ms: number): void
 **Purpose:** Handle error display in multiple modes
 
 **Responsibilities:**
+
 - Display errors in configured mode (native/inline/toast)
 - Manage error message containers `[data-form-element="error"]`
 - Apply error classes to configured targets
@@ -682,6 +670,7 @@ setTransitionDuration(ms: number): void
 - Support custom error messages (future)
 
 **API:**
+
 ```typescript
 displayError(field: string, message: string): void
 displayErrors(errors: ValidationError[]): void
@@ -725,6 +714,7 @@ private showToastError(message: string): void {
 **Purpose:** Ensure form is accessible to all users
 
 **Responsibilities:**
+
 - Add ARIA attributes to steps (role, aria-hidden, aria-current)
 - Add ARIA attributes to progress indicators
 - Add ARIA live regions for announcements
@@ -734,6 +724,7 @@ private showToastError(message: string): void {
 - Provide clear error announcements
 
 **API:**
+
 ```typescript
 setupStepAria(steps: HTMLElement[]): void
 setupProgressAria(progressElements: HTMLElement[]): void
@@ -743,6 +734,7 @@ announceError(message: string): void
 ```
 
 **ARIA Implementation:**
+
 ```typescript
 // Steps setup
 setupStepAria(steps: HTMLElement[]): void {
@@ -869,7 +861,7 @@ In Webflow Project Settings → Custom Code → Head Code:
 
 ```html
 <!-- Add to <head> -->
-<script src="https://cdn.jsdelivr.net/npm/@your-org/motif-forms@latest/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ramp-development/flowups-io@latest/dist/index.js"></script>
 ```
 
 #### 2. Build Form in Webflow Designer
@@ -886,44 +878,25 @@ Create your form structure using Webflow's visual editor and add the required da
   data-form-error-class="is-invalid"
   data-form-transition="fade"
 >
-
   <!-- Step 1: Personal Information -->
   <div data-form-element="step" data-form-step-title="Personal Information">
     <h2>Tell us about yourself</h2>
 
     <div class="input-wrapper">
       <label for="firstName">First Name</label>
-      <input
-        type="text"
-        id="firstName"
-        name="firstName"
-        required
-        data-form-validate="min:2"
-      />
+      <input type="text" id="firstName" name="firstName" required data-form-validate="min:2" />
       <div data-form-element="error" data-error-for="firstName"></div>
     </div>
 
     <div class="input-wrapper">
       <label for="email">Email</label>
-      <input
-        type="email"
-        id="email"
-        name="email"
-        required
-      />
+      <input type="email" id="email" name="email" required />
       <div data-form-element="error" data-error-for="email"></div>
     </div>
 
     <div class="input-wrapper">
       <label for="age">Age</label>
-      <input
-        type="number"
-        id="age"
-        name="age"
-        min="18"
-        max="120"
-        required
-      />
+      <input type="number" id="age" name="age" min="18" max="120" required />
       <div data-form-element="error" data-error-for="age"></div>
     </div>
 
@@ -946,19 +919,13 @@ Create your form structure using Webflow's visual editor and add the required da
     </div>
 
     <!-- Conditional field - only shown for US -->
-    <div
-      class="input-wrapper"
-      data-form-show-if="{country} = US"
-    >
+    <div class="input-wrapper" data-form-show-if="{country} = US">
       <label for="state">State</label>
       <input type="text" id="state" name="state" />
     </div>
 
     <!-- Conditional field - only shown if age > 65 -->
-    <div
-      class="input-wrapper"
-      data-form-show-if="{age} > 65"
-    >
+    <div class="input-wrapper" data-form-show-if="{age} > 65">
       <label for="retirement">Retirement Status</label>
       <select id="retirement" name="retirement">
         <option value="working">Still Working</option>
@@ -975,22 +942,12 @@ Create your form structure using Webflow's visual editor and add the required da
     <h2>Your preferences</h2>
 
     <div class="checkbox-wrapper">
-      <input
-        type="checkbox"
-        id="newsletter"
-        name="newsletter"
-        value="true"
-      />
+      <input type="checkbox" id="newsletter" name="newsletter" value="true" />
       <label for="newsletter">Subscribe to newsletter</label>
     </div>
 
     <div class="checkbox-wrapper">
-      <input
-        type="checkbox"
-        id="terms"
-        name="terms"
-        required
-      />
+      <input type="checkbox" id="terms" name="terms" required />
       <label for="terms">I agree to the terms and conditions</label>
       <div data-form-element="error" data-error-for="terms"></div>
     </div>
@@ -1013,9 +970,7 @@ Create your form structure using Webflow's visual editor and add the required da
     <div class="review-section">
       <h3>Location</h3>
       <p>Country: <span data-form-text="{country}"></span></p>
-      <p data-form-show-if="{country} = US">
-        State: <span data-form-text="{state}"></span>
-      </p>
+      <p data-form-show-if="{country} = US">State: <span data-form-text="{state}"></span></p>
     </div>
 
     <button type="button" data-form-element="prev">Back</button>
@@ -1024,10 +979,7 @@ Create your form structure using Webflow's visual editor and add the required da
 
   <!-- Progress Indicators -->
   <div class="progress-bar-container">
-    <div
-      class="progress-bar"
-      data-form-style-width="{form-progress}"
-    ></div>
+    <div class="progress-bar" data-form-style-width="{form-progress}"></div>
   </div>
 
   <div class="step-counter">
@@ -1042,7 +994,6 @@ Create your form structure using Webflow's visual editor and add the required da
   <div class="steps-complete">
     <span data-form-text="{steps-complete} completed"></span>
   </div>
-
 </form>
 ```
 
@@ -1055,48 +1006,48 @@ If you need to customize form behavior, add to Project Settings → Custom Code 
 ```html
 <!-- Add before </body> -->
 <script>
-// Initialize Motif Forms API
-window.MotifForms ||= [];
-window.MotifForms.push(function(api) {
-  // Get reference to specific form by ID
-  const onboardingForm = api.getForm('onboarding');
+  // Initialize Flowups Forms API
+  window.Flowups ||= [];
+  window.Flowups.push((Flowups) => {
+    // Get reference to specific form by ID
+    const onboardingForm = Flowups.getForm('onboarding');
 
-  // Subscribe to form events
-  onboardingForm.on('step:changed', ({ to, stepTitle }) => {
-    console.log(`Navigated to step ${to}: ${stepTitle}`);
+    // Subscribe to form events
+    onboardingForm.on('step:changed', ({ to, stepTitle }) => {
+      console.log(`Navigated to step ${to}: ${stepTitle}`);
 
-    // Track analytics
-    if (window.gtag) {
-      window.gtag('event', 'form_step_completed', {
-        step_number: to,
-        step_name: stepTitle,
-      });
-    }
+      // Track analytics
+      if (window.gtag) {
+        window.gtag('event', 'form_step_completed', {
+          step_number: to,
+          step_name: stepTitle,
+        });
+      }
+    });
+
+    onboardingForm.on('input:changed', ({ field, value }) => {
+      console.log(`${field} changed to:`, value);
+
+      // Custom logic based on field changes
+      if (field === 'country') {
+        console.log('Country selected:', value);
+      }
+    });
+
+    onboardingForm.on('submit:started', ({ formData }) => {
+      console.log('Submitting form data:', formData);
+    });
+
+    onboardingForm.on('submit:success', (response) => {
+      // Redirect to thank you page
+      window.location.href = '/thank-you';
+    });
+
+    onboardingForm.on('submit:error', ({ error }) => {
+      console.error('Form submission failed:', error);
+      alert('Something went wrong. Please try again.');
+    });
   });
-
-  onboardingForm.on('input:changed', ({ field, value }) => {
-    console.log(`${field} changed to:`, value);
-
-    // Custom logic based on field changes
-    if (field === 'country') {
-      console.log('Country selected:', value);
-    }
-  });
-
-  onboardingForm.on('submit:started', ({ formData }) => {
-    console.log('Submitting form data:', formData);
-  });
-
-  onboardingForm.on('submit:success', (response) => {
-    // Redirect to thank you page
-    window.location.href = '/thank-you';
-  });
-
-  onboardingForm.on('submit:error', ({ error }) => {
-    console.error('Form submission failed:', error);
-    alert('Something went wrong. Please try again.');
-  });
-});
 </script>
 ```
 
@@ -1107,17 +1058,17 @@ window.MotifForms.push(function(api) {
 The library automatically initializes all forms with `data-form-element="form"` on page load. Access forms via the global API:
 
 ```javascript
-window.MotifForms ||= [];
-window.MotifForms.push(function(api) {
+window.Flowups ||= [];
+window.Flowups.push((Flowups) => {
   // Get form by data-form-id
-  const form = api.getForm('onboarding');
+  const form = Flowups.getForm('onboarding');
 
   // Get form by element
   const formElement = document.querySelector('[data-form-id="onboarding"]');
-  const form2 = api.getFormByElement(formElement);
+  const form2 = Flowups.getFormByElement(formElement);
 
   // Get all initialized forms
-  const allForms = api.getAllForms();
+  const allForms = Flowups.getAllForms();
 });
 ```
 
@@ -1143,8 +1094,8 @@ form.off('step:changed', handler);
 #### Programmatic Control
 
 ```javascript
-window.MotifForms.push(function(api) {
-  const form = api.getForm('onboarding');
+window.Flowups.push((Flowups) => {
+  const form = Flowups.getForm('onboarding');
 
   // Navigate to specific step
   form.goToStep(2); // Go to step index 2 (3rd step)
@@ -1184,42 +1135,43 @@ You can override the default form submission behavior to integrate with your own
 
 ```html
 <script>
-window.MotifForms ||= [];
-window.MotifForms.push(function(api) {
-  const form = api.getForm('onboarding');
+  window.Flowups ||= [];
+  window.Flowups.push(function (Flowups) {
+    const form = Flowups.getForm('onboarding');
 
-  // Intercept submit event and handle manually
-  form.on('submit:started', async ({ formData }) => {
-    try {
-      // Custom API call
-      const response = await fetch('/api/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+    // Intercept submit event and handle manually
+    form.on('submit:started', async ({ formData }) => {
+      try {
+        // Custom API call
+        const response = await fetch('/api/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
 
-      if (!response.ok) {
-        throw new Error('Submission failed');
+        if (!response.ok) {
+          throw new Error('Submission failed');
+        }
+
+        const result = await response.json();
+
+        // Success! Form will emit 'submit:success' automatically
+        console.log('Submission successful:', result);
+      } catch (error) {
+        // Error! Form will emit 'submit:error' automatically
+        console.error('Submission failed:', error);
       }
-
-      const result = await response.json();
-
-      // Success! Form will emit 'submit:success' automatically
-      console.log('Submission successful:', result);
-    } catch (error) {
-      // Error! Form will emit 'submit:error' automatically
-      console.error('Submission failed:', error);
-    }
+    });
   });
-});
 </script>
 ```
 
 ## Implementation Checklist
 
 ### Phase 1: Core Foundation
+
 - [ ] MultiStepForm component extending StatefulComponent
 - [ ] FormState interface and type definitions
 - [ ] Basic attribute parsing utilities
@@ -1231,6 +1183,7 @@ window.MotifForms.push(function(api) {
 - [ ] Basic event emission (step:changed, input:changed)
 
 ### Phase 2: Validation & Errors
+
 - [ ] ValidationManager - HTML5 validation detection
 - [ ] ValidationManager - custom validation rules
 - [ ] ValidationManager - validation timing (blur/change/input)
@@ -1240,6 +1193,7 @@ window.MotifForms.push(function(api) {
 - [ ] Navigation guards with validation checks
 
 ### Phase 3: Advanced Features
+
 - [ ] ConditionManager - expression parsing
 - [ ] ConditionManager - condition evaluation
 - [ ] ConditionManager - performance optimization (caching)
@@ -1248,6 +1202,7 @@ window.MotifForms.push(function(api) {
 - [ ] State persistence via StorageManager
 
 ### Phase 4: Accessibility & Polish
+
 - [ ] AccessibilityManager - ARIA attributes
 - [ ] AccessibilityManager - step announcements
 - [ ] AccessibilityManager - focus management
@@ -1257,6 +1212,7 @@ window.MotifForms.push(function(api) {
 - [ ] Email blocklist validation (future)
 
 ### Phase 5: Testing & Documentation
+
 - [ ] Unit tests for each manager
 - [ ] Integration tests with Playwright
 - [ ] Performance testing (large forms)
@@ -1302,14 +1258,14 @@ class ConditionManager {
   init(): void {
     const conditionalElements = this.queryAll('[data-form-show-if], [data-form-hide-if]');
 
-    conditionalElements.forEach(element => {
-      const condition = element.getAttribute('data-form-show-if') ||
-                       element.getAttribute('data-form-hide-if');
+    conditionalElements.forEach((element) => {
+      const condition =
+        element.getAttribute('data-form-show-if') || element.getAttribute('data-form-hide-if');
 
       // Parse condition to find field dependencies
       const fields = this.extractFieldNames(condition);
 
-      fields.forEach(field => {
+      fields.forEach((field) => {
         if (!this.affectedFields.has(field)) {
           this.affectedFields.set(field, new Set());
         }
@@ -1323,7 +1279,7 @@ class ConditionManager {
     const elements = this.affectedFields.get(field);
     if (!elements) return;
 
-    elements.forEach(element => this.evaluateCondition(element));
+    elements.forEach((element) => this.evaluateCondition(element));
   }
 }
 ```
@@ -1358,6 +1314,7 @@ class RenderManager {
 ## Future Features
 
 ### Phase 2+
+
 - [ ] Custom validation rules via window API
 - [ ] Toast notification error display
 - [ ] Email blocklist validation
@@ -1376,38 +1333,45 @@ class RenderManager {
 ## Design Decisions Summary
 
 ### Validation Timing
+
 - **Default:** Blur for text inputs, change for select/radio/checkbox
 - **On Next:** Always validate before advancing
 - **On Submit:** Always validate before submission
 - **Configurable:** Per form, step, group, or input
 
 ### State Persistence
+
 - **Default:** Disabled
 - **When Enabled:** Stores both progress and data to configured storage
 - **Storage Types:** localStorage, sessionStorage, cookies
 
 ### Navigation Freedom
+
 - **Default:** Sequential with validation guards
 - **Backward:** Always allowed without validation
 - **Forward:** Requires validation unless `data-form-allow-invalid="true"`
 
 ### Animation Handling
+
 - **Built-in:** Fade transition (CSS-based)
 - **Extensible:** AnimationManager for future transition types
 - **CSS-First:** JavaScript triggers classes, CSS handles animation
 
 ### Error Display
+
 - **Default:** Native browser validation
 - **Inline:** Custom error containers when configured
 - **Class Application:** Configurable target (parent/self/selector)
 
 ### Accessibility
+
 - **Auto-managed:** ARIA attributes for steps, progress, errors
 - **Announcements:** Screen reader announcements for step changes
 - **Focus:** Auto-focus first input on step change
 - **Keyboard:** Future support for Enter/Escape navigation
 
 ### Variable Syntax
+
 - **Consistency:** Always wrap variables in `{}`
 - **Readability:** Spaces around operators
 - **Namespace:** `form.*` for form state to avoid field name clashes
