@@ -1504,13 +1504,10 @@ You can override the default form submission behavior to integrate with your own
   - [ ] Associate fields with parent groups/sets
   - [ ] Build field navigation order
   - [ ] Implement `byField` navigation (show one field at a time)
-  - [ ] Track current/visited/completed fields
-- [ ] FieldManager
-  - [ ] Discover all inputs in form
   - [ ] Track input values in formData state
+  - [ ] Track current/visited/completed fields
   - [ ] Lazy event binding (only current field's input)
   - [ ] Smart event binding by input type (text=blur, select=change, etc.)
-  - [ ] Update state on input changes
   - [ ] Unbind events when leaving field
 - [ ] NavigationManager
   - [ ] Discover prev/next buttons
