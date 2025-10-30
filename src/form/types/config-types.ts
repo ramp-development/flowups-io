@@ -33,7 +33,7 @@ export type ErrorDisplayMode = 'native' | 'inline' | 'toast';
  * Storage Type
  * Where to persist form data (future feature)
  */
-export type StorageType = 'local' | 'session' | 'cookie' | false;
+export type StorageType = 'memory' | 'local' | 'session' | 'cookie' | false;
 
 /**
  * Multi-Step Form Configuration
