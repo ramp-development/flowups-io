@@ -13,18 +13,18 @@ import type {
   FormBehavior,
   FormState,
   MultiStepFormConfig,
+  MultiStepFormProps,
   StorageType,
 } from './types';
-import type { MultiStepFormProps } from './types/config/multi-step-form-props';
 import {
   getConfigAttributes,
   isValidBehaviorType,
+  isValidErrorModeType,
+  isValidStorageType,
   isValidTransitionType,
   parseBooleanAttribute,
   parseNumberAttribute,
 } from './utils';
-import { isValidErrorModeType } from './utils/validation/error-mode-type-validators';
-import { isValidStorageType } from './utils/validation/storage-type-validators';
 
 /**
  * Multi-Step Form Component

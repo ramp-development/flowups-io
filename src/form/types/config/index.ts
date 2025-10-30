@@ -47,6 +47,7 @@ export * from './field-attribute-config';
 export * from './form-attribute-config';
 export * from './group-attribute-config';
 export * from './multi-step-form-config';
+export * from './multi-step-form-props';
 export * from './parsed-element-data';
 export * from './render-target-attribute-config';
 export * from './set-attribute-config';

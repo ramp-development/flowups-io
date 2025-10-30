@@ -39,7 +39,7 @@ export function isValidStorageType(value: string | null | undefined): value is S
  * const storageType = assertValidStorageType(attrs.persist);
  * // storageType is guaranteed to be StorageType here
  */
-export function assertValidBehaviorType(
+export function assertValidStorageType(
   value: string | null | undefined,
   context?: string
 ): asserts value is StorageType {

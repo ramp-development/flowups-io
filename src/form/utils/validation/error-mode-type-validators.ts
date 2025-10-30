@@ -43,7 +43,7 @@ export function isValidErrorModeType(value: string | null | undefined): value is
  * );
  * // errorMode is guaranteed to be ErrorDisplayMode here
  */
-export function assertValidElementType(
+export function assertValidErrorModeType(
   value: string | null | undefined,
   context?: string
 ): asserts value is ErrorDisplayMode {
