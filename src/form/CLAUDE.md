@@ -12,26 +12,44 @@ A flexible, attribute-driven multi-step form system for Webflow built on the Flo
 MultiStepForm (extends StatefulComponent)
 │
 ├── State Management
-│   ├── currentStepIndex: number
-│   ├── currentStepId: string
-│   ├── completedSteps: Set<string>
-│   ├── visitedSteps: Set<string>
-│   ├── formData: Record<string, unknown>
-│   ├── stepValidity: Record<string, boolean>
+│   ├── Navigation state
+│   │   ├── currentCardIndex: number
+│   │   ├── currentSetIndex: number
+│   │   ├── currentGroupIndex: number
+│   │   ├── currentFieldIndex: number
+│   │   ├── currentCardId: string
+│   │   ├── currentSetId: string
+│   │   ├── currentGroupId: string
+│   │   └── behavior: 'byCard' | 'bySet' | 'byGroup' | 'byField'
+│   ├── Progress tracking
+│   │   ├── completedCards: Set<string>
+│   │   ├── completedSets: Set<string>
+│   │   ├── completedGroups: Set<string>
+│   │   ├── completedFields: Set<string>
+│   │   ├── visitedCards: Set<string>
+│   │   ├── visitedSets: Set<string>
+│   │   └── formProgress: number (0-100)
+│   ├── Form data
+│   │   ├── formData: Record<string, unknown>
+│   │   ├── setValidity: Record<string, boolean>
+│   │   └── fieldErrors: Record<string, string[]>
 │   └── Configuration options
 │
 ├── Manager System
-│   ├── StepManager - Step discovery, navigation, transitions
-│   ├── InputManager - Input discovery, value tracking, smart event binding
-│   ├── ValidationManager - Field/group/step validation, custom rules
+│   ├── CardManager - Card discovery, navigation
+│   ├── SetManager - Set discovery, navigation, title extraction from <legend>
+│   ├── GroupManager - Group discovery, navigation
+│   ├── FieldManager - Field discovery, navigation
+│   ├── InputManager - Input discovery, value tracking, lazy event binding
+│   ├── ValidationManager - HTML5 validation, field/set validation
 │   ├── ConditionManager - Conditional visibility, expression evaluation, caching
 │   ├── NavigationManager - Button states, guards, navigation flow
 │   ├── RenderManager - Text/style updates, expression evaluation
-│   ├── AnimationManager - Step transitions, animation types
-│   ├── ErrorManager - Error display modes (native/inline/toast)
+│   ├── AnimationManager - Transitions (fade/slide)
+│   ├── ErrorManager - Browser native error display
 │   └── AccessibilityManager - ARIA attributes, announcements, focus management
 │
-└── Public API
+└── Public API (Future)
     └── window.Flowups.push() - Event subscription interface
 ```
 
@@ -40,68 +58,140 @@ MultiStepForm (extends StatefulComponent)
 1. **Attribute-Driven** - All configuration via `data-form-*` attributes
 2. **Progressive Enhancement** - Works with standard HTML forms
 3. **Manager Pattern** - Focused, single-responsibility managers
-4. **State-First** - All data flows through component state
-5. **Event-Driven** - Managers communicate via EventBus
-6. **Performance-Optimized** - Lazy event binding, condition caching
-7. **Type-Safe** - Full TypeScript support
-8. **Persistence-Ready** - Optional state persistence via toolkit
+4. **Hierarchical Structure** - Form → Card → Set → Group → Field
+5. **Flexible Progression** - Control granularity with behavior modes (byCard/bySet/byGroup/byField)
+6. **Semantic HTML** - Uses `<fieldset>` and `<legend>` for sets/groups
+7. **State-First** - All data flows through component state
+8. **Event-Driven** - Managers communicate via EventBus
+9. **Performance-Optimized** - Lazy event binding, condition caching
+10. **Type-Safe** - Full TypeScript support
+11. **Accessibility-First** - ARIA attributes, focus management, screen reader support
 
 ## Data Attribute Schema
 
-### Core Elements
+### Element Hierarchy
 
-The system supports both combined and separate attribute syntax:
+The system provides a flexible 5-level hierarchy for maximum control:
 
-```html
-<!-- Combined syntax (element:id) -->
-<form data-form-element="form">
-  <div data-form-element="step:contact-info">
-    <div data-form-element="group:address">
-      <!-- inputs -->
-    </div>
-  </div>
-</form>
-
-<!-- Separate syntax with explicit IDs -->
-<form data-form-element="form">
-  <div data-form-element="step" data-form-step-title="Contact Information">
-    <div data-form-element="group" data-form-group-id="address">
-      <!-- inputs -->
-    </div>
-  </div>
-</form>
-
-<!-- Auto-detect from title attribute -->
-<div data-form-element="step" data-form-step-title="Personal Info">
-  <h2>Personal Information</h2>
-  <!-- step ID generated from title: "personal-info" -->
-</div>
+```
+form (root)
+├── card (optional - large UI sections)
+│   ├── set (required within form - semantic field groupings)
+│   │   ├── group (optional - logical subgroupings)
+│   │   │   └── field (required - wrapper for label/input/error/hint)
 ```
 
 **Element Types:**
 
-- `form` - Form wrapper (required)
-- `step` - Step container
-- `group` - Input group
-- `prev` - Previous button
-- `next` - Next button
-- `submit` - Submit button
-- `error` - Error message container
+| Element  | Required | Purpose                                  | HTML Semantic            |
+| -------- | -------- | ---------------------------------------- | ------------------------ |
+| `form`   | Yes      | Root container, controls global behavior | `<form>`                 |
+| `card`   | Optional | Large UI panels (intro/form/success)     | `<div>`                  |
+| `set`    | Yes\*    | Semantic grouping of related fields      | `<fieldset>` recommended |
+| `group`  | Optional | Logical subgroup within a set            | `<fieldset>` recommended |
+| `field`  | Yes\*    | Wrapper for label/input/error/hint       | `<div>`                  |
+| `prev`   | Optional | Previous button                          | `<button>`               |
+| `next`   | Optional | Next button                              | `<button>`               |
+| `submit` | Optional | Submit button                            | `<button type="submit">` |
+| `error`  | Optional | Error message container                  | `<div>`                  |
 
-**Form ID:**
-Add `data-form-id` to your form element to reference it via the JavaScript API:
+\* Required within form cards
+
+### Form Behavior
+
+Control form progression granularity with `data-form-behavior`:
+
+| Behavior  | Description                          | Use Case                               | Example                    |
+| --------- | ------------------------------------ | -------------------------------------- | -------------------------- |
+| `byCard`  | Navigate between cards               | Wizard with intro/form/success screens | Onboarding flow            |
+| `bySet`   | Navigate between sets within a card  | Classic multi-step form                | Contact → Details → Review |
+| `byGroup` | Navigate between groups within a set | Guided sub-sections                    | Name → Address → Phone     |
+| `byField` | Navigate one field at a time         | Typeform-style experience              | Single question per screen |
+
+**v1.0 Implementation:**
+
+- Only `byField` behavior supported initially
+- Future versions will add `byCard`, `bySet`, `byGroup` and behavior inheritance/overrides
+
+### Element Attribute Syntax
+
+The system supports multiple ways to define elements:
 
 ```html
-<form data-form-element="form" data-form-id="onboarding"></form>
+<!-- Combined syntax (element:id) -->
+<div data-form-element="card:intro">
+  <div data-form-element="set:contact">
+    <div data-form-element="group:name">
+      <div data-form-element="field">
+        <!-- input -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Explicit attributes -->
+<div data-form-element="card" data-form-cardtitle="Introduction">
+  <div data-form-element="set" data-form-settitle="Contact Details">
+    <div data-form-element="group" data-form-grouptitle="Name Information">
+      <div data-form-element="field">
+        <!-- input -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Semantic HTML with <legend> (RECOMMENDED) -->
+<div data-form-element="card" data-form-cardtitle="Application">
+  <div data-form-element="set">
+    <fieldset>
+      <legend>Contact Details</legend>
+      <div data-form-element="group">
+        <fieldset>
+          <legend>Home Address</legend>
+          <div data-form-element="field">
+            <!-- input -->
+          </div>
+        </fieldset>
+      </div>
+    </fieldset>
+  </div>
+</div>
 ```
 
-Then access it: `api.getForm('onboarding')`
+### Title/ID Priority
 
-**Step ID Priority:**
+For each element type, titles and IDs are resolved in this order:
 
-1. Explicit ID in combined syntax: `data-form-element="step:my-step"`
-2. Explicit title attribute: `data-form-step-title="My Step"`
-3. If no title provided, step has no name/title data
+**Sets:**
+
+1. `data-form-settitle="Contact Details"` (explicit attribute)
+2. `<legend>` text content (semantic HTML)
+3. `data-form-element="set:contact-details"` (parse from combined syntax)
+4. Auto-generate ID from index (e.g., `set-0`, `set-1`)
+
+**Groups:**
+
+1. `data-form-grouptitle="Name"` (explicit attribute)
+2. `<legend>` text content (semantic HTML)
+3. `data-form-element="group:name"` (parse from combined syntax)
+4. Auto-generate ID from index (e.g., `group-0`, `group-1`)
+
+**Cards:**
+
+1. `data-form-cardtitle="Introduction"` (explicit attribute)
+2. `data-form-element="card:intro"` (parse from combined syntax)
+3. Auto-generate ID from index (e.g., `card-0`, `card-1`)
+
+**Form ID:**
+
+- Pulled from the `name` attribute on the `<form>` element
+- Used to reference form via JavaScript API: `Flowups.Forms.get('onboarding')`
+
+```html
+<form data-form-element="form" name="onboarding" data-form-behavior="byField">
+  <!-- form content -->
+</form>
+```
 
 ### Navigation Elements
 
@@ -113,34 +203,89 @@ Then access it: `api.getForm('onboarding')`
 
 ### Dynamic Rendering
 
-Variables are always wrapped in `{}`, spaces around operators for readability:
+Variables are always wrapped in `{}`, with explicit naming for clarity. Users define what constitutes a "step" in their UI.
 
 ```html
-<!-- Text rendering -->
-<div data-form-text="{current-step}"></div>
-<div data-form-text="{total-steps}"></div>
-<div data-form-text="{steps-complete}"></div>
-<div data-form-text="{current-step} / {total-steps}"></div>
-<div data-form-text="Step {current-step} of {total-steps}"></div>
+<!-- Text rendering - Index variables (1-based for display) -->
+<div data-form-textcontent="{current-card-index}"></div>
+<div data-form-textcontent="{current-set-index}"></div>
+<div data-form-textcontent="{current-group-index}"></div>
+<div data-form-textcontent="{current-field-index}"></div>
 
-<!-- Style rendering (width percentage) -->
-<div data-form-style-width="{form-progress}"></div>
-<div data-form-style-width="{step-progress}"></div>
-<div data-form-style-width="({steps-complete} / {total-steps}) * 100"></div>
+<!-- Text rendering - Totals -->
+<div data-form-textcontent="{total-cards}"></div>
+<div data-form-textcontent="{total-sets}"></div>
+<div data-form-textcontent="{total-groups}"></div>
+<div data-form-textcontent="{total-fields}"></div>
+
+<!-- Text rendering - Titles -->
+<div data-form-textcontent="{current-card-title}"></div>
+<div data-form-textcontent="{current-set-title}"></div>
+<div data-form-textcontent="{current-group-title}"></div>
+
+<!-- Combined text rendering -->
+<div data-form-textcontent="Step {current-set-index} of {total-sets}"></div>
+<div data-form-textcontent="Question {current-field-index} of {total-fields}"></div>
+<div data-form-textcontent="Section {current-card-index}: {current-card-title}"></div>
+<div data-form-textcontent="Set {current-set-index}/{total-sets}: {current-set-title}"></div>
+
+<!-- Style rendering (width percentage for progress bars) -->
+<div data-form-stylewidth="{form-progress}"></div>
+<div data-form-stylewidth="{card-progress}"></div>
+<div data-form-stylewidth="{set-progress}"></div>
+
+<!-- Math expressions in style rendering -->
+<div data-form-stylewidth="({sets-complete} / {total-sets}) * 100"></div>
+<div data-form-stylewidth="({fields-complete} / {total-fields}) * 100"></div>
 
 <!-- Future: Additional style properties -->
-<!-- data-form-style-height, data-form-style-opacity, etc. -->
+<!-- data-form-styleheight, data-form-styleopacity, etc. -->
 ```
 
 **Available Variables:**
 
-- `{current-step}` - Current step index (1-based)
-- `{total-steps}` - Total number of steps
-- `{steps-complete}` - Number of completed steps
-- `{form-progress}` - Overall form completion (0-100)
-- `{step-progress}` - Current step completion (0-100)
-- `{form.currentStepId}` - Current step ID string
-- `{form.currentStepTitle}` - Current step title
+**Index Variables** (1-based for display):
+
+- `{current-card-index}` - Current card number (1, 2, 3...)
+- `{current-set-index}` - Current set number (1, 2, 3...)
+- `{current-group-index}` - Current group number (1, 2, 3...)
+- `{current-field-index}` - Current field number (1, 2, 3...)
+
+**Total Counts:**
+
+- `{total-cards}` - Total number of cards
+- `{total-sets}` - Total number of sets
+- `{total-groups}` - Total number of groups
+- `{total-fields}` - Total number of fields
+
+**Identifiers** (strings):
+
+- `{current-card-id}` - Current card ID (e.g., "intro", "form", "success")
+- `{current-set-id}` - Current set ID (e.g., "contact-details", "medical-info")
+- `{current-group-id}` - Current group ID (e.g., "name", "address")
+
+**Titles** (display text):
+
+- `{current-card-title}` - Current card title (e.g., "Introduction")
+- `{current-set-title}` - Current set title (e.g., "Contact Details")
+- `{current-group-title}` - Current group title (e.g., "Name Information")
+
+**Progress** (0-100):
+
+- `{form-progress}` - Overall form completion percentage
+- `{card-progress}` - Current card completion percentage
+- `{set-progress}` - Current set completion percentage
+
+**Completion Counts:**
+
+- `{cards-complete}` - Number of completed cards
+- `{sets-complete}` - Number of completed sets
+- `{groups-complete}` - Number of completed groups
+- `{fields-complete}` - Number of completed fields
+
+**Form Data Variables:**
+
+- `{fieldName}` - Any form field value (e.g., `{email}`, `{firstName}`, `{country}`)
 
 ### Conditional Visibility
 
@@ -148,34 +293,35 @@ Variables wrapped in `{}`, spaces around operators, supports `&&` and `||`:
 
 ```html
 <!-- Simple field equality -->
-<div data-form-show-if="{country} = US">Only shown when country field equals "US"</div>
+<div data-form-showif="{country} = US">Only shown when country field equals "US"</div>
 
 <!-- Numeric comparisons -->
-<div data-form-show-if="{age} > 18">Adult content</div>
-<div data-form-show-if="{quantity} >= 10">Bulk discount</div>
+<div data-form-showif="{age} > 18">Adult content</div>
+<div data-form-showif="{quantity} >= 10">Bulk discount</div>
 
 <!-- Compound conditions (AND) -->
-<div data-form-show-if="{country} = US && {state} = CA">California specific content</div>
+<div data-form-showif="{country} = US && {state} = CA">California specific content</div>
 
 <!-- Compound conditions (OR) -->
-<div data-form-show-if="{subscribe} = true || {newsletter} = true">Marketing preferences</div>
+<div data-form-showif="{subscribe} = true || {newsletter} = true">Marketing preferences</div>
 
 <!-- Complex conditions -->
-<div data-form-show-if="({age} >= 18 && {country} = US) || {guardian-consent} = true">
+<div data-form-showif="({age} >= 18 && {country} = US) || {guardian-consent} = true">
   Content with age gate or consent
 </div>
 
-<!-- Form state conditions (namespaced with form.) -->
-<div data-form-show-if="{form.currentStep} > 2">Shown after step 2</div>
-<div data-form-show-if="{form.stepsComplete} >= 3">Need 3 completed steps</div>
+<!-- Form state conditions (using index/count variables) -->
+<div data-form-showif="{current-set-index} > 2">Shown after set 2</div>
+<div data-form-showif="{sets-complete} >= 3">Need 3 completed sets</div>
+<div data-form-showif="{current-field-index} >= 5">Shown from field 5 onwards</div>
 
 <!-- Pattern matching -->
-<div data-form-show-if="{email} *= @company.com">Company email</div>
-<div data-form-show-if="{phone} ^= +44">UK phone</div>
-<div data-form-show-if="{url} $= .com">Dot com domain</div>
+<div data-form-showif="{email} *= @company.com">Company email</div>
+<div data-form-showif="{phone} ^= +44">UK phone</div>
+<div data-form-showif="{url} $= .com">Dot com domain</div>
 
 <!-- Hide if condition met -->
-<div data-form-hide-if="{subscribe} = false">Hidden when unchecked</div>
+<div data-form-hideif="{subscribe} = false">Hidden when unchecked</div>
 ```
 
 **Operators:**
@@ -206,21 +352,21 @@ The system auto-detects native HTML5 validation (required, type, pattern, etc.):
 <input name="username" required data-form-validate="min:3,max:20,pattern:^[a-z0-9_]+$" />
 
 <!-- Custom format patterns (for display, not validation) -->
-<input type="tel" name="phone" data-form-validate-format="(XXX) XXX-XXXX" />
+<input type="tel" name="phone" data-form-validateformat="(XXX) XXX-XXXX" />
 
 <!-- Future: Email blocklist -->
-<input type="email" name="email" data-form-validate-blocklist="hotmail.com,yahoo.com" />
+<input type="email" name="email" data-form-validateblocklist="hotmail.com,yahoo.com" />
 ```
 
 **Validation Timing** (cascades from form → step → group → input):
 
 ```html
 <!-- Form level defaults -->
-<form data-form-element="form" data-form-validate-on="blur">
+<form data-form-element="form" data-form-validateon="blur">
   <!-- Step level override -->
-  <div data-form-element="step:payment" data-form-validate-on="change">
+  <div data-form-element="step:payment" data-form-validateon="change">
     <!-- Input level override -->
-    <input name="cardNumber" data-form-validate-on="input" />
+    <input name="cardNumber" data-form-validateon="input" />
   </div>
 </form>
 ```
@@ -247,11 +393,11 @@ Control whether validation is required to advance (cascades from form → step �
 
 ```html
 <!-- Form level: Require valid fields to advance (default) -->
-<form data-form-element="form" data-form-allow-invalid="false">
+<form data-form-element="form" data-form-allowinvalid="false">
   <!-- Step level: Allow skipping this step even if invalid -->
-  <div data-form-element="step:optional-preferences" data-form-allow-invalid="true">
+  <div data-form-element="step:optional-preferences" data-form-allowinvalid="true">
     <!-- Group level: This group must be complete to advance -->
-    <div data-form-element="group:required-info" data-form-allow-invalid="false"></div>
+    <div data-form-element="group:required-info" data-form-allowinvalid="false"></div>
   </div>
 </form>
 ```
@@ -266,9 +412,9 @@ Control whether validation is required to advance (cascades from form → step �
 <!-- Error class configuration (cascades from form → step → group) -->
 <form
   data-form-element="form"
-  data-form-error-class="is-invalid"
-  data-form-error-class-target="parent"
-  data-form-error-display="native"
+  data-form-errorclass="is-invalid"
+  data-form-errortarget="parent"
+  data-form-errordisplay="native"
 ></form>
 ```
 
@@ -308,38 +454,38 @@ All configuration via attributes (no JSON objects):
   data-form-persist="local"
 
   <!-- Validation -->
-  data-form-validate-on="blur"
-  data-form-allow-invalid="false"
+  data-form-validateon="blur"
+  data-form-allowinvalid="false"
 
   <!-- Error handling -->
-  data-form-error-display="native"
-  data-form-error-class="is-invalid"
-  data-form-error-class-target="parent"
+  data-form-errordisplay="native"
+  data-form-errorclass="is-invalid"
+  data-form-errortarget="parent"
 
   <!-- Animation -->
   data-form-transition="fade"
-  data-form-transition-duration="300"
+  data-form-transitionduration="300"
 
   <!-- Accessibility -->
-  data-form-aria-announce="true"
-  data-form-focus-on-change="true"
+  data-form-ariaannounce="true"
+  data-form-focusonchange="true"
 >
 ```
 
 **Configuration Options:**
 
-| Attribute                       | Values                                      | Default  | Description                      |
-| ------------------------------- | ------------------------------------------- | -------- | -------------------------------- |
-| `data-form-persist`             | `local`, `session`, `cookie`, `false`       | `false`  | Storage type for form data       |
-| `data-form-validate-on`         | `blur`, `change`, `input`, `next`, `submit` | `blur`   | When to validate inputs          |
-| `data-form-allow-invalid`       | `true`, `false`                             | `false`  | Allow advancing with errors      |
-| `data-form-error-display`       | `native`, `inline`, `toast`                 | `native` | Error display mode               |
-| `data-form-error-class`         | string                                      | -        | CSS class for error state        |
-| `data-form-error-class-target`  | `parent`, `self`, `{selector}`              | `parent` | Where to apply error class       |
-| `data-form-transition`          | `fade`, `slide`, `none`                     | `fade`   | Step transition type             |
-| `data-form-transition-duration` | number (ms)                                 | `300`    | Transition duration              |
-| `data-form-aria-announce`       | `true`, `false`                             | `true`   | Announce step changes            |
-| `data-form-focus-on-change`     | `true`, `false`                             | `true`   | Focus first input on step change |
+| Attribute                      | Values                                      | Default  | Description                      |
+| ------------------------------ | ------------------------------------------- | -------- | -------------------------------- |
+| `data-form-persist`            | `local`, `session`, `cookie`, `false`       | `false`  | Storage type for form data       |
+| `data-form-validateon`         | `blur`, `change`, `input`, `next`, `submit` | `blur`   | When to validate inputs          |
+| `data-form-allowinvalid`       | `true`, `false`                             | `false`  | Allow advancing with errors      |
+| `data-form-errordisplay`       | `native`, `inline`, `toast`                 | `native` | Error display mode               |
+| `data-form-errorclass`         | string                                      | -        | CSS class for error state        |
+| `data-form-errortarget`        | `parent`, `self`, `{selector}`              | `parent` | Where to apply error class       |
+| `data-form-transition`         | `fade`, `slide`, `none`                     | `fade`   | Step transition type             |
+| `data-form-transitionduration` | number (ms)                                 | `300`    | Transition duration              |
+| `data-form-ariaannounce`       | `true`, `false`                             | `true`   | Announce step changes            |
+| `data-form-focusonchange`      | `true`, `false`                             | `true`   | Focus first input on step change |
 
 ## State Management
 
@@ -507,7 +653,7 @@ interface ValidationError {
 
 **Responsibilities:**
 
-- Discover all `[data-form-show-if]` / `[data-form-hide-if]` elements
+- Discover all `[data-form-showif]` / `[data-form-hideif]` elements
 - Parse condition expressions (handle `{}`, operators, `&&`, `||`)
 - Build dependency graph (which elements depend on which fields)
 - Watch formData state changes
@@ -585,8 +731,8 @@ canNavigatePrev(): boolean
 
 **Responsibilities:**
 
-- Discover all `[data-form-text]` elements
-- Discover all `[data-form-style-*]` elements
+- Discover all `[data-form-textcontent]` elements
+- Discover all `[data-form-style*]` elements
 - Evaluate expressions with variables
 - Update text content dynamically
 - Update style properties dynamically
@@ -814,7 +960,9 @@ User-friendly event names for external code:
 
 ## Usage Example
 
-### Webflow Setup
+### Clinical Trial Application Form (Client v1.0)
+
+This example demonstrates the full hierarchy with `byField` behavior, matching the client's clinical trial form.
 
 #### 1. Add Script to Site Settings
 
@@ -822,7 +970,7 @@ In Webflow Project Settings → Custom Code → Head Code:
 
 ```html
 <!-- Add to <head> -->
-<script src="https://cdn.jsdelivr.net/npm/@ramp-development/flowups-io@latest/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@flowups/forms@latest/dist/index.js"></script>
 ```
 
 #### 2. Build Form in Webflow Designer
@@ -832,150 +980,215 @@ Create your form structure using Webflow's visual editor and add the required da
 ```html
 <form
   data-form-element="form"
-  data-form-id="onboarding"
-  data-form-persist="local"
-  data-form-validate-on="blur"
-  data-form-error-display="inline"
-  data-form-error-class="is-invalid"
+  name="clinical-trial"
+  data-form-behavior="byField"
   data-form-transition="fade"
+  data-form-transitionduration="300"
 >
-  <!-- Step 1: Personal Information -->
-  <div data-form-element="step" data-form-step-title="Personal Information">
-    <h2>Tell us about yourself</h2>
+  <!-- CARD 1: Introduction -->
+  <div data-form-element="card" data-form-cardtitle="Introduction">
+    <h1>Join Our Clinical Trial</h1>
+    <p>
+      Thank you for your interest in Motif Neurotech's clinical trial for treatment-resistant
+      depression...
+    </p>
 
-    <div class="input-wrapper">
-      <label for="firstName">First Name</label>
-      <input type="text" id="firstName" name="firstName" required data-form-validate="min:2" />
-      <div data-form-element="error" data-error-for="firstName"></div>
-    </div>
+    <ul>
+      <li>Takes 6 minutes to complete</li>
+      <li>Your information is confidential & secure</li>
+      <li>You must live in the US to apply</li>
+    </ul>
 
-    <div class="input-wrapper">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required />
-      <div data-form-element="error" data-error-for="email"></div>
-    </div>
-
-    <div class="input-wrapper">
-      <label for="age">Age</label>
-      <input type="number" id="age" name="age" min="18" max="120" required />
-      <div data-form-element="error" data-error-for="age"></div>
-    </div>
-
-    <button type="button" data-form-element="next">Continue</button>
+    <button type="button" data-form-element="next">Next</button>
   </div>
 
-  <!-- Step 2: Location -->
-  <div data-form-element="step" data-form-step-title="Location">
-    <h2>Where are you located?</h2>
+  <!-- CARD 2: Contact Details Form -->
+  <div data-form-element="card" data-form-cardtitle="Contact Details">
+    <!-- Set 1: Contact Details -->
+    <div data-form-element="set">
+      <fieldset>
+        <legend>Contact Details</legend>
 
-    <div class="input-wrapper">
-      <label for="country">Country</label>
-      <select id="country" name="country" required>
-        <option value="">Select...</option>
-        <option value="US">United States</option>
-        <option value="CA">Canada</option>
-        <option value="UK">United Kingdom</option>
-      </select>
-      <div data-form-element="error" data-error-for="country"></div>
+        <!-- Field 1: Full Name -->
+        <div data-form-element="field">
+          <label for="fullName">What is your full name?</label>
+          <input
+            type="text"
+            id="fullName"
+            name="fullName"
+            required
+            placeholder="Type your answer here"
+          />
+          <div data-form-element="error" data-error-for="fullName"></div>
+        </div>
+
+        <!-- Field 2: Date of Birth -->
+        <div data-form-element="field">
+          <label for="dob">What is your date of birth?</label>
+          <input type="date" id="dob" name="dob" required placeholder="MM/DD/YYYY" />
+          <div data-form-element="error" data-error-for="dob"></div>
+        </div>
+
+        <!-- Field 3: Email -->
+        <div data-form-element="field">
+          <label for="email">What is your email?</label>
+          <input type="email" id="email" name="email" required placeholder="name@email.com" />
+          <div data-form-element="error" data-error-for="email"></div>
+        </div>
+
+        <!-- Field 4: Phone -->
+        <div data-form-element="field">
+          <label for="phone">What is your phone number?</label>
+          <input type="tel" id="phone" name="phone" required placeholder="(123) 456-7890" />
+          <div data-form-element="error" data-error-for="phone"></div>
+        </div>
+
+        <!-- Field 5: Address -->
+        <div data-form-element="field">
+          <label for="address">What is your address?</label>
+          <textarea
+            id="address"
+            name="address"
+            required
+            placeholder="Type your address here..."
+          ></textarea>
+          <div data-form-element="error" data-error-for="address"></div>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <!-- CARD 3: Medical Information Form -->
+  <div data-form-element="card" data-form-cardtitle="Medical Information">
+    <!-- Set 2: Medical Information -->
+    <div data-form-element="set">
+      <fieldset>
+        <legend>Medical Information</legend>
+
+        <!-- Field 6: MDD Diagnosis -->
+        <div data-form-element="field">
+          <label>Have you been diagnosed with Major Depressive Disorder?</label>
+          <div class="button-group">
+            <input type="radio" id="mdd-yes" name="mdd" value="yes" required />
+            <label for="mdd-yes">Yes</label>
+
+            <input type="radio" id="mdd-no" name="mdd" value="no" required />
+            <label for="mdd-no">No</label>
+          </div>
+          <div data-form-element="error" data-error-for="mdd"></div>
+        </div>
+
+        <!-- Field 7: When diagnosed (conditional) -->
+        <div data-form-element="field" data-form-showif="{mdd} = yes">
+          <label for="mddWhen">When</label>
+          <input type="text" id="mddWhen" name="mddWhen" placeholder="e.g. May 2024" />
+        </div>
+
+        <!-- Field 8: Duration of MDD (conditional) -->
+        <div data-form-element="field" data-form-showif="{mdd} = yes">
+          <label for="mddDuration">How long have you had MDD?</label>
+          <input
+            type="text"
+            id="mddDuration"
+            name="mddDuration"
+            placeholder="Type your answer here..."
+          />
+        </div>
+
+        <!-- Field 9: Antidepressant Treatment -->
+        <div data-form-element="field">
+          <label
+            >Have you tried two or more antidepressant medications without sustained
+            improvement?</label
+          >
+          <div class="button-group">
+            <input type="radio" id="treatment-yes" name="treatment" value="yes" required />
+            <label for="treatment-yes">Yes</label>
+
+            <input type="radio" id="treatment-no" name="treatment" value="no" required />
+            <label for="treatment-no">No</label>
+          </div>
+          <div data-form-element="error" data-error-for="treatment"></div>
+        </div>
+
+        <!-- Field 10: Medicines tried (conditional) -->
+        <div data-form-element="field" data-form-showif="{treatment} = yes">
+          <label for="medicinesTried">Which medicines have you tried?</label>
+          <input
+            type="text"
+            id="medicinesTried"
+            name="medicinesTried"
+            placeholder="e.g. May 2024"
+          />
+        </div>
+
+        <!-- Field 11: Other Psychiatric Conditions -->
+        <div data-form-element="field">
+          <label
+            >Have you been diagnosed with a psychiatric condition other than MDD (e.g., generalized
+            anxiety disorder, PTSD, etc.)?</label
+          >
+          <div class="button-group">
+            <input type="radio" id="other-yes" name="otherConditions" value="yes" required />
+            <label for="other-yes">Yes</label>
+
+            <input type="radio" id="other-no" name="otherConditions" value="no" required />
+            <label for="other-no">No</label>
+          </div>
+          <div data-form-element="error" data-error-for="otherConditions"></div>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+
+  <!-- Progress Indicators (visible on all cards except intro) -->
+  <div class="progress-wrapper" data-form-hideif="{current-card-index} = 1">
+    <!-- Progress bar -->
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" data-form-stylewidth="{set-progress}"></div>
     </div>
 
-    <!-- Conditional field - only shown for US -->
-    <div class="input-wrapper" data-form-show-if="{country} = US">
-      <label for="state">State</label>
-      <input type="text" id="state" name="state" />
+    <!-- Step counter -->
+    <div class="step-counter">
+      <span
+        data-form-textcontent="Set: {current-set-index}/{total-sets}: {current-set-title}"
+      ></span>
     </div>
+  </div>
 
-    <!-- Conditional field - only shown if age > 65 -->
-    <div class="input-wrapper" data-form-show-if="{age} > 65">
-      <label for="retirement">Retirement Status</label>
-      <select id="retirement" name="retirement">
-        <option value="working">Still Working</option>
-        <option value="retired">Retired</option>
-      </select>
-    </div>
-
+  <!-- Navigation buttons (visible on form cards only) -->
+  <div class="nav-buttons" data-form-showif="{current-card-index} > 1">
     <button type="button" data-form-element="prev">Back</button>
-    <button type="button" data-form-element="next">Continue</button>
-  </div>
-
-  <!-- Step 3: Preferences -->
-  <div data-form-element="step" data-form-step-title="Preferences">
-    <h2>Your preferences</h2>
-
-    <div class="checkbox-wrapper">
-      <input type="checkbox" id="newsletter" name="newsletter" value="true" />
-      <label for="newsletter">Subscribe to newsletter</label>
-    </div>
-
-    <div class="checkbox-wrapper">
-      <input type="checkbox" id="terms" name="terms" required />
-      <label for="terms">I agree to the terms and conditions</label>
-      <div data-form-element="error" data-error-for="terms"></div>
-    </div>
-
-    <button type="button" data-form-element="prev">Back</button>
-    <button type="button" data-form-element="next">Continue</button>
-  </div>
-
-  <!-- Step 4: Review & Submit -->
-  <div data-form-element="step" data-form-step-title="Review & Submit">
-    <h2>Review your information</h2>
-
-    <div class="review-section">
-      <h3>Personal Information</h3>
-      <p>Name: <span data-form-text="{firstName}"></span></p>
-      <p>Email: <span data-form-text="{email}"></span></p>
-      <p>Age: <span data-form-text="{age}"></span></p>
-    </div>
-
-    <div class="review-section">
-      <h3>Location</h3>
-      <p>Country: <span data-form-text="{country}"></span></p>
-      <p data-form-show-if="{country} = US">State: <span data-form-text="{state}"></span></p>
-    </div>
-
-    <button type="button" data-form-element="prev">Back</button>
-    <button type="submit" data-form-element="submit">Submit</button>
-  </div>
-
-  <!-- Progress Indicators -->
-  <div class="progress-bar-container">
-    <div class="progress-bar" data-form-style-width="{form-progress}"></div>
-  </div>
-
-  <div class="step-counter">
-    <span data-form-text="Step {current-step} of {total-steps}"></span>
-  </div>
-
-  <div class="step-title">
-    <span data-form-text="{form.currentStepTitle}"></span>
-  </div>
-
-  <!-- Alternative progress displays -->
-  <div class="steps-complete">
-    <span data-form-text="{steps-complete} completed"></span>
+    <button type="button" data-form-element="next">Next</button>
   </div>
 </form>
 ```
 
-**Important:** Add `data-form-id` to your form element for easy reference in JavaScript.
+**Key Features Demonstrated:**
 
-#### 3. Add Custom JavaScript (Optional)
+- **Full hierarchy**: Form → Card → Set → Field
+- **Semantic HTML**: Using `<fieldset>` and `<legend>` for sets
+- **Conditional visibility**: Fields shown/hidden based on form data
+- **Progress indicators**: Using explicit variable names
+- **Field-by-field progression**: `byField` behavior with fade transitions
+- **HTML5 validation**: Required attributes on inputs
 
-If you need to customize form behavior, add to Project Settings → Custom Code → Footer Code:
+#### 3. Add Custom JavaScript (Optional - Future Feature)
+
+Custom JavaScript API is planned for future versions:
 
 ```html
 <!-- Add before </body> -->
 <script>
-  // Initialize Flowups Forms API
+  // Future API (not available in v1.0)
   window.Flowups ||= [];
   window.Flowups.push((Flowups) => {
-    // Get reference to specific form by ID
-    const onboardingForm = Flowups.Forms.get('onboarding');
+    // Get reference to specific form by name
+    const clinicalTrial = Flowups.Forms.get('clinical-trial');
 
     // Subscribe to form events
-    onboardingForm.on('step:changed', ({ to, stepTitle }) => {
-      console.log(`Navigated to step ${to}: ${stepTitle}`);
+    clinicalTrial.on('set:changed', ({ setIndex, setTitle }) => {
+      console.log(`Navigated to set ${setIndex}: ${setTitle}`);
 
       // Track analytics
       if (window.gtag) {
@@ -1036,7 +1249,7 @@ window.Flowups.push((Flowups) => {
 1. **Before library loads**: `window.Flowups ||= []` creates an empty array if it doesn't exist
 2. **Queue callbacks**: `window.Flowups.push(callback)` adds your callback to the queue
 3. **Library loads**: The Flowups library script loads asynchronously
-4. **Auto-initialization**: Library finds all forms with `data-form-element="form"` and initializes them (unless `data-form-auto-init="false"`)
+4. **Auto-initialization**: Library finds all forms with `data-form-element="form"` and initializes them (unless `data-form-autoinit="false"`)
 5. **Process queue**: Library replaces the array with the API object and executes all queued callbacks
 6. **Future calls**: Any subsequent `push()` calls execute immediately
 
@@ -1052,7 +1265,7 @@ window.Flowups.push((Flowups) => {
 To prevent a form from initializing automatically (useful for forms in modals or conditional UI):
 
 ```html
-<form data-form-element="form" data-form-id="modal-form" data-form-auto-init="false">
+<form data-form-element="form" name="modal-form" data-form-autoinit="false">
   <!-- Form will not auto-initialize -->
 </form>
 ```
@@ -1073,11 +1286,11 @@ Access initialized forms via the namespaced API:
 ```javascript
 window.Flowups ||= [];
 window.Flowups.push((Flowups) => {
-  // Get form by data-form-id
+  // Get form by name
   const form = Flowups.Forms.get('onboarding');
 
   // Get form by element
-  const formElement = document.querySelector('[data-form-id="onboarding"]');
+  const formElement = document.querySelector('form[name="onboarding"]');
   const form2 = Flowups.Forms.getByElement(formElement);
 
   // Get all initialized forms
@@ -1219,57 +1432,301 @@ You can override the default form submission behavior to integrate with your own
 </script>
 ```
 
-## Implementation Checklist
+## Implementation Roadmap
 
-### Phase 1: Core Foundation
+### Current Client Project (v1.0)
 
-- [ ] MultiStepForm component extending StatefulComponent
-- [ ] FormState interface and type definitions
-- [ ] Basic attribute parsing utilities
-- [ ] StepManager - discovery and navigation (no animations)
-- [ ] InputManager - discovery and value tracking
-- [ ] NavigationManager - button states and basic guards
-- [ ] RenderManager - text and style updates
-- [ ] Window API setup (window.Flowups.push())
-- [ ] Basic event emission (step:changed, input:changed)
+**Goal:** Build a production-ready multi-step form for current client needs with the full product vision as context.
 
-### Phase 2: Validation & Errors
+**Requirements:**
 
-- [ ] ValidationManager - HTML5 validation detection
+- Full hierarchy: Form → Card → Set → Group → Field
+- Field-by-field navigation (`byField` behavior only)
+- Conditional visibility (show-if/hide-if)
+- Progress indicators (bar width + text/counters with explicit variable names)
+- HTML5 validation with browser errors
+- Default validation timing (blur/change based on input type)
+- Fade and slide transitions
+- Focus management (first tabbable element + focusable input control)
+- Performance optimization (lazy event binding)
+- No state persistence
+- No public API (internal only)
+
+#### Phase 1: Foundation & Hierarchy Discovery
+
+**Goal:** Build the core structure with full hierarchy support and basic field-by-field navigation
+
+- [ ] Project setup and TypeScript types
+  - [ ] FormState interface (with card/set/group/field state)
+  - [ ] Manager interfaces
+  - [ ] Event type definitions
+  - [ ] Configuration types
+  - [ ] Element hierarchy types
+- [ ] MultiStepForm component (extends StatefulComponent)
+  - [ ] Attribute parsing utilities (support combined syntax: `element:id`)
+  - [ ] Form initialization and lifecycle
+  - [ ] State management setup (hierarchical state)
+  - [ ] Behavior configuration (`byField` only for v1)
+- [ ] CardManager
+  - [ ] Discover cards via `[data-form-element="card"]`
+  - [ ] Parse card IDs and titles
+  - [ ] Track card order and relationships
+- [ ] SetManager
+  - [ ] Discover sets via `[data-form-element="set"]`
+  - [ ] Extract titles from `<legend>` or attributes
+  - [ ] Parse set IDs (explicit, from legend, or auto-generate)
+  - [ ] Associate sets with parent cards
+- [ ] GroupManager (optional elements)
+  - [ ] Discover groups via `[data-form-element="group"]`
+  - [ ] Extract titles from `<legend>` or attributes
+  - [ ] Parse group IDs
+  - [ ] Associate groups with parent sets
+- [ ] FieldManager
+  - [ ] Discover fields via `[data-form-element="field"]`
+  - [ ] Find input within field wrapper
+  - [ ] Associate fields with parent groups/sets
+  - [ ] Build field navigation order
+  - [ ] Implement `byField` navigation (show one field at a time)
+  - [ ] Track current/visited/completed fields
+- [ ] InputManager
+  - [ ] Discover all inputs in form
+  - [ ] Track input values in formData state
+  - [ ] Lazy event binding (only current field's input)
+  - [ ] Smart event binding by input type (text=blur, select=change, etc.)
+  - [ ] Update state on input changes
+  - [ ] Unbind events when leaving field
+- [ ] NavigationManager
+  - [ ] Discover prev/next buttons
+  - [ ] Handle button clicks
+  - [ ] Coordinate with FieldManager for navigation
+  - [ ] Update button states (disabled on first/last field)
+  - [ ] No animations yet (instant switching)
+
+**Deliverable:** Working field-by-field form with full hierarchy, no validation or animations yet
+
+#### Phase 2: Progress & Dynamic Rendering
+
+**Goal:** Add progress indicators and dynamic text/style updates
+
+- [ ] RenderManager
+  - [ ] Discover `[data-form-textcontent]` elements
+  - [ ] Discover `[data-form-stylewidth]` elements
+  - [ ] Variable parsing and context building
+  - [ ] Expression evaluation (simple and math)
+  - [ ] Update on state changes
+  - [ ] Batch DOM updates with RAF
+- [ ] Progress state calculation
+  - [ ] Calculate form-progress (0-100)
+  - [ ] Calculate steps-complete count
+  - [ ] Update on step changes
+
+**Variables Available:**
+
+- **Index**: `{current-card-index}`, `{current-set-index}`, `{current-group-index}`, `{current-field-index}`
+- **Totals**: `{total-cards}`, `{total-sets}`, `{total-groups}`, `{total-fields}`
+- **Titles**: `{current-card-title}`, `{current-set-title}`, `{current-group-title}`
+- **IDs**: `{current-card-id}`, `{current-set-id}`, `{current-group-id}`
+- **Progress**: `{form-progress}`, `{card-progress}`, `{set-progress}`
+- **Completion**: `{cards-complete}`, `{sets-complete}`, `{groups-complete}`, `{fields-complete}`
+- **Form data**: `{fieldName}` for any form field value
+
+**Deliverable:** Progress bars and dynamic counters update on every field/set/card transition
+
+#### Phase 3: Validation & Error Handling
+
+**Goal:** Add HTML5 validation with browser error messages
+
+- [ ] ValidationManager
+  - [ ] Auto-detect HTML5 validation (required, type, pattern, min, max)
+  - [ ] Validate on blur/change based on input type
+  - [ ] Validate current field before advancing
+  - [ ] Validate set before completing
+  - [ ] Return validation results
+- [ ] ErrorManager
+  - [ ] Display browser native errors (setCustomValidity + reportValidity)
+  - [ ] Clear errors when field becomes valid
+  - [ ] Handle error announcements for accessibility
+- [ ] Navigation guards
+  - [ ] Prevent advancing if current field invalid
+  - [ ] Allow backward navigation always
+  - [ ] Coordinate with NavigationManager and FieldManager
+
+**Deliverable:** Form validates fields and prevents invalid progression
+
+#### Phase 4: Conditional Visibility
+
+**Goal:** Show/hide fields and sections based on form data
+
+- [ ] ConditionManager
+  - [ ] Discover `[data-form-showif]` and `[data-form-hideif]` elements
+  - [ ] Parse condition expressions (operators, &&, ||)
+  - [ ] Build dependency graph (field → affected elements)
+  - [ ] Evaluate conditions on init
+  - [ ] Re-evaluate on field changes (only affected elements)
+  - [ ] Cache evaluation results
+  - [ ] Apply show/hide with smooth transitions
+  - [ ] Handle form state conditions (using index/count variables)
+  - [ ] Handle field visibility in navigation order (skip hidden fields)
+
+**Operators:**
+
+- `=`, `!=`, `>`, `<`, `>=`, `<=`
+- `*=` (contains), `^=` (starts with), `$=` (ends with)
+- `&&`, `||` for compound conditions
+
+**Deliverable:** Fields/sets show/hide based on user input with performance optimization
+
+#### Phase 5: Animations & Transitions
+
+**Goal:** Add fade and slide transitions between fields
+
+- [ ] AnimationManager
+  - [ ] Fade transition (CSS-based, opacity)
+  - [ ] Slide transition (horizontal with direction detection: forward/backward)
+  - [ ] Configurable duration via `data-form-transitionduration`
+  - [ ] Wait for transitions before cleanup
+  - [ ] CSS class-based approach (add/remove classes, CSS handles animation)
+  - [ ] Support transitions between fields, sets, and cards
+- [ ] Integrate with FieldManager
+  - [ ] Call AnimationManager during field changes
+  - [ ] Disable navigation during transitions
+  - [ ] Handle edge cases (first field, last field)
+
+**Deliverable:** Smooth field transitions with fade and slide options
+
+#### Phase 6: Focus Management & Accessibility
+
+**Goal:** Ensure keyboard users and screen readers can use the form
+
+- [ ] AccessibilityManager
+  - [ ] Add ARIA attributes to fields (role="group", aria-hidden for hidden fields)
+  - [ ] Add ARIA attributes to sets and cards
+  - [ ] Add ARIA live region for announcements
+  - [ ] Announce field changes to screen readers (field question + progress)
+  - [ ] Focus first tabbable element on field change
+  - [ ] Ensure only visible field inputs are focusable (tabindex management)
+  - [ ] Handle conditional fields (remove from tab order when hidden)
+  - [ ] Add ARIA attributes to progress indicators
+  - [ ] Handle error announcements with proper roles
+
+**Deliverable:** Fully accessible field-by-field form with focus management
+
+#### Phase 7: Testing & Polish
+
+**Goal:** Ensure production-ready quality
+
+- [ ] Manual testing with real form data
+- [ ] Test all validation scenarios
+- [ ] Test all conditional visibility cases
+- [ ] Test focus management with keyboard only
+- [ ] Test with screen reader (VoiceOver/NVDA)
+- [ ] Performance testing (large forms)
+- [ ] Cross-browser testing
+- [ ] Fix any bugs discovered
+
+**Deliverable:** Production-ready v1.0 for client project
+
+---
+
+### Future Product Features (Post-v1.0)
+
+These features are documented for the full product vision but not required for the current client project:
+
+#### Future Phase: Multiple Behavior Modes
+
+**Goal:** Support `byCard`, `bySet`, and `byGroup` navigation modes with behavior inheritance/overrides
+
+- [ ] Extend existing managers to support multiple behaviors
+- [ ] Implement `byCard` behavior (navigate between cards)
+- [ ] Implement `bySet` behavior (navigate between sets within a card)
+- [ ] Implement `byGroup` behavior (navigate between groups within a set)
+- [ ] Behavior inheritance system (form → card → set → group)
+- [ ] Behavior override support at each level
+- [ ] Update NavigationManager to handle different progression modes
+- [ ] Update AnimationManager to handle different transition contexts
+- [ ] Update AccessibilityManager for different navigation granularities
+
+**Examples:**
+
+```html
+<!-- Classic multi-step: navigate between sets -->
+<form data-form-behavior="bySet">...</form>
+
+<!-- Typeform-style: navigate one field at a time -->
+<form data-form-behavior="byField">...</form>
+
+<!-- Wizard: navigate between major sections -->
+<form data-form-behavior="byCard">...</form>
+
+<!-- Mixed: cards with set navigation inside -->
+<form data-form-behavior="byCard">
+  <div data-form-element="card" data-form-behavior="bySet">
+    <!-- This card uses set navigation -->
+  </div>
+</form>
+```
+
+#### Future Phase: Custom Validation & Inline Errors
+
 - [ ] ValidationManager - custom validation rules
-- [ ] ValidationManager - validation timing (blur/change/input)
-- [ ] ErrorManager - native error display
-- [ ] ErrorManager - inline error display
-- [ ] ErrorManager - error class application
-- [ ] Navigation guards with validation checks
-
-### Phase 3: Advanced Features
-
-- [ ] ConditionManager - expression parsing
-- [ ] ConditionManager - condition evaluation
-- [ ] ConditionManager - performance optimization (caching)
-- [ ] ConditionManager - show-if/hide-if logic
-- [ ] AnimationManager - fade transition
-- [ ] State persistence via StorageManager
-
-### Phase 4: Accessibility & Polish
-
-- [ ] AccessibilityManager - ARIA attributes
-- [ ] AccessibilityManager - step announcements
-- [ ] AccessibilityManager - focus management
-- [ ] AnimationManager - additional transition types (slide)
-- [ ] Custom error messages support
+- [ ] ValidationManager - configurable validation timing overrides
+- [ ] ErrorManager - inline error containers
+- [ ] ErrorManager - error class application to custom targets
+- [ ] ErrorManager - custom error messages
 - [ ] Format validation patterns
-- [ ] Email blocklist validation (future)
+- [ ] Email blocklist validation
 
-### Phase 5: Testing & Documentation
+#### Future Phase: State Persistence
+
+- [ ] Integration with StorageManager
+- [ ] Persist form data (localStorage/sessionStorage/cookies)
+- [ ] Persist form progress (current step, completed steps)
+- [ ] Restore state on init
+- [ ] Version management for data migrations
+- [ ] Clear storage on submit
+
+#### Future Phase: Public API & Events
+
+- [ ] Window API setup (`window.Flowups.push()`)
+- [ ] Event subscription interface (`form.on()`, `form.once()`, `form.off()`)
+- [ ] Public events (step:changed, input:changed, etc.)
+- [ ] Programmatic control (goToStep, setFieldValue, etc.)
+- [ ] Form instance management (get, getAll, getByElement)
+- [ ] Auto-initialization with opt-out
+
+#### Future Phase: CalculationManager
+
+See detailed specification in "Future Features" section below for:
+
+- Dynamic computed values
+- Dependency detection and circular dependency prevention
+- Topological sorting for execution order
+- Token namespacing (meta/data/calc)
+- Dev mode testing helpers
+
+#### Future Phase: Advanced Features
+
+- [ ] Toast notification error display
+- [ ] Keyboard navigation (Enter to advance, Escape to cancel)
+- [ ] Multi-page forms (actual page navigation)
+- [ ] Form branching (skip steps conditionally)
+- [ ] File upload support
+- [ ] Auto-save drafts (periodic)
+- [ ] Form analytics integration
+- [ ] A/B testing support
+- [ ] Custom transition types (typeform-style)
+- [ ] Custom expression functions
+- [ ] Conditional validation rules
+- [ ] Step-level callbacks via attributes
+
+#### Future Phase: Testing & Documentation
 
 - [ ] Unit tests for each manager
 - [ ] Integration tests with Playwright
-- [ ] Performance testing (large forms)
-- [ ] Accessibility audit
+- [ ] Accessibility audit (WCAG 2.1 AA)
 - [ ] Documentation with examples
 - [ ] Webflow cloneable demo
+- [ ] Interactive documentation site
 
 ## Performance Considerations
 
@@ -1307,11 +1764,11 @@ class ConditionManager {
 
   // Build dependency graph on init
   init(): void {
-    const conditionalElements = this.queryAll('[data-form-show-if], [data-form-hide-if]');
+    const conditionalElements = this.queryAll('[data-form-showif], [data-form-hideif]');
 
     conditionalElements.forEach((element) => {
       const condition =
-        element.getAttribute('data-form-show-if') || element.getAttribute('data-form-hide-if');
+        element.getAttribute('data-form-showif') || element.getAttribute('data-form-hideif');
 
       // Parse condition to find field dependencies
       const fields = this.extractFieldNames(condition);
@@ -1381,18 +1838,18 @@ All tokens will be namespaced to clarify their source and prevent naming collisi
 
 ```html
 <!-- Form metadata (library-managed, read-only) -->
-<div data-form-text="{meta.totalSteps}"></div>
-<div data-form-text="{meta.currentStep}"></div>
-<div data-form-text="{meta.progress}%"></div>
+<div data-form-textcontent="{meta.totalSteps}"></div>
+<div data-form-textcontent="{meta.currentStep}"></div>
+<div data-form-textcontent="{meta.progress}%"></div>
 
 <!-- Form field data (user input values) -->
-<div data-form-text="{data.email}"></div>
-<div data-form-text="{data.firstName}"></div>
+<div data-form-textcontent="{data.email}"></div>
+<div data-form-textcontent="{data.firstName}"></div>
 
 <!-- Calculated values (user-defined computed values) -->
-<div data-form-text="{calc.subtotal}"></div>
-<div data-form-text="{calc.tax}"></div>
-<div data-form-text="{calc.total}"></div>
+<div data-form-textcontent="{calc.subtotal}"></div>
+<div data-form-textcontent="{calc.tax}"></div>
+<div data-form-textcontent="{calc.total}"></div>
 ```
 
 **Token Replacement Rules:**
@@ -1423,7 +1880,7 @@ window.Flowups.push((Flowups) => {
     format: (value) => value.toFixed(2),
 
     // Submit options: false | 'raw' | 'formatted' | custom function
-    submit: 'formatted',  // Submit "150.00" as string
+    submit: 'formatted', // Submit "150.00" as string
 
     // Optional: debounce recalculation (ms)
     debounce: 300,
@@ -1435,14 +1892,14 @@ window.Flowups.push((Flowups) => {
       const subtotal = parseFloat(calc.subtotal?.raw) || 0;
       const taxRate = parseFloat(data.taxRate) || 0;
       const shipping = parseFloat(data.shipping) || 0;
-      return subtotal + (subtotal * taxRate) + shipping;
+      return subtotal + subtotal * taxRate + shipping;
     },
 
     // Display format (UI only)
-    format: (value) => `$${value.toFixed(2)}`,  // "$165.00"
+    format: (value) => `$${value.toFixed(2)}`, // "$165.00"
 
     // Custom submit format (different from display)
-    submit: (value) => Math.round(value * 100),  // Convert to cents: 16500
+    submit: (value) => Math.round(value * 100), // Convert to cents: 16500
   });
 
   // Display-only calculation (not submitted)
@@ -1455,7 +1912,7 @@ window.Flowups.push((Flowups) => {
     },
 
     format: (value) => `${Math.round(value)}% OFF`,
-    submit: false,  // Not included in form submission
+    submit: false, // Not included in form submission
   });
 });
 ```
@@ -1464,25 +1921,25 @@ window.Flowups.push((Flowups) => {
 
 ```typescript
 interface CalculationContext {
-  data: Record<string, any>;      // Form field values
-  meta: FormMeta;                  // Form metadata (totalSteps, currentStep, etc.)
-  calc: Record<string, CalculationResult>;  // Other calculation results
+  data: Record<string, any>; // Form field values
+  meta: FormMeta; // Form metadata (totalSteps, currentStep, etc.)
+  calc: Record<string, CalculationResult>; // Other calculation results
 }
 
 interface CalculationConfig {
   compute: (context: CalculationContext) => any;
   submit?: false | 'raw' | 'formatted' | ((value: any) => any);
   format?: (value: any) => string;
-  dependencies?: string[] | false;  // Auto-detect if undefined, false for manual only
-  debounce?: number;                // Debounce recalculation (ms)
+  dependencies?: string[] | false; // Auto-detect if undefined, false for manual only
+  debounce?: number; // Debounce recalculation (ms)
   validate?: (value: any) => boolean;
 }
 
 interface CalculationResult {
-  raw: any;           // Unformatted computed value
-  formatted: string;  // Formatted value (if format function provided)
-  submit: any;        // Value that will be submitted (based on submit option)
-  isValid: boolean;   // Result of validate function
+  raw: any; // Unformatted computed value
+  formatted: string; // Formatted value (if format function provided)
+  submit: any; // Value that will be submitted (based on submit option)
+  isValid: boolean; // Result of validate function
 }
 ```
 
@@ -1495,9 +1952,9 @@ const subtotalFormatted = form.calc.subtotal.formatted;  // "150.00"
 const subtotalSubmit = form.calc.subtotal.submit;        // "150.00"
 
 // In HTML (automatically updates via RenderManager)
-<div data-form-text="{calc.subtotal}">150.00</div>
-<div data-form-text="{calc.subtotal.raw}">150</div>
-<div data-form-text="Total: {calc.total}">Total: $165.00</div>
+<div data-form-textcontent="{calc.subtotal}">150.00</div>
+<div data-form-textcontent="{calc.subtotal.raw}">150</div>
+<div data-form-textcontent="Total: {calc.total}">Total: $165.00</div>
 ```
 
 **Form Submission Behavior:**
@@ -1576,21 +2033,23 @@ detectDependencies(fn);
 Auto-detection works well for direct property access but cannot detect:
 
 1. **Dynamic property access:**
+
    ```javascript
-   compute: ({ data }) => data[fieldName]  // Can't detect which field
+   compute: ({ data }) => data[fieldName]; // Can't detect which field
    ```
 
 2. **Computed property names:**
+
    ```javascript
-   compute: ({ data }) => data['field' + index]  // Can't detect
+   compute: ({ data }) => data['field' + index]; // Can't detect
    ```
 
 3. **Properties accessed in nested functions:**
    ```javascript
    compute: ({ data }) => {
-     const helper = () => data.quantity;  // Might miss nested access
+     const helper = () => data.quantity; // Might miss nested access
      return helper();
-   }
+   };
    ```
 
 For these cases, manually specify dependencies.
@@ -1611,7 +2070,7 @@ form.calculations.define('total', {
 // Or disable dependency tracking (manual recalculation only)
 form.calculations.define('manual', {
   compute: ({ data }) => data.value * 2,
-  dependencies: false,  // Only recalculates when form.calculations.recalculate('manual') is called
+  dependencies: false, // Only recalculates when form.calculations.recalculate('manual') is called
 });
 ```
 
@@ -1714,15 +2173,15 @@ private detectCircularDependencies(): void {
 ```javascript
 // Given these calculations:
 form.calculations.define('subtotal', {
-  compute: ({ data }) => data.quantity * data.price,  // No calc deps
+  compute: ({ data }) => data.quantity * data.price, // No calc deps
 });
 
 form.calculations.define('tax', {
-  compute: ({ calc }) => calc.subtotal.raw * 0.1,  // Depends on: calc.subtotal
+  compute: ({ calc }) => calc.subtotal.raw * 0.1, // Depends on: calc.subtotal
 });
 
 form.calculations.define('total', {
-  compute: ({ calc }) => calc.subtotal.raw + calc.tax.raw,  // Depends on: calc.subtotal, calc.tax
+  compute: ({ calc }) => calc.subtotal.raw + calc.tax.raw, // Depends on: calc.subtotal, calc.tax
 });
 
 // Dependency graph (calc dependencies only):
@@ -1739,9 +2198,15 @@ Calculations are executed in topological order (dependencies first):
 
 ```javascript
 // Defined in any order:
-form.calculations.define('total', { /* depends on: calc.subtotal, calc.tax */ });
-form.calculations.define('subtotal', { /* depends on: data.quantity, data.price */ });
-form.calculations.define('tax', { /* depends on: calc.subtotal */ });
+form.calculations.define('total', {
+  /* depends on: calc.subtotal, calc.tax */
+});
+form.calculations.define('subtotal', {
+  /* depends on: data.quantity, data.price */
+});
+form.calculations.define('tax', {
+  /* depends on: calc.subtotal */
+});
 
 // Executed in correct order: subtotal → tax → total
 ```
@@ -2014,8 +2479,8 @@ When a form is submitted, the library includes all calculation values where `sub
 class FormInstance {
   async submit(): Promise<void> {
     const formData = {
-      ...this.data,  // Field values
-      ...this.calculations.getSubmittableValues(),  // Calculated values
+      ...this.data, // Field values
+      ...this.calculations.getSubmittableValues(), // Calculated values
     };
 
     this.emit('submit:started', { formData });
@@ -2075,7 +2540,7 @@ class FormInstance {
 
 - **Default:** Sequential with validation guards
 - **Backward:** Always allowed without validation
-- **Forward:** Requires validation unless `data-form-allow-invalid="true"`
+- **Forward:** Requires validation unless `data-form-allowinvalid="true"`
 
 ### Animation Handling
 
