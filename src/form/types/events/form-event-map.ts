@@ -1,3 +1,5 @@
+import type { AppEventMap } from '$lib/types';
+
 import type { ConditionEvaluatedEvent, FieldVisibilityChangedEvent } from './condition-events';
 import type { DataChangedEvent, FormDataUpdatedEvent } from './data-events';
 import type { FormDestroyedEvent, FormInitializedEvent } from './lifecycle-events';
@@ -6,6 +8,12 @@ import type {
   CardChangingEvent,
   CardCompleteEvent,
 } from './navigation-card-events';
+import type {
+  BoundaryReachedEvent,
+  NavigationGoToEvent,
+  NavigationNextEvent,
+  NavigationPrevEvent,
+} from './navigation-command-events';
 import type {
   FieldChangedEvent,
   FieldChangingEvent,
@@ -22,13 +30,22 @@ import type { SubmitErrorEvent, SubmitStartedEvent, SubmitSuccessEvent } from '.
 import type { ValidationCompleteEvent, ValidationStartedEvent } from './validation-events';
 
 /**
- * App Event Map
- * Maps event names to their payload types for type-safe EventBus usage
+ * Form Event Map
+ * Maps form-specific event names to their payload types for type-safe EventBus usage
+ * Extends AppEventMap to include base events as well
  */
-export interface FormEventMap {
+export interface FormEventMap extends AppEventMap {
   // Lifecycle
   'form:initialized': FormInitializedEvent;
   'form:destroyed': FormDestroyedEvent;
+
+  // Navigation commands (emitted by NavigationManager)
+  'navigation:next': NavigationNextEvent;
+  'navigation:prev': NavigationPrevEvent;
+  'navigation:goTo': NavigationGoToEvent;
+
+  // Boundary events (emitted by managers when reaching start/end)
+  'navigation:boundary': BoundaryReachedEvent;
 
   // Card navigation
   'form:card:changing': CardChangingEvent;
