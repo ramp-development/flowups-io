@@ -1,1 +1,1 @@
-export const ATTR = '${ATTR}';
+export const ATTR = 'data-form';
