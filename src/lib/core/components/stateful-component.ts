@@ -94,7 +94,7 @@ export abstract class StatefulComponent<
   /**
    * Set state value with validation and change tracking
    */
-  protected setState<K extends keyof TState>(
+  public setState<K extends keyof TState>(
     key: K,
     value: TState[K],
     options: { silent?: boolean; persist?: boolean } = {}
