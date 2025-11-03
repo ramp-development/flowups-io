@@ -2,6 +2,7 @@ import type { AppEventMap } from '$lib/types';
 
 import type { ConditionEvaluatedEvent, FieldVisibilityChangedEvent } from './condition-events';
 import type { DataChangedEvent, FormDataUpdatedEvent } from './data-events';
+import type { InputChangedEvent } from './input-events';
 import type { FormDestroyedEvent, FormInitializedEvent } from './lifecycle-events';
 import type {
   CardChangedEvent,
@@ -70,6 +71,9 @@ export interface FormEventMap extends AppEventMap {
   // Data
   'form:data:changed': DataChangedEvent;
   'form:data:updated': FormDataUpdatedEvent;
+
+  // Input
+  'form:input:changed': InputChangedEvent;
 
   // Validation
   'form:validation:started': ValidationStartedEvent;

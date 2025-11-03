@@ -15,6 +15,7 @@ export type FormElementType =
   | 'set'
   | 'group'
   | 'field'
+  | 'input'
   | 'prev'
   | 'next'
   | 'submit'

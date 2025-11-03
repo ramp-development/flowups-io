@@ -1,3 +1,4 @@
+import type { FieldElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -33,10 +34,10 @@ export interface IFieldManager extends IBaseManager {
   getTotalFields(): number;
 
   /** Get field by index */
-  getFieldByIndex(index: number): HTMLElement | null;
+  getFieldByIndex(index: number): FieldElement | null;
 
   /** Get current field */
-  getCurrentField(): HTMLElement | null;
+  getCurrentField(): FieldElement | null;
 
   /** Get next visible field index (skips hidden fields) */
   getNextVisibleFieldIndex(): number | null;

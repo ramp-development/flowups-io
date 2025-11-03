@@ -17,18 +17,6 @@ export interface FieldElement extends BaseElement {
   /** Parent card ID */
   cardId: string;
 
-  /** The input element within this field */
-  input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
-
-  /** Input name attribute (for formData) */
-  inputName: string;
-
-  /** Whether this field is required */
-  isRequired: boolean;
-
-  /** Whether this field is valid */
-  isValid: boolean;
-
   /** Whether this field is visible (for conditional visibility) */
   isVisible: boolean;
 

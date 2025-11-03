@@ -63,7 +63,6 @@ export class FieldManager implements IFieldManager {
           id: f.id,
           title: f.title,
           index: f.index,
-          inputName: f.inputName,
           isVisible: f.isVisible,
         })),
       });
@@ -122,23 +121,14 @@ export class FieldManager implements IFieldManager {
       // Skip if not a field
       if (parsed.type !== 'field') return;
 
-      // Find input element within field wrapper
-      const input = this.findInputElement(element);
-
-      // Get input name attribute (required for formData)
-      const inputName = input?.getAttribute('name') || '';
-
-      // Check if required
-      const isRequired = input?.hasAttribute('required') || false;
-
       // Find parent hierarchy
       const parentHierarchy = this.findParentHierarchy(element);
 
-      // Generate field ID (use input name if available, otherwise index)
-      const fieldId = parsed.id || inputName || `field-${index}`;
+      // Generate field ID (use fieldId if available, otherwise index)
+      const fieldId = parsed.id || `field-${index}`;
 
-      // Generate title (use input name or fieldId)
-      const fieldTitle = inputName || fieldId;
+      // Generate title (use fieldId)
+      const fieldTitle = fieldId;
 
       // Create field element object
       const field: FieldElement = {
@@ -150,10 +140,6 @@ export class FieldManager implements IFieldManager {
         groupId: parentHierarchy?.groupId || null,
         setId: parentHierarchy?.setId || '',
         cardId: parentHierarchy?.cardId || '',
-        input,
-        inputName,
-        isRequired,
-        isValid: false,
         isVisible: true, // Will be updated by ConditionManager
         visited: false,
         completed: false,
@@ -169,7 +155,7 @@ export class FieldManager implements IFieldManager {
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('Fields discovered', {
         count: this.fields.length,
-        fields: this.fields.map((f) => ({ id: f.id, inputName: f.inputName, setId: f.setId })),
+        fields: this.fields.map((f) => ({ id: f.id, setId: f.setId })),
       });
     }
   }
@@ -400,7 +386,6 @@ export class FieldManager implements IFieldManager {
       this.form.logDebug('Navigated to field', {
         index,
         fieldId: field.id,
-        inputName: field.inputName,
       });
     }
 
@@ -429,9 +414,9 @@ export class FieldManager implements IFieldManager {
    * @param index - Zero-based field index
    * @returns Field element or null if not found
    */
-  public getFieldByIndex(index: number): HTMLElement | null {
+  public getFieldByIndex(index: number): FieldElement | null {
     const field = this.fields[index];
-    return field?.element || null;
+    return field;
   }
 
   /**
@@ -439,7 +424,7 @@ export class FieldManager implements IFieldManager {
    *
    * @returns Current field element or null
    */
-  public getCurrentField(): HTMLElement | null {
+  public getCurrentField(): FieldElement | null {
     const currentFieldIndex = this.form.getState('currentFieldIndex');
     return this.getFieldByIndex(currentFieldIndex);
   }
@@ -569,24 +554,6 @@ export class FieldManager implements IFieldManager {
   // ============================================
 
   /**
-   * Find input element within field wrapper
-   * Looks for <input>, <select>, or <textarea>
-   *
-   * @param fieldElement - The field wrapper element
-   * @returns Input element or null
-   */
-  private findInputElement(
-    fieldElement: HTMLElement
-  ): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null {
-    // Try to find standard form inputs
-    const input = fieldElement.querySelector<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >('input, select, textarea');
-
-    return input || null;
-  }
-
-  /**
    * Find parent hierarchy for a field
    * Walks up DOM tree to find parent group, set, and card
    *
@@ -706,7 +673,7 @@ export class FieldManager implements IFieldManager {
    *
    * @returns Current field element or undefined
    */
-  private getCurrentFieldMetadata(): FieldElement | undefined {
+  public getCurrentFieldMetadata(): FieldElement | undefined {
     const currentIndex = this.form.getState('currentFieldIndex');
     return this.fields[currentIndex];
   }

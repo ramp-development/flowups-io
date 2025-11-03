@@ -1,6 +1,7 @@
 export * from './condition-events';
 export * from './data-events';
 export * from './form-event-map';
+export * from './input-events';
 export * from './lifecycle-events';
 export * from './navigation-card-events';
 export * from './navigation-command-events';

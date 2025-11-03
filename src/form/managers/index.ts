@@ -8,7 +8,7 @@ export { CardManager } from './card-manager';
 export { SetManager } from './set-manager';
 export { GroupManager } from './group-manager';
 export { FieldManager } from './field-manager';
-// export { InputManager } from './input-manager';
+export { InputManager } from './input-manager';
 // export { NavigationManager } from './navigation-manager';
 // export { ValidationManager } from './validation-manager';
 // export { ErrorManager } from './error-manager';

@@ -7,7 +7,7 @@
 
 import { StatefulComponent } from '$lib/core/components/stateful-component';
 
-import { CardManager, FieldManager, GroupManager, SetManager } from './managers';
+import { CardManager, FieldManager, GroupManager, InputManager, SetManager } from './managers';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
@@ -55,7 +55,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public setManager: SetManager;
   public groupManager: GroupManager;
   public fieldManager: FieldManager;
-  // private inputManager: InputManager;
+  public inputManager: InputManager;
   // private navigationManager: NavigationManager;
   // private validationManager: ValidationManager;
   // private errorManager: ErrorManager;
@@ -86,6 +86,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.setManager = new SetManager(this);
     this.groupManager = new GroupManager(this);
     this.fieldManager = new FieldManager(this);
+    this.inputManager = new InputManager(this);
 
     if (this.config.autoInit && !this.isInitialized()) {
       this.init();
@@ -266,6 +267,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.setManager.init();
     this.groupManager.init();
     this.fieldManager.init();
+    this.inputManager.init();
 
     if (this.config.debug) {
       this.logDebug(`Form initialized`);
@@ -289,6 +291,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.setManager.destroy();
     this.groupManager.destroy();
     this.fieldManager.destroy();
+    this.inputManager.destroy();
 
     await super.onDestroy();
   }
