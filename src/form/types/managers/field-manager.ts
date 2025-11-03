@@ -3,6 +3,11 @@ import type { IBaseManager } from './base-manager';
 /**
  * Field Manager Interface
  * Handles field discovery and field-by-field navigation
+ *
+ * Note: Navigation methods (nextField, prevField, goToField) are internal APIs
+ * intended to be called by NavigationManager only. NavigationManager provides
+ * the unified navigation interface that routes to the appropriate manager
+ * based on form behavior (byField, bySet, byGroup, byCard).
  */
 export interface IFieldManager extends IBaseManager {
   /** Discover all fields in the form */
@@ -11,13 +16,17 @@ export interface IFieldManager extends IBaseManager {
   /** Build field navigation order */
   buildNavigationOrder(): void;
 
-  /** Navigate to next field */
+  // ============================================
+  // Internal Navigation API (for NavigationManager)
+  // ============================================
+
+  /** Navigate to next field (internal - use NavigationManager.next() instead) */
   nextField(): Promise<void>;
 
-  /** Navigate to previous field */
+  /** Navigate to previous field (internal - use NavigationManager.prev() instead) */
   prevField(): Promise<void>;
 
-  /** Navigate to specific field by index */
+  /** Navigate to specific field by index (internal - use NavigationManager.goTo() instead) */
   goToField(index: number): Promise<void>;
 
   /** Get total number of fields */
