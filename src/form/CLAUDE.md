@@ -1504,11 +1504,11 @@ You can override the default form submission behavior to integrate with your own
   - [x] Extract titles from `<legend>` or attributes
   - [x] Parse set IDs (explicit, from legend, or auto-generate)
   - [x] Associate sets with parent cards
-- [ ] GroupManager (optional elements)
-  - [ ] Discover groups via `[${ATTR}-element="group"]`
-  - [ ] Extract titles from `<legend>` or attributes
-  - [ ] Parse group IDs
-  - [ ] Associate groups with parent sets
+- [x] GroupManager (optional elements)
+  - [x] Discover groups via `[${ATTR}-element="group"]`
+  - [x] Extract titles from `<legend>` or attributes
+  - [x] Parse group IDs
+  - [x] Associate groups with parent sets
 - [ ] FieldManager
   - [ ] Discover fields via `[${ATTR}-element="field"]`
   - [ ] Find input within field wrapper
