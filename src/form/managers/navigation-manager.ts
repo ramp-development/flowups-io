@@ -55,6 +55,7 @@ export class NavigationManager implements INavigationManager {
       this.form.logDebug('NavigationManager initialized', {
         prevButtons: this.prevButtons.length,
         nextButtons: this.nextButtons.length,
+        submitButtons: this.submitButtons.length,
       });
     }
   }
@@ -65,6 +66,7 @@ export class NavigationManager implements INavigationManager {
   public destroy(): void {
     this.prevButtons = [];
     this.nextButtons = [];
+    this.submitButtons = [];
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('NavigationManager destroyed');
@@ -92,44 +94,9 @@ export class NavigationManager implements INavigationManager {
       return;
     }
 
-    // Discover prev buttons
-    const prevElements = rootElement.querySelectorAll<HTMLButtonElement>(
-      `button[${ATTR}-element="prev"], [${ATTR}-element="prev"]`
-    );
-
-    prevElements.forEach((element) => {
-      this.prevButtons.push({
-        element,
-        type: 'prev',
-        disabled: element.disabled,
-      });
-    });
-
-    // Discover next buttons
-    const nextElements = rootElement.querySelectorAll<HTMLButtonElement>(
-      `button[${ATTR}-element="next"], [${ATTR}-element="next"]`
-    );
-
-    nextElements.forEach((element) => {
-      this.nextButtons.push({
-        element,
-        type: 'next',
-        disabled: element.disabled,
-      });
-    });
-
-    // Discover submit buttons
-    const submitElements = rootElement.querySelectorAll<HTMLButtonElement>(
-      `button[${ATTR}-element="submit"], [${ATTR}-element="submit"]`
-    );
-
-    submitElements.forEach((element) => {
-      this.submitButtons.push({
-        element,
-        type: 'submit',
-        disabled: element.disabled,
-      });
-    });
+    this.discoverButtonsForKey(rootElement, 'prev');
+    this.discoverButtonsForKey(rootElement, 'next');
+    this.discoverButtonsForKey(rootElement, 'submit');
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('Navigation buttons discovered', {
@@ -138,6 +105,20 @@ export class NavigationManager implements INavigationManager {
         submit: this.submitButtons.length,
       });
     }
+  }
+
+  private discoverButtonsForKey(rootElement: HTMLElement, key: 'prev' | 'next' | 'submit'): void {
+    const elements = rootElement.querySelectorAll<HTMLButtonElement>(
+      `button[${ATTR}-element="${key}"], [${ATTR}-element="${key}"] button`
+    );
+
+    elements.forEach((element) => {
+      this[`${key}Buttons`].push({
+        element,
+        type: key,
+        disabled: element.disabled,
+      });
+    });
   }
 
   // ============================================
@@ -316,7 +297,9 @@ export class NavigationManager implements INavigationManager {
    */
   private updateButtonStatesForByField(): void {
     const currentFieldIndex = this.form.getState('currentFieldIndex');
+    console.log('currentFieldIndex', currentFieldIndex);
     const navigationOrder = this.form.fieldManager.getNavigationOrder();
+    console.log('navigationOrder', navigationOrder);
 
     if (navigationOrder.length === 0) {
       this.disableButtons([...this.prevButtons, ...this.nextButtons]);
@@ -324,9 +307,11 @@ export class NavigationManager implements INavigationManager {
     }
 
     const currentPositionInOrder = navigationOrder.indexOf(currentFieldIndex);
+    console.log('currentPositionInOrder', currentPositionInOrder);
 
     // Update prev buttons (disabled if at first field)
     if (currentPositionInOrder === 0) {
+      console.log('disable prev buttons');
       this.disableButtons(this.prevButtons);
     } else {
       this.enableButtons(this.prevButtons);

@@ -1589,16 +1589,17 @@ You can override the default form submission behavior to integrate with your own
   - [x] Emit input:changed events for ConditionManager
   - [x] Support programmatic value setting (setInputValue, getInputValue)
   - [x] Provide getAllFormData() for full form data export
-- [ ] NavigationManager
-  - [ ] Discover prev/next buttons
-  - [ ] Handle button clicks
-  - [ ] Coordinate with FieldManager for navigation
-  - [ ] Update button states (disabled on first/last field)
-  - [ ] No animations yet (instant switching)
+- [x] NavigationManager
+  - [x] Discover prev/next buttons
+  - [x] Handle button clicks
+  - [x] Coordinate with FieldManager for navigation
+  - [x] Update button states (disabled on first/last field)
+  - [x] No animations yet (instant switching)
 
 **Deliverable:** Working field-by-field form with full hierarchy, no validation or animations yet
 
 **Current Status:**
+
 - ✅ Foundation complete (types, parsing utilities, component scaffold)
 - ✅ All hierarchy discovery managers implemented (Card, Set, Group, Field)
 - ✅ Event-driven navigation architecture established
@@ -1642,11 +1643,13 @@ NavigationManager
 #### Navigation Events
 
 **Command Events** (NavigationManager → Managers)
+
 - `navigation:next` - Move to next element in current behavior context
 - `navigation:prev` - Move to previous element
 - `navigation:goTo` - Jump to specific element by ID, index, or direction
 
 **Boundary Events** (Managers → NavigationManager)
+
 - `navigation:boundary` - Emitted when reaching start/end of navigation scope
 
 Event types defined in [src/form/types/events/navigation-command-events.ts](src/form/types/events/navigation-command-events.ts).
@@ -1668,6 +1671,7 @@ protected setupEventListeners(): void {
 ```
 
 This allows future support for:
+
 - `byField` - Navigate one field at a time (FieldManager responds)
 - `byGroup` - Navigate one group at a time (GroupManager responds)
 - `bySet` - Navigate one set at a time (SetManager responds)
@@ -1687,12 +1691,14 @@ this.form.emit('navigation:boundary', {
 ```
 
 The `context` indicates what boundary was reached:
+
 - `field` - Last field in current group (or set if no groups)
 - `group` - Last field in last group of current set
 - `set` - Last field in last group/set of current card
 - `card` - Last field in entire form
 
 NavigationManager uses this context to determine whether to:
+
 - Move to next group/set/card
 - Display completion UI
 - Prevent further navigation
@@ -1753,9 +1759,8 @@ Made `InteractiveComponent` and `StatefulComponent` generic with a `TEventMap` p
 
 ```typescript
 export abstract class InteractiveComponent<
-  TEventMap extends AppEventMap = AppEventMap
+  TEventMap extends AppEventMap = AppEventMap,
 > extends BaseComponent {
-
   public subscribe<K extends keyof TEventMap>(
     event: K,
     handler: (payload: TEventMap[K]) => void,
@@ -1778,11 +1783,13 @@ export abstract class InteractiveComponent<
 #### Type Assertions vs Any
 
 At the EventBus boundary, we use specific type assertions:
+
 - `event as keyof AppEventMap` - Safe because `TEventMap extends AppEventMap`
 - `payload as unknown` - More specific than `any`, maintains some type information
 - `handler as (payload: unknown) => void` - Preserves function signature
 
 This is safer than `as any` because:
+
 1. We maintain type information through the component layer
 2. We only cast at the boundary between extended and base event maps
 3. The cast is safe by design (generic constraint ensures compatibility)
