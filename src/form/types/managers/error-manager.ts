@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Error Manager Interface
  * Handles browser native error display
  */
-export interface ErrorManager extends BaseManager {
+export interface IErrorManager extends IBaseManager {
   /** Display native browser error */
   showNativeError(fieldName: string, message: string): void;
 

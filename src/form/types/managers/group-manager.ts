@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Group Manager Interface
  * Handles group discovery and navigation (optional elements)
  */
-export interface GroupManager extends BaseManager {
+export interface IGroupManager extends IBaseManager {
   /** Discover all groups in the form */
   discoverGroups(): void;
 

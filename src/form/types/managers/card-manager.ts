@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Card Manager Interface
  * Handles card discovery and navigation
  */
-export interface CardManager extends BaseManager {
+export interface ICardManager extends IBaseManager {
   /** Discover all cards in the form */
   discoverCards(): void;
 

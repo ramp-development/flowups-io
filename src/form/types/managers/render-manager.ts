@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Render Manager Interface
  * Handles dynamic text and style updates
  */
-export interface RenderManager extends BaseManager {
+export interface IRenderManager extends IBaseManager {
   /** Discover all render elements */
   discoverRenderElements(): void;
 

@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Field Manager Interface
  * Handles field discovery and field-by-field navigation
  */
-export interface FieldManager extends BaseManager {
+export interface IFieldManager extends IBaseManager {
   /** Discover all fields in the form */
   discoverFields(): void;
 

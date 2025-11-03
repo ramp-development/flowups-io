@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Accessibility Manager Interface
  * Handles ARIA attributes, announcements, and focus management
  */
-export interface AccessibilityManager extends BaseManager {
+export interface IAccessibilityManager extends IBaseManager {
   /** Setup ARIA attributes for all elements */
   setupAriaAttributes(): void;
 

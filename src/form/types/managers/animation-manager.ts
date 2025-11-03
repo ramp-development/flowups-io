@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Animation Manager Interface
  * Handles transitions between fields
  */
-export interface AnimationManager extends BaseManager {
+export interface IAnimationManager extends IBaseManager {
   /** Transition from one field to another */
   transitionField(
     fromField: HTMLElement,

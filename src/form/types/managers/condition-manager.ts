@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Condition Manager Interface
  * Handles conditional visibility (show-if/hide-if)
  */
-export interface ConditionManager extends BaseManager {
+export interface IConditionManager extends IBaseManager {
   /** Discover all conditional elements */
   discoverConditionalElements(): void;
 

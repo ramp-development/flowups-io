@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Navigation Manager Interface
  * Handles navigation buttons and coordination with FieldManager
  */
-export interface NavigationManager extends BaseManager {
+export interface INavigationManager extends IBaseManager {
   /** Discover all navigation buttons */
   discoverButtons(): void;
 

@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Set Manager Interface
  * Handles set discovery, title extraction, and navigation
  */
-export interface SetManager extends BaseManager {
+export interface ISetManager extends IBaseManager {
   /** Discover all sets in the form */
   discoverSets(): void;
 

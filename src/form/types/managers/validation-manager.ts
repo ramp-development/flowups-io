@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Validation Manager Interface
  * Handles HTML5 validation and field/set validation
  */
-export interface ValidationManager extends BaseManager {
+export interface IValidationManager extends IBaseManager {
   /** Validate current field */
   validateCurrentField(): Promise<boolean>;
 

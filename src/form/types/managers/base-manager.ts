@@ -4,7 +4,7 @@ import type { FlowupsForm } from 'src/form';
  * Base Manager Interface
  * All managers extend this base interface
  */
-export interface BaseManager {
+export interface IBaseManager {
   /** Initialize the manager */
   init(): void;
 

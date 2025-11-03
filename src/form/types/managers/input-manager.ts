@@ -1,10 +1,10 @@
-import type { BaseManager } from './base-manager';
+import type { IBaseManager } from './base-manager';
 
 /**
  * Input Manager Interface
  * Handles input discovery, value tracking, and lazy event binding
  */
-export interface InputManager extends BaseManager {
+export interface IInputManager extends IBaseManager {
   /** Discover all inputs in the form */
   discoverInputs(): void;
 
