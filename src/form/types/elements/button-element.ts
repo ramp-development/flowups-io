@@ -8,6 +8,6 @@ export interface ButtonElement {
   /** Button type */
   type: 'prev' | 'next' | 'submit';
 
-  /** Whether button is currently enabled */
-  enabled: boolean;
+  /** Whether button is currently disabled */
+  disabled: boolean;
 }

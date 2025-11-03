@@ -27,7 +27,12 @@ import type {
 } from './navigation-group-events';
 import type { SetChangedEvent, SetChangingEvent, SetCompleteEvent } from './navigation-set-events';
 import type { ProgressUpdatedEvent } from './progress-events';
-import type { SubmitErrorEvent, SubmitStartedEvent, SubmitSuccessEvent } from './submission-events';
+import type {
+  SubmitErrorEvent,
+  SubmitRequestedEvent,
+  SubmitStartedEvent,
+  SubmitSuccessEvent,
+} from './submission-events';
 import type { ValidationCompleteEvent, ValidationStartedEvent } from './validation-events';
 
 /**
@@ -87,6 +92,7 @@ export interface FormEventMap extends AppEventMap {
   'form:progress:updated': ProgressUpdatedEvent;
 
   // Submission
+  'form:submit:requested': SubmitRequestedEvent;
   'form:submit:started': SubmitStartedEvent;
   'form:submit:success': SubmitSuccessEvent;
   'form:submit:error': SubmitErrorEvent;

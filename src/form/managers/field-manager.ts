@@ -408,6 +408,14 @@ export class FieldManager implements IFieldManager {
   // ============================================
 
   /**
+   * Get navigation order
+   * @returns Array of field indexes in display order
+   */
+  public getNavigationOrder(): number[] {
+    return this.navigationOrder;
+  }
+
+  /**
    * Get total number of fields (included only)
    */
   public getTotalFields(): number {
