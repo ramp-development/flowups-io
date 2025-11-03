@@ -1567,8 +1567,7 @@ You can override the default form submission behavior to integrate with your own
   - [x] Associate groups with parent sets
 - [x] FieldManager
   - [x] Discover fields via `[${ATTR}-element="field"]`
-  - [x] Find input within field wrapper
-  - [x] Associate fields with parent groups/sets/cards
+  - [x] Associate fields with parent groups/sets/cards (no input tracking)
   - [x] Build field navigation order (array of visible field indexes)
   - [x] Event-driven navigation responding to navigation:next/prev/goTo events
   - [x] Emit boundary events when reaching field limits
@@ -1576,15 +1575,20 @@ You can override the default form submission behavior to integrate with your own
   - [x] Track visited fields using Set<string> of field IDs
   - [x] Implement getFieldContext() for determining boundary type
   - [ ] Track completed fields (mark complete on valid + navigation away)
-- [ ] InputManager
-  - [ ] Lazy event binding (only current field's input)
-  - [ ] Smart event selection by input type (text=blur, select=change, number=input)
-  - [ ] Extract values from all input types (text, select, radio, checkbox, textarea)
-  - [ ] Handle special cases (radio groups, checkbox groups)
-  - [ ] Update formData state on input changes
-  - [ ] Unbind events when leaving field
-  - [ ] Emit input:changed events for ConditionManager
-  - [ ] Support programmatic value setting
+- [x] InputManager
+  - [x] Discover inputs within field wrappers, group by name attribute
+  - [x] Create InputElement objects with metadata (fieldId, groupId, setId, cardId)
+  - [x] Handle radio/checkbox groups (multiple inputs with same name)
+  - [x] Store inputs as array + Map for O(1) lookups
+  - [x] Lazy event binding (only current field's input)
+  - [x] Smart event selection by input type (text=blur, select=change, number=input)
+  - [x] Bind events to ALL elements in radio/checkbox groups
+  - [x] Extract values from all input types (text, select, radio, checkbox, textarea)
+  - [x] Update formData state on input changes
+  - [x] Unbind events when leaving field
+  - [x] Emit input:changed events for ConditionManager
+  - [x] Support programmatic value setting (setInputValue, getInputValue)
+  - [x] Provide getAllFormData() for full form data export
 - [ ] NavigationManager
   - [ ] Discover prev/next buttons
   - [ ] Handle button clicks
@@ -1599,7 +1603,8 @@ You can override the default form submission behavior to integrate with your own
 - ✅ All hierarchy discovery managers implemented (Card, Set, Group, Field)
 - ✅ Event-driven navigation architecture established
 - ✅ Generic event map system for type-safe events
-- 🚧 FieldManager core navigation complete, input tracking pending
+- ✅ FieldManager complete (navigation, boundary detection, field tracking)
+- ✅ InputManager complete (discovery, lazy binding, value extraction, radio/checkbox groups)
 - ⏳ NavigationManager next
 
 **Key Architecture Decisions:**
@@ -1611,6 +1616,8 @@ You can override the default form submission behavior to integrate with your own
 5. **Type Safety**: Using specific type assertions (`as keyof AppEventMap`) instead of `as any` for EventBus compatibility
 6. **Immutable State Updates**: State containing Sets/Maps creates new instances when updating
 7. **Automatic Cleanup**: `InteractiveComponent` automatically cleans up event subscriptions on destroy
+8. **Field ↔ Input Separation**: FieldManager handles navigation/hierarchy, InputManager handles input discovery/binding/values
+9. **Input Grouping**: Radio/checkbox groups stored as single InputElement with multiple `inputElements[]`
 
 ---
 
