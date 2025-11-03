@@ -7,6 +7,7 @@
 
 import { StatefulComponent } from '$lib/core/components/stateful-component';
 
+import { CardManager } from './managers';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
@@ -49,7 +50,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
   // Managers (to be initialized in Phase 1 Step 3)
   // ============================================
 
-  // private cardManager: CardManager;
+  private cardManager: CardManager;
   // private setManager: SetManager;
   // private groupManager: GroupManager;
   // private fieldManager: FieldManager;
@@ -80,6 +81,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
 
     // Parse configuration from attributes
     this.config = this.parseConfiguration();
+    this.cardManager = new CardManager(this);
 
     if (this.config.autoInit && !this.isInitialized()) {
       this.init();
@@ -256,6 +258,8 @@ export class FlowupsForm extends StatefulComponent<FormState> {
     // - Set initial state
     // - Emit form:initialized event
 
+    this.cardManager.init();
+
     if (this.config.debug) {
       this.logDebug(`Form initialized`);
     }
@@ -273,6 +277,8 @@ export class FlowupsForm extends StatefulComponent<FormState> {
     // TODO Phase 1 Step 3:
     // - Destroy all managers
     // - Emit form:destroyed event
+
+    this.cardManager.destroy();
 
     await super.onDestroy();
   }
