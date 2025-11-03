@@ -36,17 +36,17 @@ MultiStepForm (extends StatefulComponent)
 │   └── Configuration options
 │
 ├── Manager System
-│   ├── CardManager - Card discovery, navigation
-│   ├── SetManager - Set discovery, navigation, title extraction from <legend>
-│   ├── GroupManager - Group discovery, navigation
-│   ├── FieldManager - Field discovery, navigation
-│   ├── FieldManager - Input discovery, value tracking, lazy event binding
+│   ├── CardManager - Card discovery, hierarchy tracking
+│   ├── SetManager - Set discovery, hierarchy tracking, title extraction from <legend>
+│   ├── GroupManager - Group discovery, hierarchy tracking
+│   ├── FieldManager - Field discovery, navigation, boundary detection
+│   ├── InputManager - Input event binding, value extraction, lazy event handling
+│   ├── NavigationManager - Button states, guards, navigation flow coordination
 │   ├── ValidationManager - HTML5 validation, field/set validation
+│   ├── ErrorManager - Browser native error display
 │   ├── ConditionManager - Conditional visibility, expression evaluation, caching
-│   ├── NavigationManager - Button states, guards, navigation flow
 │   ├── RenderManager - Text/style updates, expression evaluation
 │   ├── AnimationManager - Transitions (fade/slide)
-│   ├── ErrorManager - Browser native error display
 │   └── AccessibilityManager - ARIA attributes, announcements, focus management
 │
 └── Public API (Future)
@@ -587,46 +587,102 @@ markSetComplete(SetId: string): void
 
 ### FieldManager
 
-**Purpose:** Track and manage all form fields (input wrapper with label, error, hint, etc...) with smart event binding
+**Purpose:** Manage field hierarchy, navigation, and visibility
 
 **Responsibilities:**
 
-- Auto-discover all fields in form
-- Group fields by `[${ATTR}-element="group"]`
-- Lazy event binding (only active set input)
-- Listen to input/change/blur events based on field input type
-- Update formData state on changes
-- Handle field focus management
-- Support all HTML input types (text, select, radio, checkbox, etc.)
-- Trigger condition re-evaluation on change
+- Discover all fields via `[${ATTR}-element="field"]`
+- Find and track input elements within field wrappers
+- Associate fields with parent groups/sets/cards
+- Build and maintain navigation order (visible fields only)
+- Handle field-by-field navigation via event system
+- Track current/visited/completed fields
+- Emit boundary events when reaching navigation limits
+- Determine boundary context (field/group/set/card)
+- Coordinate with InputManager for value tracking
 
 **API:**
 
 ```typescript
-registerField(field: HTMLElement): void
-unregisterField(field: HTMLElement): void
-bindField(field: HTMLElement): void
-unbindField(field: HTMLElement): void
-getFieldValue(name: string): unknown
-setFieldValue(name: string, value: unknown): void
-getGroupFields(groupId: string): HTMLElement[]
-getSetFields(setId: string): HTMLElement[]
-getAllFields(): HTMLElement[]
-getActiveFields(): HTMLElement[]
-nextField(): Promise<void>
-prevField(): Promise<void>
-getCurrentField(): HTMLElement
-getFieldById(id: string): HTMLElement | null
-getFieldByIndex(index: number): HTMLElement | null
-getTotalFields(): number
-markFieldComplete(id: string): void
+discoverFields(): void
+getFields(): FieldElement[]
+getFieldById(id: string): FieldElement | null
+getFieldByIndex(index: number): FieldElement | null
+getFieldsByGroupId(groupId: string): FieldElement[]
+getFieldsBySetId(setId: string): FieldElement[]
+getFieldsByCardId(cardId: string): FieldElement[]
+getCurrentFieldMetadata(): FieldElement | null
+buildNavigationOrder(): void
+getNavigationOrder(): number[]
+goToField(index: number): Promise<void>
+getNextVisibleFieldIndex(): number | null
+getPreviousVisibleFieldIndex(): number | null
+getFieldContext(field: FieldElement): 'field' | 'group' | 'set' | 'card'
+markFieldVisited(fieldId: string): void
+markFieldCompleted(fieldId: string): void
 ```
 
 **Performance Notes:**
 
-- Only binds events to inputs in active set
-- Unbinds events when set becomes inactive
-- Smart event selection based on input type
+- Navigation order only includes visible fields
+- Rebuilds navigation order when field visibility changes
+- Emits targeted boundary events to prevent unnecessary manager coordination
+
+### InputManager
+
+**Purpose:** Handle input event binding, value extraction, and type-specific behavior
+
+**Responsibilities:**
+
+- Lazy event binding (only current field's input)
+- Smart event selection based on input type:
+  - Text/email/password/textarea → `blur`
+  - Select/radio/checkbox → `change`
+  - Number/range → `input`
+- Extract values from all input types (text, select, radio, checkbox, textarea)
+- Update formData state on input changes
+- Handle special cases (radio groups, checkbox groups, file inputs)
+- Unbind events when leaving field
+- Emit input change events for ConditionManager
+- Support programmatic value setting
+
+**API:**
+
+```typescript
+bindInput(fieldId: string): void
+unbindInput(fieldId: string): void
+getInputValue(inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): unknown
+setInputValue(name: string, value: unknown): void
+getFormData(): Record<string, unknown>
+getInputElement(fieldId: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null
+getEventTypeForInput(input: HTMLElement): 'blur' | 'change' | 'input'
+handleInputChange(name: string, value: unknown): void
+```
+
+**Input Type Handling:**
+
+```typescript
+// Text-based inputs (blur on focus loss)
+text, email, password, tel, url, search, textarea
+
+// Selection inputs (change on selection)
+select, radio, checkbox
+
+// Numeric inputs (input on every change)
+number, range
+
+// Special handling
+- Radio groups: Track by name, return selected value
+- Checkbox groups: Track by name, return array of checked values
+- Single checkbox: Return boolean
+- File inputs: Return FileList (future)
+```
+
+**Performance Notes:**
+
+- Only one field's input has active listeners at a time
+- Listeners cleaned up immediately when navigating away
+- Value extraction optimized per input type
 
 ### ValidationManager
 
@@ -1509,17 +1565,26 @@ You can override the default form submission behavior to integrate with your own
   - [x] Extract titles from `<legend>` or attributes
   - [x] Parse group IDs
   - [x] Associate groups with parent sets
-- [ ] FieldManager
-  - [ ] Discover fields via `[${ATTR}-element="field"]`
-  - [ ] Find input within field wrapper
-  - [ ] Associate fields with parent groups/sets
-  - [ ] Build field navigation order
-  - [ ] Implement `byField` navigation (show one field at a time)
-  - [ ] Track input values in formData state
-  - [ ] Track current/visited/completed fields
+- [x] FieldManager
+  - [x] Discover fields via `[${ATTR}-element="field"]`
+  - [x] Find input within field wrapper
+  - [x] Associate fields with parent groups/sets/cards
+  - [x] Build field navigation order (array of visible field indexes)
+  - [x] Event-driven navigation responding to navigation:next/prev/goTo events
+  - [x] Emit boundary events when reaching field limits
+  - [x] Track current field index in form state
+  - [x] Track visited fields using Set<string> of field IDs
+  - [x] Implement getFieldContext() for determining boundary type
+  - [ ] Track completed fields (mark complete on valid + navigation away)
+- [ ] InputManager
   - [ ] Lazy event binding (only current field's input)
-  - [ ] Smart event binding by input type (text=blur, select=change, etc.)
+  - [ ] Smart event selection by input type (text=blur, select=change, number=input)
+  - [ ] Extract values from all input types (text, select, radio, checkbox, textarea)
+  - [ ] Handle special cases (radio groups, checkbox groups)
+  - [ ] Update formData state on input changes
   - [ ] Unbind events when leaving field
+  - [ ] Emit input:changed events for ConditionManager
+  - [ ] Support programmatic value setting
 - [ ] NavigationManager
   - [ ] Discover prev/next buttons
   - [ ] Handle button clicks
@@ -1529,7 +1594,230 @@ You can override the default form submission behavior to integrate with your own
 
 **Deliverable:** Working field-by-field form with full hierarchy, no validation or animations yet
 
-**Current Status:** Foundation complete (types, parsing utilities, component scaffold). Manager implementation in progress.
+**Current Status:**
+- ✅ Foundation complete (types, parsing utilities, component scaffold)
+- ✅ All hierarchy discovery managers implemented (Card, Set, Group, Field)
+- ✅ Event-driven navigation architecture established
+- ✅ Generic event map system for type-safe events
+- 🚧 FieldManager core navigation complete, input tracking pending
+- ⏳ NavigationManager next
+
+**Key Architecture Decisions:**
+
+1. **Array + Map Storage Pattern**: All managers use dual storage (`array` + `Map`) for O(1) lookups by both index and ID
+2. **Event-Driven Navigation**: NavigationManager emits commands, managers respond based on behavior mode
+3. **Boundary Events**: Managers emit `navigation:boundary` events when reaching navigation limits
+4. **Generic Event Maps**: `InteractiveComponent<TEventMap>` and `StatefulComponent<TState, TEventMap>` support custom event maps per component type
+5. **Type Safety**: Using specific type assertions (`as keyof AppEventMap`) instead of `as any` for EventBus compatibility
+6. **Immutable State Updates**: State containing Sets/Maps creates new instances when updating
+7. **Automatic Cleanup**: `InteractiveComponent` automatically cleans up event subscriptions on destroy
+
+---
+
+### Event-Driven Navigation Architecture
+
+The form implements a decoupled, event-driven navigation system that allows different behavior modes (byField, bySet, byGroup, byCard) without tight coupling between managers.
+
+#### Architecture Overview
+
+```
+NavigationManager (UI Controller)
+    ↓ emits: navigation:next, navigation:prev, navigation:goTo
+FieldManager / SetManager / GroupManager / CardManager
+    ↓ subscribes based on current behavior
+    ↓ handles navigation within their scope
+    ↓ emits: navigation:boundary when reaching limits
+NavigationManager
+    ↓ handles cross-level navigation
+    ↓ (e.g., field end → next set)
+```
+
+#### Navigation Events
+
+**Command Events** (NavigationManager → Managers)
+- `navigation:next` - Move to next element in current behavior context
+- `navigation:prev` - Move to previous element
+- `navigation:goTo` - Jump to specific element by ID, index, or direction
+
+**Boundary Events** (Managers → NavigationManager)
+- `navigation:boundary` - Emitted when reaching start/end of navigation scope
+
+Event types defined in [src/form/types/events/navigation-command-events.ts](src/form/types/events/navigation-command-events.ts).
+
+#### Behavior Modes
+
+Each manager only subscribes to navigation events when the current behavior matches its scope:
+
+```typescript
+protected setupEventListeners(): void {
+  const behavior = this.form.getConfig().behavior;
+
+  if (behavior === 'byField') {
+    this.subscribe('navigation:next', this.handleNavigationNext);
+    this.subscribe('navigation:prev', this.handleNavigationPrev);
+    this.subscribe('navigation:goTo', this.handleNavigationGoTo);
+  }
+}
+```
+
+This allows future support for:
+- `byField` - Navigate one field at a time (FieldManager responds)
+- `byGroup` - Navigate one group at a time (GroupManager responds)
+- `bySet` - Navigate one set at a time (SetManager responds)
+- `byCard` - Navigate one card at a time (CardManager responds)
+
+#### Boundary Context
+
+When a manager reaches the end of its navigation scope, it emits a boundary event with context:
+
+```typescript
+this.form.emit('navigation:boundary', {
+  context: 'field' | 'group' | 'set' | 'card',
+  currentId: string,
+  boundary: 'start' | 'end',
+  direction: 'forward' | 'backward',
+});
+```
+
+The `context` indicates what boundary was reached:
+- `field` - Last field in current group (or set if no groups)
+- `group` - Last field in last group of current set
+- `set` - Last field in last group/set of current card
+- `card` - Last field in entire form
+
+NavigationManager uses this context to determine whether to:
+- Move to next group/set/card
+- Display completion UI
+- Prevent further navigation
+
+#### Implementation Example
+
+[src/form/managers/field-manager.ts](src/form/managers/field-manager.ts) demonstrates the pattern:
+
+```typescript
+private handleNavigationNext = async (): Promise<void> => {
+  const nextIndex = this.getNextVisibleFieldIndex();
+
+  if (nextIndex === null) {
+    // Reached boundary - emit event
+    const currentField = this.getCurrentFieldMetadata();
+    if (currentField) {
+      const context = this.getFieldContext(currentField);
+      this.form.emit('navigation:boundary', {
+        context,
+        currentId: currentField.id,
+        boundary: 'end',
+        direction: 'forward',
+      });
+    }
+    return;
+  }
+
+  await this.goToField(nextIndex);
+};
+
+private getFieldContext(field: FieldElement): 'field' | 'group' | 'set' | 'card' {
+  // Determines boundary type based on field's position in hierarchy
+  if (field.groupId) {
+    const groupFields = this.getFieldsByGroupId(field.groupId)
+      .filter((f) => f.isVisible);
+    const isLastInGroup = groupFields[groupFields.length - 1]?.id === field.id;
+    if (isLastInGroup) return 'group';
+  }
+
+  // Similar checks for set and card levels...
+  return 'field';
+}
+```
+
+---
+
+### Generic Event Map System
+
+The form implements a type-safe event system that allows components to define custom event maps while maintaining compatibility with the global EventBus.
+
+#### Problem
+
+The EventBus is a singleton using `AppEventMap`, but form components need additional events specific to form behavior (navigation commands, boundary events, etc.). We need type safety for these custom events without breaking the EventBus.
+
+#### Solution
+
+Made `InteractiveComponent` and `StatefulComponent` generic with a `TEventMap` parameter:
+
+```typescript
+export abstract class InteractiveComponent<
+  TEventMap extends AppEventMap = AppEventMap
+> extends BaseComponent {
+
+  public subscribe<K extends keyof TEventMap>(
+    event: K,
+    handler: (payload: TEventMap[K]) => void,
+    options?: { priority?: number; once?: boolean }
+  ): void {
+    const unsubscribe = this.eventBus.on(
+      event as keyof AppEventMap,
+      handler as (payload: unknown) => void,
+      options
+    );
+    this.eventUnsubscribers.push(unsubscribe);
+  }
+
+  emit<K extends keyof TEventMap>(event: K, payload: TEventMap[K]): void {
+    this.eventBus.emit(event as keyof AppEventMap, payload as unknown);
+  }
+}
+```
+
+#### Type Assertions vs Any
+
+At the EventBus boundary, we use specific type assertions:
+- `event as keyof AppEventMap` - Safe because `TEventMap extends AppEventMap`
+- `payload as unknown` - More specific than `any`, maintains some type information
+- `handler as (payload: unknown) => void` - Preserves function signature
+
+This is safer than `as any` because:
+1. We maintain type information through the component layer
+2. We only cast at the boundary between extended and base event maps
+3. The cast is safe by design (generic constraint ensures compatibility)
+
+#### Usage
+
+Form components use `FormEventMap` which extends `AppEventMap`:
+
+```typescript
+// src/form/types/events/form-event-map.ts
+export interface FormEventMap extends import('$lib/types').AppEventMap {
+  'navigation:next': NavigationNextEvent;
+  'navigation:prev': NavigationPrevEvent;
+  'navigation:goTo': NavigationGoToEvent;
+  'navigation:boundary': BoundaryReachedEvent;
+  // ... other form events
+}
+
+// src/form/index.ts
+export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
+  // Now has full type safety for both base and form-specific events
+
+  someMethod() {
+    // ✅ Type-safe: knows payload structure
+    this.emit('navigation:next', { behavior: 'byField' });
+
+    // ✅ Type-safe: handler receives correct payload type
+    this.subscribe('navigation:boundary', (payload) => {
+      console.log(payload.context); // 'field' | 'group' | 'set' | 'card'
+    });
+  }
+}
+```
+
+#### Benefits
+
+1. **Type Safety**: Full autocomplete and type checking for event payloads
+2. **Scalability**: Each component type can define its own event map
+3. **Compatibility**: All components still share base events from `AppEventMap`
+4. **Maintainability**: Event contracts documented in type definitions
+
+---
 
 #### Phase 2: Progress & Dynamic Rendering
 
