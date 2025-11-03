@@ -28,4 +28,5 @@ export * from './error-element';
 export * from './field-element';
 export * from './form-hierarchy';
 export * from './group-element';
+export * from './input-element';
 export * from './set-element';

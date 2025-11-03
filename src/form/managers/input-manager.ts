@@ -1,18 +1,19 @@
 /**
  * Input Manager
  *
- * Handles input event binding, value extraction, and lazy event management.
+ * Handles input discovery, event binding, and value extraction.
+ * Groups radio/checkbox inputs by name attribute.
  * Only binds events to the current field's input for optimal performance.
  */
 
 import type { FlowupsForm } from '..';
-import type { IInputManager } from '../types';
+import type { IInputManager, InputElement } from '../types';
 
 /**
  * InputManager Implementation
  *
- * Manages input discovery, value tracking, and smart event binding.
- * Implements lazy loading - only the current field's input has active listeners.
+ * Discovers inputs within field wrappers and groups them by name.
+ * Implements lazy event binding - only the current field's input has active listeners.
  */
 export class InputManager implements IInputManager {
   // ============================================
@@ -22,12 +23,14 @@ export class InputManager implements IInputManager {
   /** Reference to parent form component */
   public readonly form: FlowupsForm;
 
-  /** Map of input name to input element for fast lookup */
-  private inputMap: Map<string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> =
-    new Map();
+  /** Array of discovered input elements with metadata */
+  private inputs: InputElement[] = [];
 
-  /** Currently bound field index (for cleanup) */
-  private boundFieldIndex: number | null = null;
+  /** Map for O(1) lookup by input name */
+  private inputMap: Map<string, InputElement> = new Map();
+
+  /** Currently bound input name (for cleanup) */
+  private boundInputName: string | null = null;
 
   /** Active event listeners for cleanup */
   private activeListeners: Array<{
@@ -53,6 +56,20 @@ export class InputManager implements IInputManager {
    */
   public init(): void {
     this.discoverInputs();
+
+    if (this.form.getFormConfig().debug) {
+      this.form.logDebug('InputManager initialized', {
+        totalInputs: this.inputs.length,
+        inputs: this.inputs.map((i) => ({
+          name: i.name,
+          type: i.inputType,
+          isGroup: i.isGroup,
+          isRequired: i.isRequired,
+          isValid: i.isValid,
+          isVisible: i.isVisible,
+        })),
+      });
+    }
   }
 
   /**
@@ -60,6 +77,7 @@ export class InputManager implements IInputManager {
    */
   public destroy(): void {
     this.unbindAllInputs();
+    this.inputs = [];
     this.inputMap.clear();
   }
 
@@ -69,28 +87,129 @@ export class InputManager implements IInputManager {
 
   /**
    * Discover all inputs in the form
-   * Stores them in a map by name for fast lookup
+   * Queries within each field wrapper and groups by name attribute
    */
   public discoverInputs(): void {
+    this.inputs = [];
     this.inputMap.clear();
 
     const fields = this.form.fieldManager.getFields();
 
-    fields.forEach((field) => {
-      const { element } = field;
-      if (!element) return;
+    // Track which names we've already processed to avoid duplicates
+    const processedNames = new Set<string>();
 
-      // Get the input name attribute
-      const name = element.getAttribute('name');
-      if (!name) {
-        this.form.logWarn(`Input in field "${field.id}" missing name attribute`);
+    fields.forEach((field, index) => {
+      // Query for inputs within this field wrapper
+      const inputElements = Array.from(
+        field.element.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+          'input, select, textarea'
+        )
+      );
+
+      if (inputElements.length === 0) {
+        this.form.logWarn(`Field "${field.id}" has no input elements`, { field });
         return;
       }
 
-      this.inputMap.set(name, element);
+      // Process each input found
+      inputElements.forEach((inputElement) => {
+        const name = inputElement.getAttribute('name');
+        if (!name) {
+          this.form.logWarn(`Input in field "${field.id}" missing name attribute - skipping`, {
+            inputElement,
+          });
+          return;
+        }
+
+        // If we've already processed this name, it's part of a radio/checkbox group
+        if (processedNames.has(name)) {
+          // Find the existing InputElement and add this element to it
+          const existingInput = this.inputMap.get(name);
+          if (existingInput) {
+            existingInput.inputElements.push(inputElement);
+            existingInput.isGroup = existingInput.inputElements.length > 1;
+          }
+          return;
+        }
+
+        // New input - create InputElement
+        processedNames.add(name);
+
+        const inputType = this.getInputType(inputElement);
+
+        // For radio/checkbox, check if there are more with the same name in the form
+        let allElements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] = [
+          inputElement,
+        ];
+
+        if (inputType === 'radio' || inputType === 'checkbox') {
+          // Query the entire form for all inputs with this name
+          const rootElement = this.form.getRootElement();
+          if (!rootElement) {
+            this.form.logWarn(`Root element not found`, { field });
+            return;
+          }
+          allElements = Array.from(
+            rootElement.querySelectorAll<HTMLInputElement>(
+              `input[type="${inputType}"][name="${name}"]`
+            )
+          );
+        }
+
+        const input: InputElement = {
+          element: allElements[0],
+          inputElements: allElements,
+          type: 'input',
+          inputType,
+          id: name, // Use name as ID since it's unique per input
+          title: name,
+          index,
+          fieldId: field.id,
+          groupId: field.groupId,
+          setId: field.setId,
+          cardId: field.cardId,
+          name,
+          isGroup: allElements.length > 1,
+          isRequired: this.checkIfRequired(allElements[0]),
+          isValid: true, // Will be updated by ValidationManager
+          isVisible: field.isVisible,
+          visited: false,
+          completed: false,
+          active: false,
+          errors: [],
+        };
+
+        this.inputs.push(input);
+        this.inputMap.set(name, input);
+      });
     });
 
-    this.form.logDebug(`Discovered ${this.inputMap.size} inputs`);
+    this.form.logDebug(`Discovered ${this.inputs.length} inputs`);
+  }
+
+  // ============================================
+  // Access Methods
+  // ============================================
+
+  /**
+   * Get all inputs
+   */
+  public getInputs(): InputElement[] {
+    return this.inputs;
+  }
+
+  /**
+   * Get input by name
+   */
+  public getInputByName(name: string): InputElement | null {
+    return this.inputMap.get(name) || null;
+  }
+
+  /**
+   * Get input by field ID
+   */
+  public getInputByFieldId(fieldId: string): InputElement | null {
+    return this.inputs.find((input) => input.fieldId === fieldId) || null;
   }
 
   // ============================================
@@ -106,59 +225,62 @@ export class InputManager implements IInputManager {
     const currentField = this.form.fieldManager.getCurrentFieldMetadata();
     if (!currentField) return;
 
-    // Unbind previous field if any
-    if (this.boundFieldIndex !== null && this.boundFieldIndex !== currentField.index) {
-      this.unbindFieldInput(this.boundFieldIndex);
-    }
-
-    const { input } = currentField;
+    // Get the input for this field
+    const input = this.getInputByFieldId(currentField.id);
     if (!input) return;
 
-    const name = input.getAttribute('name');
-    if (!name) return;
+    // Unbind previous input if different
+    if (this.boundInputName !== null && this.boundInputName !== input.name) {
+      this.unbindInput(this.boundInputName);
+    }
 
-    // Determine event type based on input type
-    const eventType = this.getEventTypeForInput(input);
+    // Determine event type
+    const eventType = this.getEventTypeForInput(input.element);
 
-    // Create handler
-    const handler: EventListener = () => {
-      const value = this.extractInputValue(input);
-      this.handleInputChange(name, value);
-    };
+    // Bind events to ALL elements in the input (for radio/checkbox groups)
+    input.inputElements.forEach((element) => {
+      const handler: EventListener = () => {
+        const value = this.extractInputValue(input);
+        this.handleInputChange(input.name, value);
+      };
 
-    // Bind event
-    input.addEventListener(eventType, handler);
-    this.activeListeners.push({ element: input, event: eventType, handler });
+      element.addEventListener(eventType, handler);
+      this.activeListeners.push({ element, event: eventType, handler });
+    });
 
-    this.boundFieldIndex = currentField.index;
+    this.boundInputName = input.name;
 
-    this.form.logDebug(`Bound ${eventType} event to input "${name}"`);
+    this.form.logDebug(
+      `Bound ${eventType} events to input "${input.name}" (${input.inputElements.length} elements)`
+    );
   }
 
   /**
-   * Unbind events from a specific field's input
-   * @param fieldIndex - Index of field to unbind
+   * Unbind events from a specific input by name
+   * @param name - Input name
    */
-  public unbindFieldInput(fieldIndex: number): void {
-    const field = this.form.fieldManager.getFieldByIndex(fieldIndex);
-    if (!field?.input) return;
+  public unbindInput(name: string): void {
+    const input = this.inputMap.get(name);
+    if (!input) return;
 
-    const { input } = field;
-
-    // Remove all listeners associated with this input
+    // Remove all listeners associated with this input's elements
     this.activeListeners = this.activeListeners.filter((listener) => {
-      if (listener.element === input) {
+      const shouldRemove = input.inputElements.includes(
+        listener.element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      );
+
+      if (shouldRemove) {
         listener.element.removeEventListener(listener.event, listener.handler);
-        return false;
       }
-      return true;
+
+      return !shouldRemove;
     });
 
-    if (this.boundFieldIndex === fieldIndex) {
-      this.boundFieldIndex = null;
+    if (this.boundInputName === name) {
+      this.boundInputName = null;
     }
 
-    this.form.debug(`Unbound events from field ${fieldIndex}`);
+    this.form.logDebug(`Unbound events from input "${name}"`);
   }
 
   /**
@@ -170,7 +292,7 @@ export class InputManager implements IInputManager {
       listener.element.removeEventListener(listener.event, listener.handler);
     });
     this.activeListeners = [];
-    this.boundFieldIndex = null;
+    this.boundInputName = null;
   }
 
   // ============================================
@@ -218,60 +340,48 @@ export class InputManager implements IInputManager {
   // ============================================
 
   /**
-   * Extract value from any input type
-   * @param input - Input element to extract value from
+   * Extract value from an InputElement
+   * Handles all input types including radio/checkbox groups
+   * @param input - InputElement to extract value from
    * @returns Extracted value (string, boolean, or array)
    */
-  private extractInputValue(
-    input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-  ): unknown {
+  private extractInputValue(input: InputElement): unknown {
+    const firstElement = input.element;
+
     // Handle select elements
-    if (input instanceof HTMLSelectElement) {
-      return input.value;
+    if (firstElement instanceof HTMLSelectElement) {
+      return firstElement.value;
     }
 
     // Handle textarea
-    if (input instanceof HTMLTextAreaElement) {
-      return input.value;
+    if (firstElement instanceof HTMLTextAreaElement) {
+      return firstElement.value;
     }
 
     // Handle input elements by type
-    const type = input.type.toLowerCase();
+    const type = firstElement.type.toLowerCase();
 
-    // Checkbox - return boolean for single, or handle as part of group
+    // Checkbox
     if (type === 'checkbox') {
-      const name = input.getAttribute('name');
-      if (!name) return input.checked;
-
-      // Check if this is part of a checkbox group (multiple checkboxes with same name)
-      const checkboxes = Array.from(
-        this.form.getRootElement().querySelectorAll(`input[type="checkbox"][name="${name}"]`)
-      ) as HTMLInputElement[];
-
-      if (checkboxes.length > 1) {
+      if (input.isGroup) {
         // Checkbox group - return array of checked values
-        return checkboxes.filter((cb) => cb.checked).map((cb) => cb.value);
+        return (input.inputElements as HTMLInputElement[])
+          .filter((cb) => cb.checked)
+          .map((cb) => cb.value);
       }
 
       // Single checkbox - return boolean
-      return input.checked;
+      return (firstElement as HTMLInputElement).checked;
     }
 
     // Radio - return selected value from group
     if (type === 'radio') {
-      const name = input.getAttribute('name');
-      if (!name) return input.value;
-
-      const radios = Array.from(
-        this.form.getRootElement().querySelectorAll(`input[type="radio"][name="${name}"]`)
-      ) as HTMLInputElement[];
-
-      const checked = radios.find((r) => r.checked);
+      const checked = (input.inputElements as HTMLInputElement[]).find((r) => r.checked);
       return checked ? checked.value : null;
     }
 
     // Default - return value as string
-    return input.value;
+    return firstElement.value;
   }
 
   /**
@@ -298,57 +408,51 @@ export class InputManager implements IInputManager {
   public setInputValue(name: string, value: unknown): void {
     const input = this.inputMap.get(name);
     if (!input) {
-      this.form.warn(`Cannot set value for input "${name}" - not found`);
+      this.form.logWarn(`Cannot set value for input "${name}" - not found`);
       return;
     }
 
+    const firstElement = input.element;
+
     // Handle select elements
-    if (input instanceof HTMLSelectElement) {
-      input.value = String(value);
+    if (firstElement instanceof HTMLSelectElement) {
+      firstElement.value = String(value);
       return;
     }
 
     // Handle textarea
-    if (input instanceof HTMLTextAreaElement) {
-      input.value = String(value);
+    if (firstElement instanceof HTMLTextAreaElement) {
+      firstElement.value = String(value);
       return;
     }
 
     // Handle input elements by type
-    const type = input.type.toLowerCase();
+    const type = firstElement.type.toLowerCase();
 
     // Checkbox
     if (type === 'checkbox') {
       if (Array.isArray(value)) {
         // Checkbox group - check all inputs with matching values
-        const checkboxes = Array.from(
-          this.form.getRootElement().querySelectorAll(`input[type="checkbox"][name="${name}"]`)
-        ) as HTMLInputElement[];
-
-        checkboxes.forEach((cb) => {
+        (input.inputElements as HTMLInputElement[]).forEach((cb) => {
           cb.checked = value.includes(cb.value);
         });
       } else {
         // Single checkbox - treat as boolean
-        input.checked = Boolean(value);
+        (firstElement as HTMLInputElement).checked = Boolean(value);
       }
       return;
     }
 
     // Radio - check the radio with matching value
     if (type === 'radio') {
-      const radios = Array.from(
-        this.form.getRootElement().querySelectorAll(`input[type="radio"][name="${name}"]`)
-      ) as HTMLInputElement[];
-
-      radios.forEach((r) => {
+      (input.inputElements as HTMLInputElement[]).forEach((r) => {
         r.checked = r.value === String(value);
       });
       return;
     }
 
     // Default - set value as string
-    input.value = String(value);
+    firstElement.value = String(value);
   }
 
   // ============================================
@@ -362,22 +466,11 @@ export class InputManager implements IInputManager {
   public getAllFormData(): Record<string, unknown> {
     const formData: Record<string, unknown> = {};
 
-    this.inputMap.forEach((input, name) => {
-      formData[name] = this.extractInputValue(input);
+    this.inputs.forEach((input) => {
+      formData[input.name] = this.extractInputValue(input);
     });
 
     return formData;
-  }
-
-  /**
-   * Get input element by name
-   * @param name - Input name attribute
-   * @returns Input element or null if not found
-   */
-  public getInputByName(
-    name: string
-  ): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null {
-    return this.inputMap.get(name) || null;
   }
 
   // ============================================
@@ -401,8 +494,38 @@ export class InputManager implements IInputManager {
     this.form.setState('formData', updatedFormData);
 
     // Emit event for ConditionManager (future)
-    this.form.emit('input:changed', { name, value });
+    this.form.emit('form:input:changed', { name, value });
 
-    this.form.debug(`Input "${name}" changed to:`, value);
+    this.form.logDebug(`Input "${name}" changed to:`, value);
+  }
+
+  // ============================================
+  // Private Helpers
+  // ============================================
+
+  /**
+   * Get the input type from an element
+   */
+  private getInputType(
+    element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  ): string {
+    if (element instanceof HTMLSelectElement) {
+      return 'select';
+    }
+
+    if (element instanceof HTMLTextAreaElement) {
+      return 'textarea';
+    }
+
+    return element.type.toLowerCase();
+  }
+
+  /**
+   * Check if an input is required
+   */
+  private checkIfRequired(
+    element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  ): boolean {
+    return element.hasAttribute('required');
   }
 }

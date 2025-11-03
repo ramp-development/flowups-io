@@ -1,3 +1,4 @@
+import type { InputElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -11,8 +12,8 @@ export interface IInputManager extends IBaseManager {
   /** Bind events to current field's input */
   bindCurrentFieldInput(): void;
 
-  /** Unbind events from field's input */
-  unbindFieldInput(fieldIndex: number): void;
+  /** Unbind events from input by name */
+  unbindInput(name: string): void;
 
   /** Get input value by name */
   getInputValue(name: string): unknown;
@@ -24,5 +25,5 @@ export interface IInputManager extends IBaseManager {
   getAllFormData(): Record<string, unknown>;
 
   /** Get input element by name */
-  getInputByName(name: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+  getInputByName(name: string): InputElement | null;
 }
