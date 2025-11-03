@@ -1,4 +1,4 @@
-import { FlowupsForm } from './form/flowups-form';
+import { FlowupsForm } from './form';
 import { FORM_INTIAL_STATE } from './form/form-intial-state';
 
 window.Webflow ||= [];

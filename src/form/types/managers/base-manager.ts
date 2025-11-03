@@ -1,4 +1,4 @@
-import type { FlowupsForm } from 'src/form/flowups-form';
+import type { FlowupsForm } from 'src/form';
 
 /**
  * Base Manager Interface
