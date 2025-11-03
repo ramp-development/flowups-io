@@ -7,7 +7,7 @@ export interface ConditionEvaluatedEvent {
   condition: string;
 }
 
-export interface FieldVisibilityChangedEvent {
+export interface FieldInclusionChangedEvent {
   fieldId: string;
-  visible: boolean;
+  isIncluded: boolean;
 }

@@ -7,7 +7,12 @@
 
 import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
-import type { FieldElement, IFieldManager, NavigationGoToEvent } from '../types';
+import type {
+  FieldElement,
+  FieldInclusionChangedEvent,
+  IFieldManager,
+  NavigationGoToEvent,
+} from '../types';
 import { parseElementAttribute } from '../utils';
 
 /**
@@ -193,9 +198,10 @@ export class FieldManager implements IFieldManager {
   private setupEventListeners(): void {
     // Only subscribe to navigation events if in byField mode
     if (this.form.getBehavior() === 'byField') {
-      this.form.subscribe('navigation:next', this.handleNavigationNext);
-      this.form.subscribe('navigation:prev', this.handleNavigationPrev);
-      this.form.subscribe('navigation:goTo', this.handleNavigationGoTo);
+      this.form.subscribe('form:navigation:next', this.handleNavigationNext);
+      this.form.subscribe('form:navigation:prev', this.handleNavigationPrev);
+      this.form.subscribe('form:navigation:goTo', this.handleNavigationGoTo);
+      this.form.subscribe('form:field:inclusion-changed', this.handleFieldInclusion);
 
       if (this.form.getFormConfig().debug) {
         this.form.logDebug('FieldManager subscribed to navigation events');
@@ -537,15 +543,27 @@ export class FieldManager implements IFieldManager {
 
   /**
    * Update field inclusion and rebuild navigation order
+   * Also syncs with InputManager to update input required state
    *
    * @param fieldId - Field ID
    * @param isIncluded - Whether to include the field in the navigation order
    */
-  public updateFieldInclusion(fieldId: string, isIncluded: boolean): void {
+  public handleFieldInclusion(payload: FieldInclusionChangedEvent): void {
+    const { fieldId, isIncluded } = payload;
     const field = this.fieldMap.get(fieldId);
-    if (field) {
-      field.isIncluded = isIncluded;
-      this.buildNavigationOrder();
+    if (!field) return;
+
+    // Update field inclusion state
+    field.isIncluded = isIncluded;
+
+    // Sync with InputManager to update required attributes
+    this.form.inputManager.syncInputInclusionWithField(fieldId, isIncluded);
+
+    // Rebuild navigation order (excludes fields with isIncluded: false)
+    this.buildNavigationOrder();
+
+    if (this.form.getFormConfig().debug) {
+      this.form.logDebug(`Field "${fieldId}" inclusion updated: ${isIncluded}`);
     }
   }
 

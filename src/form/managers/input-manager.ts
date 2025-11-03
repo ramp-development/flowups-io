@@ -66,7 +66,7 @@ export class InputManager implements IInputManager {
           isGroup: i.isGroup,
           isRequired: i.isRequired,
           isValid: i.isValid,
-          isVisible: i.isVisible,
+          isIncluded: i.isIncluded,
         })),
       });
     }
@@ -156,6 +156,8 @@ export class InputManager implements IInputManager {
           );
         }
 
+        const isRequiredOriginal = this.checkIfRequired(allElements[0]);
+
         const input: InputElement = {
           element: allElements[0],
           inputElements: allElements,
@@ -170,9 +172,10 @@ export class InputManager implements IInputManager {
           cardId: field.cardId,
           name,
           isGroup: allElements.length > 1,
-          isRequired: this.checkIfRequired(allElements[0]),
+          isRequiredOriginal,
+          isRequired: isRequiredOriginal, // Initially matches original
           isValid: true, // Will be updated by ValidationManager
-          isVisible: field.isIncluded,
+          isIncluded: field.isIncluded,
           visited: false,
           completed: false,
           active: false,
@@ -497,6 +500,54 @@ export class InputManager implements IInputManager {
     this.form.emit('form:input:changed', { name, value });
 
     this.form.logDebug(`Input "${name}" changed to:`, value);
+  }
+
+  // ============================================
+  // Field Inclusion Sync
+  // ============================================
+
+  /**
+   * Update input required state based on parent field inclusion
+   * Called by FieldManager when field.isIncluded changes
+   *
+   * @param fieldId - ID of the field whose inclusion changed
+   * @param isIncluded - New inclusion state
+   */
+  public syncInputInclusionWithField(fieldId: string, isIncluded: boolean): void {
+    const input = this.getInputByFieldId(fieldId);
+    if (!input) return;
+
+    input.isIncluded = isIncluded;
+
+    if (isIncluded) {
+      // Field is now included - restore original required state
+      this.setInputRequired(input, input.isRequiredOriginal);
+    } else {
+      // Field is excluded - remove required attribute
+      this.setInputRequired(input, false);
+    }
+
+    this.form.logDebug(`Synced input "${input.name}"`, {
+      inclusion: isIncluded,
+      required: input.isRequired,
+    });
+  }
+
+  /**
+   * Set required state for an input
+   * Updates both the InputElement and DOM attributes
+   *
+   * @param input - InputElement to update
+   * @param isRequired - New required state
+   * @internal
+   */
+  private setInputRequired(input: InputElement, isRequired: boolean): void {
+    input.isRequired = isRequired;
+
+    // Update DOM required attribute on all elements
+    input.inputElements.forEach((element) => {
+      element.required = isRequired;
+    });
   }
 
   // ============================================

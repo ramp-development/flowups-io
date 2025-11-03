@@ -1,6 +1,6 @@
 import type { AppEventMap } from '$lib/types';
 
-import type { ConditionEvaluatedEvent, FieldVisibilityChangedEvent } from './condition-events';
+import type { ConditionEvaluatedEvent, FieldInclusionChangedEvent } from './condition-events';
 import type { DataChangedEvent, FormDataUpdatedEvent } from './data-events';
 import type { InputChangedEvent } from './input-events';
 import type { FormDestroyedEvent, FormInitializedEvent } from './lifecycle-events';
@@ -41,12 +41,12 @@ export interface FormEventMap extends AppEventMap {
   'form:destroyed': FormDestroyedEvent;
 
   // Navigation commands (emitted by NavigationManager)
-  'navigation:next': NavigationNextEvent;
-  'navigation:prev': NavigationPrevEvent;
-  'navigation:goTo': NavigationGoToEvent;
+  'form:navigation:next': NavigationNextEvent;
+  'form:navigation:prev': NavigationPrevEvent;
+  'form:navigation:goTo': NavigationGoToEvent;
 
   // Boundary events (emitted by managers when reaching start/end)
-  'navigation:boundary': BoundaryReachedEvent;
+  'form:navigation:boundary': BoundaryReachedEvent;
 
   // Card navigation
   'form:card:changing': CardChangingEvent;
@@ -81,7 +81,7 @@ export interface FormEventMap extends AppEventMap {
 
   // Conditions
   'form:condition:evaluated': ConditionEvaluatedEvent;
-  'form:field:visibility-changed': FieldVisibilityChangedEvent;
+  'form:field:inclusion-changed': FieldInclusionChangedEvent;
 
   // Progress
   'form:progress:updated': ProgressUpdatedEvent;

@@ -55,14 +55,28 @@ export interface InputElement extends Omit<BaseElement, 'element'> {
    */
   isGroup: boolean;
 
-  /** Whether this input is required */
+  /**
+   * Original required state from HTML (never changes)
+   * Stored during discovery to preserve the developer's intent
+   */
+  isRequiredOriginal: boolean;
+
+  /**
+   * Current required state (may differ from original)
+   * Updated dynamically based on parent field's isIncluded state
+   * - When field.isIncluded = false: isRequired = false (remove DOM required attribute)
+   * - When field.isIncluded = true: isRequired = isRequiredOriginal (restore original state)
+   */
   isRequired: boolean;
 
   /** Whether this input is valid */
   isValid: boolean;
 
-  /** Whether this input is visible (for conditional visibility) */
-  isVisible: boolean;
+  /**
+   * Whether this input is included in the form flow
+   * Synced from parent field's isIncluded state
+   */
+  isIncluded: boolean;
 
   /** Validation error messages */
   errors: string[];
