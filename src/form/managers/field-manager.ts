@@ -31,7 +31,7 @@ export class FieldManager implements IFieldManager {
   /** Map for O(1) lookup by field ID */
   private fieldMap: Map<string, FieldElement> = new Map();
 
-  /** Navigation order (indexes of visible fields) */
+  /** Navigation order (indexes of included fields) */
   private navigationOrder: number[] = [];
 
   // ============================================
@@ -58,12 +58,12 @@ export class FieldManager implements IFieldManager {
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('FieldManager initialized', {
         totalFields: this.fields.length,
-        visibleFields: this.navigationOrder.length,
+        includedFields: this.navigationOrder.length,
         fields: this.fields.map((f) => ({
           id: f.id,
           title: f.title,
           index: f.index,
-          isVisible: f.isVisible,
+          isIncluded: f.isIncluded,
         })),
       });
     }
@@ -140,7 +140,7 @@ export class FieldManager implements IFieldManager {
         groupId: parentHierarchy?.groupId || null,
         setId: parentHierarchy?.setId || '',
         cardId: parentHierarchy?.cardId || '',
-        isVisible: true, // Will be updated by ConditionManager
+        isIncluded: true, // Will be updated by ConditionManager
         visited: false,
         completed: false,
         active: false,
@@ -168,10 +168,10 @@ export class FieldManager implements IFieldManager {
    */
   public buildNavigationOrder(): void {
     this.navigationOrder = this.fields
-      .filter((field) => field.isVisible)
+      .filter((field) => field.isIncluded)
       .map((field) => field.index);
 
-    // Update form state with total visible fields
+    // Update form state with total included fields
     this.form.setState('totalFields', this.navigationOrder.length);
 
     if (this.form.getFormConfig().debug) {
@@ -208,7 +208,7 @@ export class FieldManager implements IFieldManager {
    * Attempts to move to next field, emits boundary event if at end
    */
   private handleNavigationNext = async (): Promise<void> => {
-    const nextIndex = this.getNextVisibleFieldIndex();
+    const nextIndex = this.getNextIncludedFieldIndex();
 
     if (nextIndex === null) {
       // At boundary - emit event for NavigationManager to handle
@@ -233,7 +233,7 @@ export class FieldManager implements IFieldManager {
    * Attempts to move to previous field, emits boundary event if at start
    */
   private handleNavigationPrev = async (): Promise<void> => {
-    const prevIndex = this.getPrevVisibleFieldIndex();
+    const prevIndex = this.getPrevIncludedFieldIndex();
 
     if (prevIndex === null) {
       // At boundary - emit event for NavigationManager to handle
@@ -297,7 +297,7 @@ export class FieldManager implements IFieldManager {
    * @internal Called by NavigationManager - use navigationManager.next() instead
    */
   public async nextField(): Promise<void> {
-    const nextIndex = this.getNextVisibleFieldIndex();
+    const nextIndex = this.getNextIncludedFieldIndex();
 
     if (nextIndex === null) {
       if (this.form.getFormConfig().debug) {
@@ -316,7 +316,7 @@ export class FieldManager implements IFieldManager {
    * @internal Called by NavigationManager - use navigationManager.prev() instead
    */
   public async prevField(): Promise<void> {
-    const prevIndex = this.getPrevVisibleFieldIndex();
+    const prevIndex = this.getPrevIncludedFieldIndex();
 
     if (prevIndex === null) {
       if (this.form.getFormConfig().debug) {
@@ -343,9 +343,9 @@ export class FieldManager implements IFieldManager {
       });
     }
 
-    if (!field.isVisible) {
+    if (!field.isIncluded) {
       throw this.form.createError(
-        `Cannot navigate to field: field at index ${index} is not visible`,
+        `Cannot navigate to field: field at index ${index} is not included in the navigation order`,
         'runtime',
         {
           cause: { index, fieldId: field.id },
@@ -402,7 +402,7 @@ export class FieldManager implements IFieldManager {
   // ============================================
 
   /**
-   * Get total number of fields (visible only)
+   * Get total number of fields (included only)
    */
   public getTotalFields(): number {
     return this.navigationOrder.length;
@@ -430,12 +430,12 @@ export class FieldManager implements IFieldManager {
   }
 
   /**
-   * Get next visible field index
+   * Get next included field index
    * Skips hidden fields in navigation order
    *
    * @returns Next field index or null if on last field
    */
-  public getNextVisibleFieldIndex(): number | null {
+  public getNextIncludedFieldIndex(): number | null {
     const currentIndex = this.form.getState('currentFieldIndex');
     const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
 
@@ -447,12 +447,12 @@ export class FieldManager implements IFieldManager {
   }
 
   /**
-   * Get previous visible field index
+   * Get previous included field index
    * Skips hidden fields in navigation order
    *
    * @returns Previous field index or null if on first field
    */
-  public getPrevVisibleFieldIndex(): number | null {
+  public getPrevIncludedFieldIndex(): number | null {
     const currentIndex = this.form.getState('currentFieldIndex');
     const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
 
@@ -536,15 +536,15 @@ export class FieldManager implements IFieldManager {
   }
 
   /**
-   * Update field visibility and rebuild navigation order
+   * Update field inclusion and rebuild navigation order
    *
    * @param fieldId - Field ID
-   * @param isVisible - New visibility state
+   * @param isIncluded - Whether to include the field in the navigation order
    */
-  public updateFieldVisibility(fieldId: string, isVisible: boolean): void {
+  public updateFieldInclusion(fieldId: string, isIncluded: boolean): void {
     const field = this.fieldMap.get(fieldId);
     if (field) {
-      field.isVisible = isVisible;
+      field.isIncluded = isIncluded;
       this.buildNavigationOrder();
     }
   }
@@ -688,7 +688,7 @@ export class FieldManager implements IFieldManager {
   private getFieldContext(field: FieldElement): 'field' | 'group' | 'set' | 'card' {
     // If in a group, check if this is the last field in the group
     if (field.groupId) {
-      const groupFields = this.getFieldsByGroupId(field.groupId).filter((f) => f.isVisible);
+      const groupFields = this.getFieldsByGroupId(field.groupId).filter((f) => f.isIncluded);
       const isLastInGroup = groupFields[groupFields.length - 1]?.id === field.id;
       if (isLastInGroup) {
         return 'group';
@@ -696,7 +696,7 @@ export class FieldManager implements IFieldManager {
     }
 
     // Check if last field in set
-    const setFields = this.getFieldsBySetId(field.setId).filter((f) => f.isVisible);
+    const setFields = this.getFieldsBySetId(field.setId).filter((f) => f.isIncluded);
     const isLastInSet = setFields[setFields.length - 1]?.id === field.id;
     if (isLastInSet) {
       return 'set';
@@ -704,7 +704,7 @@ export class FieldManager implements IFieldManager {
 
     // Check if last field in card (if cards exist)
     if (field.cardId) {
-      const cardFields = this.fields.filter((f) => f.cardId === field.cardId && f.isVisible);
+      const cardFields = this.fields.filter((f) => f.cardId === field.cardId && f.isIncluded);
       const isLastInCard = cardFields[cardFields.length - 1]?.id === field.id;
       if (isLastInCard) {
         return 'card';

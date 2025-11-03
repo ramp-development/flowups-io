@@ -17,8 +17,8 @@ export interface FieldElement extends BaseElement {
   /** Parent card ID */
   cardId: string;
 
-  /** Whether this field is visible (for conditional visibility) */
-  isVisible: boolean;
+  /** Whether this field is included in the navigation order (conditional visibility) */
+  isIncluded: boolean;
 
   /** Validation error messages */
   errors: string[];

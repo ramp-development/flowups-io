@@ -40,10 +40,10 @@ export interface IFieldManager extends IBaseManager {
   getCurrentField(): FieldElement | null;
 
   /** Get next visible field index (skips hidden fields) */
-  getNextVisibleFieldIndex(): number | null;
+  getNextIncludedFieldIndex(): number | null;
 
   /** Get previous visible field index (skips hidden fields) */
-  getPrevVisibleFieldIndex(): number | null;
+  getPrevIncludedFieldIndex(): number | null;
 
   /** Check if on first field */
   isFirstField(): boolean;

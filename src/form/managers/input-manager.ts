@@ -172,7 +172,7 @@ export class InputManager implements IInputManager {
           isGroup: allElements.length > 1,
           isRequired: this.checkIfRequired(allElements[0]),
           isValid: true, // Will be updated by ValidationManager
-          isVisible: field.isVisible,
+          isVisible: field.isIncluded,
           visited: false,
           completed: false,
           active: false,
