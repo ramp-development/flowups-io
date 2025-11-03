@@ -4,6 +4,7 @@
  */
 
 import type {
+  AppEventMap,
   ComponentState,
   ComponentStateConfig,
   PersistenceConfig,
@@ -20,7 +21,8 @@ import { InteractiveComponent } from './interactive-component';
 
 export abstract class StatefulComponent<
   TState extends ComponentState = ComponentState,
-> extends InteractiveComponent {
+  TEventMap extends AppEventMap = AppEventMap
+> extends InteractiveComponent<TEventMap> {
   protected state: TState;
   protected stateConfigs: Map<keyof TState, ComponentStateConfig> = new Map();
   protected stateManager: StateManager;

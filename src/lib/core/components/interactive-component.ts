@@ -1,6 +1,9 @@
 /**
  * InteractiveComponent - Extends BaseComponent with event handling
  * Integrates with EventBus for decoupled communication
+ *
+ * Generic type TEventMap allows subclasses to define their own event maps
+ * that extend the base AppEventMap
  */
 
 import type {
@@ -13,7 +16,10 @@ import type {
 import { EventBus } from '../events';
 import { BaseComponent } from './base-component';
 
-export abstract class InteractiveComponent extends BaseComponent implements ComponentEventEmitter {
+export abstract class InteractiveComponent<TEventMap extends AppEventMap = AppEventMap>
+  extends BaseComponent
+  implements ComponentEventEmitter
+{
   protected readonly eventBus: EventBus;
   protected listeners: Map<string, ListenerConfig> = new Map();
   protected eventUnsubscribers: Array<() => void> = [];
@@ -161,24 +167,36 @@ export abstract class InteractiveComponent extends BaseComponent implements Comp
 
   /**
    * Subscribe to EventBus events
+   * Uses the component's event map type (TEventMap)
    */
-  protected subscribe<K extends keyof AppEventMap>(
+  public subscribe<K extends keyof TEventMap>(
     event: K,
-    handler: (payload: AppEventMap[K]) => void,
+    handler: (payload: TEventMap[K]) => void,
     options?: { priority?: number; once?: boolean }
   ): void {
-    const unsubscribe = this.eventBus.on(event, handler, options);
+    // Type assertion: TEventMap extends AppEventMap, so event keys are compatible
+    // We use 'unknown' for handler payload since EventBus handles all payloads generically
+    const unsubscribe = this.eventBus.on(
+      event as keyof AppEventMap,
+      handler as (payload: unknown) => void,
+      options
+    );
     this.eventUnsubscribers.push(unsubscribe);
   }
 
   /**
    * Subscribe to a one-time EventBus event
+   * Uses the component's event map type (TEventMap)
    */
-  protected subscribeOnce<K extends keyof AppEventMap>(
+  protected subscribeOnce<K extends keyof TEventMap>(
     event: K,
-    handler: (payload: AppEventMap[K]) => void
+    handler: (payload: TEventMap[K]) => void
   ): void {
-    const unsubscribe = this.eventBus.once(event, handler);
+    // Type assertion: TEventMap extends AppEventMap, so event keys are compatible
+    const unsubscribe = this.eventBus.once(
+      event as keyof AppEventMap,
+      handler as (payload: unknown) => void
+    );
     this.eventUnsubscribers.push(unsubscribe);
   }
 
@@ -192,9 +210,11 @@ export abstract class InteractiveComponent extends BaseComponent implements Comp
 
   /**
    * Emit an event through the EventBus
+   * Uses the component's event map type (TEventMap)
    */
-  emit<K extends keyof AppEventMap>(event: K, payload: AppEventMap[K]): void {
-    this.eventBus.emit(event, payload);
+  emit<K extends keyof TEventMap>(event: K, payload: TEventMap[K]): void {
+    // Type assertion: TEventMap extends AppEventMap, so event keys are compatible
+    this.eventBus.emit(event as keyof AppEventMap, payload as unknown);
   }
 
   /**
