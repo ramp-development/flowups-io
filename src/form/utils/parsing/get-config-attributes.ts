@@ -1,16 +1,18 @@
 /**
  * Attribute Config Parser
  *
- * Parse all data-form-* attributes from an element with compile-time type safety.
+ * Parse all ${ATTR}* attributes from an element with compile-time type safety.
  * No manual key lists needed - TypeScript validates keys automatically!
  */
+
+import { ATTR } from 'src/form/constants';
 
 import type { BaseAttributeConfig } from '../../types/config';
 
 /**
- * Get all data-form-* attributes from element
+ * Get all ${ATTR}* attributes from element
  *
- * This version accepts ALL data-form-* attributes and returns them as Partial<T>.
+ * This version accepts ALL ${ATTR}* attributes and returns them as Partial<T>.
  * TypeScript will enforce type safety when you ACCESS the properties, not when parsing.
  *
  * @template T - The attribute config interface to use
@@ -27,11 +29,11 @@ export function getConfigAttributes<T extends BaseAttributeConfig>(
 ): Partial<T> {
   const config: Record<string, string> = {};
 
-  // Get all data-form-* attributes
+  // Get all data-f orm-* attributes
   Array.from(element.attributes).forEach((attr) => {
-    if (attr.name.startsWith('data-form-')) {
-      // Remove 'data-form-' prefix
-      const key = attr.name.replace('data-form-', '');
+    if (attr.name.startsWith(`${ATTR}-`)) {
+      // Remove `${ATTR}-` prefix
+      const key = attr.name.replace(`${ATTR}-`, '');
       config[key] = attr.value;
     }
   });

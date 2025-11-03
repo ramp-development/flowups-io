@@ -1,9 +1,10 @@
 import { FlowupsForm } from './form';
+import { ATTR } from './form/constants';
 import { FORM_INTIAL_STATE } from './form/form-intial-state';
 
 window.Webflow ||= [];
 window.Webflow.push(() => {
-  const form = document.querySelector('form[data-form-element="form"]');
+  const form = document.querySelector(`form[${ATTR}-element="form"]`);
   if (!form || !(form instanceof HTMLFormElement)) return;
 
   const name = form.getAttribute('name') ?? 'untitled-form';

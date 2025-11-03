@@ -91,11 +91,11 @@ export class FlowupsForm extends StatefulComponent<FormState> {
   // ============================================
 
   /**
-   * Parse configuration from data-form-* attributes
+   * Parse configuration from ${ATTR}* attributes
    * Attributes override config object
    */
   private parseConfiguration(): FlowupsFormConfig {
-    // Get all data-form-* attributes (type-safe with FormAttributeConfig)
+    // Get all ${ATTR}* attributes (type-safe with FormAttributeConfig)
     const attrs = getConfigAttributes<FormAttributeConfig>(this.rootElement as HTMLElement);
 
     // Parse name

@@ -7,7 +7,7 @@
 
 /**
  * Form Element Type
- * Valid element types for data-form-element attribute
+ * Valid element types for ${ATTR}-element attribute
  */
 export type FormElementType =
   | 'form'

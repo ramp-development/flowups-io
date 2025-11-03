@@ -17,7 +17,7 @@ import { isValidType } from './is-valid-type';
  * @returns Type predicate indicating if value is a valid FormElementType
  *
  * @example
- * const elementType = element.getAttribute('data-form-element');
+ * const elementType = element.getAttribute('${ATTR}-element');
  * if (isValidElementType(elementType)) {
  *   // TypeScript knows elementType is FormElementType here
  *   console.log(elementType); // 'card' | 'set' | 'field' | etc.
@@ -37,7 +37,7 @@ export function isValidElementType(value: string | null | undefined): value is F
  *
  * @example
  * const elementType = assertValidElementType(
- *   element.getAttribute('data-form-element'),
+ *   element.getAttribute('${ATTR}-element'),
  *   'Card element'
  * );
  * // elementType is guaranteed to be FormElementType here

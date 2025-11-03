@@ -3,7 +3,7 @@
  * Common attributes for all elements
  */
 export interface BaseAttributeConfig {
-  /** Element type from data-form-element */
+  /** Element type from ${ATTR}-element */
   element?: string;
 
   /** Element ID (parsed from combined syntax or explicit attribute) */

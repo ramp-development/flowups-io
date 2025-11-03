@@ -4,7 +4,7 @@
  * Convenience wrappers for validating FormElementType.
  */
 
-import { VALID_ERROR_DISPLAY_TYPE_MAP } from 'src/form/constants/valid-error-display-type-map';
+import { VALID_ERROR_DISPLAY_TYPE_MAP } from 'src/form/constants';
 
 import type { ErrorDisplayMode } from '../../types';
 import { assertValidType } from './assert-valid-type';
@@ -18,7 +18,7 @@ import { isValidType } from './is-valid-type';
  * @returns Type predicate indicating if value is a valid ErrorDisplayMode
  *
  * @example
- * const errorMode = element.getAttribute('data-form-errormode');
+ * const errorMode = element.getAttribute('${ATTR}-errormode');
  * if (isValidErrorModeType(errorMode)) {
  *   // TypeScript knows errorMode is ErrorDisplayMode here
  *   console.log(errorMode); // 'native'
@@ -38,7 +38,7 @@ export function isValidErrorModeType(value: string | null | undefined): value is
  *
  * @example
  * const errorMode = assertValidErrorModeType(
- *   element.getAttribute('data-form-errormode'),
+ *   element.getAttribute('${ATTR}-errormode'),
  *   'Native error display mode'
  * );
  * // errorMode is guaranteed to be ErrorDisplayMode here

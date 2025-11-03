@@ -19,7 +19,7 @@ import { isValidType } from './is-valid-type';
  *
  * @example
  * const elementType = assertValidType(
- *   element.getAttribute('data-form-element'),
+ *   element.getAttribute('${ATTR}-element'),
  *   VALID_ELEMENT_TYPE_MAP,
  *   'element type',
  *   'Card element'

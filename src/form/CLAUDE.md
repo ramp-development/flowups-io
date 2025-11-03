@@ -55,7 +55,7 @@ MultiStepForm (extends StatefulComponent)
 
 ### Design Principles
 
-1. **Attribute-Driven** - All configuration via `data-form-*` attributes
+1. **Attribute-Driven** - All configuration via `${ATTR}-*` attributes
 2. **Progressive Enhancement** - Works with standard HTML forms
 3. **Manager Pattern** - Focused, single-responsibility managers
 4. **Hierarchical Structure** - Form → Card → Set → Group → Field
@@ -99,7 +99,7 @@ form (root)
 
 ### Form Behavior
 
-Control form progression granularity with `data-form-behavior`:
+Control form progression granularity with `${ATTR}-behavior`:
 
 | Behavior  | Description                          | Use Case                               | Example                    |
 | --------- | ------------------------------------ | -------------------------------------- | -------------------------- |
@@ -124,10 +124,10 @@ The system supports multiple ways to define elements:
 
 ```html
 <!-- Combined syntax (element:id) -->
-<div data-form-element="card:intro">
-  <div data-form-element="set:contact">
-    <div data-form-element="group:name">
-      <div data-form-element="field">
+<div ${ATTR}-element="card:intro">
+  <div ${ATTR}-element="set:contact">
+    <div ${ATTR}-element="group:name">
+      <div ${ATTR}-element="field">
         <!-- input -->
       </div>
     </div>
@@ -135,10 +135,10 @@ The system supports multiple ways to define elements:
 </div>
 
 <!-- Explicit attributes -->
-<div data-form-element="card" data-form-cardtitle="Introduction">
-  <fieldset data-form-element="set" data-form-settitle="Contact Details">
-    <div data-form-element="group" data-form-grouptitle="Name Information">
-      <div data-form-element="field">
+<div ${ATTR}-element="card" ${ATTR}-cardtitle="Introduction">
+  <fieldset ${ATTR}-element="set" ${ATTR}-settitle="Contact Details">
+    <div ${ATTR}-element="group" ${ATTR}-grouptitle="Name Information">
+      <div ${ATTR}-element="field">
         <!-- input -->
       </div>
     </div>
@@ -146,13 +146,13 @@ The system supports multiple ways to define elements:
 </div>
 
 <!-- Semantic HTML with <legend> (RECOMMENDED) -->
-<div data-form-element="card" data-form-cardtitle="Application">
-  <fieldset data-form-element="set">
+<div ${ATTR}-element="card" ${ATTR}-cardtitle="Application">
+  <fieldset ${ATTR}-element="set">
     <legend>Contact Details</legend>
-    <div data-form-element="group">
+    <div ${ATTR}-element="group">
       <fieldset>
         <legend>Home Address</legend>
-        <div data-form-element="field">
+        <div ${ATTR}-element="field">
           <!-- input -->
         </div>
       </fieldset>
@@ -167,22 +167,22 @@ For each element type, titles and IDs are resolved in this order:
 
 **Sets:**
 
-1. `data-form-settitle="Contact Details"` (explicit attribute)
+1. `${ATTR}-settitle="Contact Details"` (explicit attribute)
 2. `<legend>` text content (semantic HTML)
-3. `data-form-element="set:contact-details"` (parse from combined syntax)
+3. `${ATTR}-element="set:contact-details"` (parse from combined syntax)
 4. Auto-generate ID from index (e.g., `set-0`, `set-1`)
 
 **Groups:**
 
-1. `data-form-grouptitle="Name"` (explicit attribute)
+1. `${ATTR}-grouptitle="Name"` (explicit attribute)
 2. `<legend>` text content (semantic HTML)
-3. `data-form-element="group:name"` (parse from combined syntax)
+3. `${ATTR}-element="group:name"` (parse from combined syntax)
 4. Auto-generate ID from index (e.g., `group-0`, `group-1`)
 
 **Cards:**
 
-1. `data-form-cardtitle="Introduction"` (explicit attribute)
-2. `data-form-element="card:intro"` (parse from combined syntax)
+1. `${ATTR}-cardtitle="Introduction"` (explicit attribute)
+2. `${ATTR}-element="card:intro"` (parse from combined syntax)
 3. Auto-generate ID from index (e.g., `card-0`, `card-1`)
 
 **Form ID:**
@@ -191,7 +191,7 @@ For each element type, titles and IDs are resolved in this order:
 - Used to reference form via JavaScript API: `Flowups.Forms.get('onboarding')`
 
 ```html
-<form data-form-element="form" name="onboarding" data-form-behavior="byField">
+<form ${ATTR}-element="form" name="onboarding" ${ATTR}-behavior="byField">
   <!-- form content -->
 </form>
 ```
@@ -199,9 +199,9 @@ For each element type, titles and IDs are resolved in this order:
 ### Navigation Elements
 
 ```html
-<button data-form-element="prev">Back</button>
-<button data-form-element="next">Continue</button>
-<button data-form-element="submit">Submit</button>
+<button ${ATTR}-element="prev">Back</button>
+<button ${ATTR}-element="next">Continue</button>
+<button ${ATTR}-element="submit">Submit</button>
 ```
 
 ### Dynamic Rendering
@@ -210,39 +210,39 @@ Variables are always wrapped in `{}`, with explicit naming for clarity. Users de
 
 ```html
 <!-- Text rendering - Index variables (1-based for display) -->
-<div data-form-textcontent="{current-card-index}"></div>
-<div data-form-textcontent="{current-set-index}"></div>
-<div data-form-textcontent="{current-group-index}"></div>
-<div data-form-textcontent="{current-field-index}"></div>
+<div ${ATTR}-textcontent="{current-card-index}"></div>
+<div ${ATTR}-textcontent="{current-set-index}"></div>
+<div ${ATTR}-textcontent="{current-group-index}"></div>
+<div ${ATTR}-textcontent="{current-field-index}"></div>
 
 <!-- Text rendering - Totals -->
-<div data-form-textcontent="{total-cards}"></div>
-<div data-form-textcontent="{total-sets}"></div>
-<div data-form-textcontent="{total-groups}"></div>
-<div data-form-textcontent="{total-fields}"></div>
+<div ${ATTR}-textcontent="{total-cards}"></div>
+<div ${ATTR}-textcontent="{total-sets}"></div>
+<div ${ATTR}-textcontent="{total-groups}"></div>
+<div ${ATTR}-textcontent="{total-fields}"></div>
 
 <!-- Text rendering - Titles -->
-<div data-form-textcontent="{current-card-title}"></div>
-<div data-form-textcontent="{current-set-title}"></div>
-<div data-form-textcontent="{current-group-title}"></div>
+<div ${ATTR}-textcontent="{current-card-title}"></div>
+<div ${ATTR}-textcontent="{current-set-title}"></div>
+<div ${ATTR}-textcontent="{current-group-title}"></div>
 
 <!-- Combined text rendering -->
-<div data-form-textcontent="Step {current-set-index} of {total-sets}"></div>
-<div data-form-textcontent="Question {current-field-index} of {total-fields}"></div>
-<div data-form-textcontent="Section {current-card-index}: {current-card-title}"></div>
-<div data-form-textcontent="Set {current-set-index}/{total-sets}: {current-set-title}"></div>
+<div ${ATTR}-textcontent="Step {current-set-index} of {total-sets}"></div>
+<div ${ATTR}-textcontent="Question {current-field-index} of {total-fields}"></div>
+<div ${ATTR}-textcontent="Section {current-card-index}: {current-card-title}"></div>
+<div ${ATTR}-textcontent="Set {current-set-index}/{total-sets}: {current-set-title}"></div>
 
 <!-- Style rendering (width percentage for progress bars) -->
-<div data-form-stylewidth="{form-progress}"></div>
-<div data-form-stylewidth="{card-progress}"></div>
-<div data-form-stylewidth="{set-progress}"></div>
+<div ${ATTR}-stylewidth="{form-progress}"></div>
+<div ${ATTR}-stylewidth="{card-progress}"></div>
+<div ${ATTR}-stylewidth="{set-progress}"></div>
 
 <!-- Math expressions in style rendering -->
-<div data-form-stylewidth="({sets-completed} / {total-sets}) * 100"></div>
-<div data-form-stylewidth="({fields-completed} / {total-fields}) * 100"></div>
+<div ${ATTR}-stylewidth="({sets-completed} / {total-sets}) * 100"></div>
+<div ${ATTR}-stylewidth="({fields-completed} / {total-fields}) * 100"></div>
 
 <!-- Future: Additional style properties -->
-<!-- data-form-styleheight, data-form-styleopacity, etc. -->
+<!-- ${ATTR}-styleheight, ${ATTR}-styleopacity, etc. -->
 ```
 
 **Available Variables:**
@@ -296,35 +296,35 @@ Variables wrapped in `{}`, spaces around operators, supports `&&` and `||`:
 
 ```html
 <!-- Simple field equality -->
-<div data-form-showif="{country} = US">Only shown when country field equals "US"</div>
+<div ${ATTR}-showif="{country} = US">Only shown when country field equals "US"</div>
 
 <!-- Numeric comparisons -->
-<div data-form-showif="{age} > 18">Adult content</div>
-<div data-form-showif="{quantity} >= 10">Bulk discount</div>
+<div ${ATTR}-showif="{age} > 18">Adult content</div>
+<div ${ATTR}-showif="{quantity} >= 10">Bulk discount</div>
 
 <!-- Compound conditions (AND) -->
-<div data-form-showif="{country} = US && {state} = CA">California specific content</div>
+<div ${ATTR}-showif="{country} = US && {state} = CA">California specific content</div>
 
 <!-- Compound conditions (OR) -->
-<div data-form-showif="{subscribe} = true || {newsletter} = true">Marketing preferences</div>
+<div ${ATTR}-showif="{subscribe} = true || {newsletter} = true">Marketing preferences</div>
 
 <!-- Complex conditions -->
-<div data-form-showif="({age} >= 18 && {country} = US) || {guardian-consent} = true">
+<div ${ATTR}-showif="({age} >= 18 && {country} = US) || {guardian-consent} = true">
   Content with age gate or consent
 </div>
 
 <!-- Form state conditions (using index/count variables) -->
-<div data-form-showif="{current-set-index} > 2">Shown after set 2</div>
-<div data-form-showif="{sets-completed} >= 3">Need 3 completed sets</div>
-<div data-form-showif="{current-field-index} >= 5">Shown from field 5 onwards</div>
+<div ${ATTR}-showif="{current-set-index} > 2">Shown after set 2</div>
+<div ${ATTR}-showif="{sets-completed} >= 3">Need 3 completed sets</div>
+<div ${ATTR}-showif="{current-field-index} >= 5">Shown from field 5 onwards</div>
 
 <!-- Pattern matching -->
-<div data-form-showif="{email} *= @company.com">Company email</div>
-<div data-form-showif="{phone} ^= +44">UK phone</div>
-<div data-form-showif="{url} $= .com">Dot com domain</div>
+<div ${ATTR}-showif="{email} *= @company.com">Company email</div>
+<div ${ATTR}-showif="{phone} ^= +44">UK phone</div>
+<div ${ATTR}-showif="{url} $= .com">Dot com domain</div>
 
 <!-- Hide if condition met -->
-<div data-form-hideif="{subscribe} = false">Hidden when unchecked</div>
+<div ${ATTR}-hideif="{subscribe} = false">Hidden when unchecked</div>
 ```
 
 **Operators:**
@@ -352,24 +352,24 @@ The system auto-detects native HTML5 validation (required, type, pattern, etc.):
 <input type="number" name="age" min="18" max="120" />
 
 <!-- Custom validation rules -->
-<input name="username" required data-form-validate="min:3,max:20,pattern:^[a-z0-9_]+$" />
+<input name="username" required ${ATTR}-validate="min:3,max:20,pattern:^[a-z0-9_]+$" />
 
 <!-- Custom format patterns (for display, not validation) -->
-<input type="tel" name="phone" data-form-validateformat="(XXX) XXX-XXXX" />
+<input type="tel" name="phone" ${ATTR}-validateformat="(XXX) XXX-XXXX" />
 
 <!-- Future: Email blocklist -->
-<input type="email" name="email" data-form-validateblocklist="hotmail.com,yahoo.com" />
+<input type="email" name="email" ${ATTR}-validateblocklist="hotmail.com,yahoo.com" />
 ```
 
 **Validation Timing** (cascades from form → card → set → group → input):
 
 ```html
 <!-- Form level defaults -->
-<form data-form-element="form" data-form-validateon="blur">
+<form ${ATTR}-element="form" ${ATTR}-validateon="blur">
   <!-- Set level override -->
-  <div data-form-element="set:payment" data-form-validateon="change">
+  <div ${ATTR}-element="set:payment" ${ATTR}-validateon="change">
     <!-- Input level override -->
-    <input name="cardNumber" data-form-validateon="input" />
+    <input name="cardNumber" ${ATTR}-validateon="input" />
   </div>
 </form>
 ```
@@ -396,11 +396,11 @@ Control whether validation is required to advance (cascades from form → card �
 
 ```html
 <!-- Form level: Require valid fields to advance (default) -->
-<form data-form-element="form" data-form-allowinvalid="false">
+<form ${ATTR}-element="form" ${ATTR}-allowinvalid="false">
   <!-- Set level: Allow skipping this set even if invalid -->
-  <div data-form-element="set:optional-preferences" data-form-allowinvalid="true">
+  <div ${ATTR}-element="set:optional-preferences" ${ATTR}-allowinvalid="true">
     <!-- Group level: This group must be completed to advance -->
-    <div data-form-element="group:required-info" data-form-allowinvalid="false"></div>
+    <div ${ATTR}-element="group:required-info" ${ATTR}-allowinvalid="false"></div>
   </div>
 </form>
 ```
@@ -410,21 +410,21 @@ Control whether validation is required to advance (cascades from form → card �
 ```html
 <!-- Error message container -->
 <input name="email" required type="email" />
-<div data-form-element="error" data-error-for="email"></div>
+<div ${ATTR}-element="error" data-error-for="email"></div>
 
 <!-- Error class configuration (cascades from form → card → set → group) -->
 <form
-  data-form-element="form"
-  data-form-errorclass="is-invalid"
-  data-form-errortarget="parent"
-  data-form-errordisplay="native"
+  ${ATTR}-element="form"
+  ${ATTR}-errorclass="is-invalid"
+  ${ATTR}-errortarget="parent"
+  ${ATTR}-errordisplay="native"
 ></form>
 ```
 
 **Error Display Modes:**
 
 - `native` - Browser native validation messages (default)
-- `inline` - Custom inline error containers via `data-form-element="error"`
+- `inline` - Custom inline error containers via `${ATTR}-element="error"`
 - `toast` - Toast notifications (future)
 
 **Error Class Targets:**
@@ -439,7 +439,7 @@ Control whether validation is required to advance (cascades from form → card �
 <div class="input-wrapper">
   <label>Email</label>
   <input type="email" name="email" required />
-  <div data-form-element="error" data-error-for="email"></div>
+  <div ${ATTR}-element="error" data-error-for="email"></div>
 </div>
 
 <!-- Error class "is-invalid" applied to .input-wrapper when validation fails -->
@@ -451,44 +451,44 @@ All configuration via attributes (no JSON objects):
 
 ```html
 <form
-  data-form-element="form"
+  ${ATTR}-element="form"
 
   <!-- Persistence (single attribute, stores both progress and data) -->
-  data-form-persist="local"
+  ${ATTR}-persist="local"
 
   <!-- Validation -->
-  data-form-validateon="blur"
-  data-form-allowinvalid="false"
+  ${ATTR}-validateon="blur"
+  ${ATTR}-allowinvalid="false"
 
   <!-- Error handling -->
-  data-form-errordisplay="native"
-  data-form-errorclass="is-invalid"
-  data-form-errortarget="parent"
+  ${ATTR}-errordisplay="native"
+  ${ATTR}-errorclass="is-invalid"
+  ${ATTR}-errortarget="parent"
 
   <!-- Animation -->
-  data-form-transition="fade"
-  data-form-transitionduration="300"
+  ${ATTR}-transition="fade"
+  ${ATTR}-transitionduration="300"
 
   <!-- Accessibility -->
-  data-form-ariaannounce="true"
-  data-form-focusonchange="true"
+  ${ATTR}-ariaannounce="true"
+  ${ATTR}-focusonchange="true"
 >
 ```
 
 **Configuration Options:**
 
-| Attribute                      | Values                                      | Default  | Description                                 |
-| ------------------------------ | ------------------------------------------- | -------- | ------------------------------------------- |
-| `data-form-persist`            | `local`, `session`, `cookie`, `false`       | `false`  | Storage type for form data, `false` for now |
-| `data-form-validateon`         | `blur`, `change`, `input`, `next`, `submit` | `blur`   | When to validate inputs                     |
-| `data-form-allowinvalid`       | `true`, `false`                             | `false`  | Allow advancing with errors                 |
-| `data-form-errordisplay`       | `native`, `inline`, `toast`                 | `native` | Error display mode, just `native` for now   |
-| `data-form-errorclass`         | string                                      | -        | CSS class for error state                   |
-| `data-form-errortarget`        | `parent`, `self`, `{selector}`              | `parent` | Where to apply error class                  |
-| `data-form-transition`         | `fade`, `slide`, `none`                     | `fade`   | Transition type                             |
-| `data-form-transitionduration` | number (ms)                                 | `300`    | Transition duration                         |
-| `data-form-ariaannounce`       | `true`, `false`                             | `true`   | Announce set changes                        |
-| `data-form-focusonchange`      | `true`, `false`                             | `true`   | Focus first input on set change             |
+| Attribute                    | Values                                      | Default  | Description                                 |
+| ---------------------------- | ------------------------------------------- | -------- | ------------------------------------------- |
+| `${ATTR}-persist`            | `local`, `session`, `cookie`, `false`       | `false`  | Storage type for form data, `false` for now |
+| `${ATTR}-validateon`         | `blur`, `change`, `input`, `next`, `submit` | `blur`   | When to validate inputs                     |
+| `${ATTR}-allowinvalid`       | `true`, `false`                             | `false`  | Allow advancing with errors                 |
+| `${ATTR}-errordisplay`       | `native`, `inline`, `toast`                 | `native` | Error display mode, just `native` for now   |
+| `${ATTR}-errorclass`         | string                                      | -        | CSS class for error state                   |
+| `${ATTR}-errortarget`        | `parent`, `self`, `{selector}`              | `parent` | Where to apply error class                  |
+| `${ATTR}-transition`         | `fade`, `slide`, `none`                     | `fade`   | Transition type                             |
+| `${ATTR}-transitionduration` | number (ms)                                 | `300`    | Transition duration                         |
+| `${ATTR}-ariaannounce`       | `true`, `false`                             | `true`   | Announce set changes                        |
+| `${ATTR}-focusonchange`      | `true`, `false`                             | `true`   | Focus first input on set change             |
 
 ## State Management
 
@@ -557,7 +557,7 @@ All state changes trigger:
 
 **Responsibilities:**
 
-- Discover all `[data-form-element="set"]` elements
+- Discover all `[${ATTR}-element="set"]` elements
 - Parse set IDs from attributes or titles
 - Initialize set metadata (index, id, title)
 - Show/hide sets (delegates animation to AnimationManager)
@@ -592,7 +592,7 @@ markSetComplete(SetId: string): void
 **Responsibilities:**
 
 - Auto-discover all fields in form
-- Group fields by `[data-form-element="group"]`
+- Group fields by `[${ATTR}-element="group"]`
 - Lazy event binding (only active set input)
 - Listen to input/change/blur events based on field input type
 - Update formData state on changes
@@ -635,9 +635,9 @@ markFieldComplete(id: string): void
 **Responsibilities:**
 
 - Auto-detect native HTML5 validation (required, type, pattern, min, max)
-- Parse custom `[data-form-validate]` rules
+- Parse custom `[${ATTR}-validate]` rules
 - Execute validation on demand or based on timing config
-- Update `[data-form-element="error"]` containers
+- Update `[${ATTR}-element="error"]` containers
 - Apply error classes to configured targets
 - Provide validation error messages
 - Support custom validators (future)
@@ -676,7 +676,7 @@ interface ValidationError {
 
 **Responsibilities:**
 
-- Discover all `[data-form-showif]` / `[data-form-hideif]` elements
+- Discover all `[${ATTR}-showif]` / `[${ATTR}-hideif]` elements
 - Parse condition expressions (handle `{}`, operators, `&&`, `||`)
 - Build dependency graph (which elements depend on which fields)
 - Watch formData state changes
@@ -754,8 +754,8 @@ canNavigatePrev(): boolean
 
 **Responsibilities:**
 
-- Discover all `[data-form-textcontent]` elements
-- Discover all `[data-form-style*]` elements
+- Discover all `[${ATTR}-textcontent]` elements
+- Discover all `[${ATTR}-style*]` elements
 - Evaluate expressions with variables
 - Update text content dynamically
 - Update style properties dynamically
@@ -834,7 +834,7 @@ setTransitionDuration(ms: number): void
 **Responsibilities:**
 
 - Display errors in configured mode (native/inline/toast)
-- Manage error message containers `[data-form-element="error"]`
+- Manage error message containers `[${ATTR}-element="error"]`
 - Apply error classes to configured targets
 - Clear errors when field becomes valid
 - Provide default error messages
@@ -864,7 +864,7 @@ private showNativeError(field: string, message: string): void {
 // Inline: Custom error containers
 private showInlineError(field: string, message: string): void {
   const errorElement = document.querySelector(
-    `[data-form-element="error"][data-error-for="${field}"]`
+    `[${ATTR}-element="error"][data-error-for="${field}"]`
   );
   if (errorElement) {
     errorElement.textContent = message;
@@ -1005,14 +1005,14 @@ Create your form structure using Webflow's visual editor and add the required da
 
 ```html
 <form
-  data-form-element="form"
+  ${ATTR}-element="form"
   name="clinical-trial"
-  data-form-behavior="byField"
-  data-form-transition="fade"
-  data-form-transitionduration="300"
+  ${ATTR}-behavior="byField"
+  ${ATTR}-transition="fade"
+  ${ATTR}-transitionduration="300"
 >
   <!-- CARD 1: Introduction -->
-  <div data-form-element="card" data-form-cardtitle="Introduction">
+  <div ${ATTR}-element="card" ${ATTR}-cardtitle="Introduction">
     <h1>Join Our Clinical Trial</h1>
     <p>
       Thank you for your interest in Motif Neurotech's clinical trial for treatment-resistant
@@ -1025,17 +1025,17 @@ Create your form structure using Webflow's visual editor and add the required da
       <li>You must live in the US to apply</li>
     </ul>
 
-    <button type="button" data-form-element="next">Next</button>
+    <button type="button" ${ATTR}-element="next">Next</button>
   </div>
 
   <!-- CARD 2: Contact Details Form -->
-  <div data-form-element="card" data-form-cardtitle="Contact Details">
+  <div ${ATTR}-element="card" ${ATTR}-cardtitle="Contact Details">
     <!-- Set 1: Contact Details -->
-    <fieldset data-form-element="set">
+    <fieldset ${ATTR}-element="set">
       <legend>Contact Details</legend>
 
       <!-- Field 1: Full Name -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label for="fullName">What is your full name?</label>
         <input
           type="text"
@@ -1044,32 +1044,32 @@ Create your form structure using Webflow's visual editor and add the required da
           required
           placeholder="Type your answer here"
         />
-        <div data-form-element="error" data-error-for="fullName"></div>
+        <div ${ATTR}-element="error" data-error-for="fullName"></div>
       </div>
 
       <!-- Field 2: Date of Birth -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label for="dob">What is your date of birth?</label>
         <input type="date" id="dob" name="dob" required placeholder="MM/DD/YYYY" />
-        <div data-form-element="error" data-error-for="dob"></div>
+        <div ${ATTR}-element="error" data-error-for="dob"></div>
       </div>
 
       <!-- Field 3: Email -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label for="email">What is your email?</label>
         <input type="email" id="email" name="email" required placeholder="name@email.com" />
-        <div data-form-element="error" data-error-for="email"></div>
+        <div ${ATTR}-element="error" data-error-for="email"></div>
       </div>
 
       <!-- Field 4: Phone -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label for="phone">What is your phone number?</label>
         <input type="tel" id="phone" name="phone" required placeholder="(123) 456-7890" />
-        <div data-form-element="error" data-error-for="phone"></div>
+        <div ${ATTR}-element="error" data-error-for="phone"></div>
       </div>
 
       <!-- Field 5: Address -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label for="address">What is your address?</label>
         <textarea
           id="address"
@@ -1077,19 +1077,19 @@ Create your form structure using Webflow's visual editor and add the required da
           required
           placeholder="Type your address here..."
         ></textarea>
-        <div data-form-element="error" data-error-for="address"></div>
+        <div ${ATTR}-element="error" data-error-for="address"></div>
       </div>
     </fieldset>
   </div>
 
   <!-- CARD 3: Medical Information Form -->
-  <div data-form-element="card" data-form-cardtitle="Medical Information">
+  <div ${ATTR}-element="card" ${ATTR}-cardtitle="Medical Information">
     <!-- Set 2: Medical Information -->
-    <fieldset data-form-element="set">
+    <fieldset ${ATTR}-element="set">
       <legend>Medical Information</legend>
 
       <!-- Field 6: MDD Diagnosis -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label>Have you been diagnosed with Major Depressive Disorder?</label>
         <div class="button-group">
           <input type="radio" id="mdd-yes" name="mdd" value="yes" required />
@@ -1098,17 +1098,17 @@ Create your form structure using Webflow's visual editor and add the required da
           <input type="radio" id="mdd-no" name="mdd" value="no" required />
           <label for="mdd-no">No</label>
         </div>
-        <div data-form-element="error" data-error-for="mdd"></div>
+        <div ${ATTR}-element="error" data-error-for="mdd"></div>
       </div>
 
       <!-- Field 7: When diagnosed (conditional) -->
-      <div data-form-element="field" data-form-showif="{mdd} = yes">
+      <div ${ATTR}-element="field" ${ATTR}-showif="{mdd} = yes">
         <label for="mddWhen">When</label>
         <input type="text" id="mddWhen" name="mddWhen" placeholder="e.g. May 2024" />
       </div>
 
       <!-- Field 8: Duration of MDD (conditional) -->
-      <div data-form-element="field" data-form-showif="{mdd} = yes">
+      <div ${ATTR}-element="field" ${ATTR}-showif="{mdd} = yes">
         <label for="mddDuration">How long have you had MDD?</label>
         <input
           type="text"
@@ -1119,7 +1119,7 @@ Create your form structure using Webflow's visual editor and add the required da
       </div>
 
       <!-- Field 9: Antidepressant Treatment -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label
           >Have you tried two or more antidepressant medications without sustained
           improvement?</label
@@ -1131,17 +1131,17 @@ Create your form structure using Webflow's visual editor and add the required da
           <input type="radio" id="treatment-no" name="treatment" value="no" required />
           <label for="treatment-no">No</label>
         </div>
-        <div data-form-element="error" data-error-for="treatment"></div>
+        <div ${ATTR}-element="error" data-error-for="treatment"></div>
       </div>
 
       <!-- Field 10: Medicines tried (conditional) -->
-      <div data-form-element="field" data-form-showif="{treatment} = yes">
+      <div ${ATTR}-element="field" ${ATTR}-showif="{treatment} = yes">
         <label for="medicinesTried">Which medicines have you tried?</label>
         <input type="text" id="medicinesTried" name="medicinesTried" placeholder="e.g. May 2024" />
       </div>
 
       <!-- Field 11: Other Psychiatric Conditions -->
-      <div data-form-element="field">
+      <div ${ATTR}-element="field">
         <label
           >Have you been diagnosed with a psychiatric condition other than MDD (e.g., generalized
           anxiety disorder, PTSD, etc.)?</label
@@ -1153,30 +1153,30 @@ Create your form structure using Webflow's visual editor and add the required da
           <input type="radio" id="other-no" name="otherConditions" value="no" required />
           <label for="other-no">No</label>
         </div>
-        <div data-form-element="error" data-error-for="otherConditions"></div>
+        <div ${ATTR}-element="error" data-error-for="otherConditions"></div>
       </div>
     </fieldset>
   </div>
 
   <!-- Progress Indicators (visible on all cards except intro) -->
-  <div class="progress-wrapper" data-form-hideif="{current-card-index} = 1">
+  <div class="progress-wrapper" ${ATTR}-hideif="{current-card-index} = 1">
     <!-- Progress bar -->
     <div class="progress-bar-container">
-      <div class="progress-bar-fill" data-form-stylewidth="{set-progress}"></div>
+      <div class="progress-bar-fill" ${ATTR}-stylewidth="{set-progress}"></div>
     </div>
 
     <!-- Set counter -->
     <div class="step-counter">
       <span
-        data-form-textcontent="Step: {current-set-index} of {total-sets}: {current-set-title}"
+        ${ATTR}-textcontent="Step: {current-set-index} of {total-sets}: {current-set-title}"
       ></span>
     </div>
   </div>
 
   <!-- Navigation buttons (visible on form cards only) -->
-  <div class="nav-buttons" data-form-showif="{current-card-index} > 1">
-    <button type="button" data-form-element="prev">Back</button>
-    <button type="button" data-form-element="next">Next</button>
+  <div class="nav-buttons" ${ATTR}-showif="{current-card-index} > 1">
+    <button type="button" ${ATTR}-element="prev">Back</button>
+    <button type="button" ${ATTR}-element="next">Next</button>
   </div>
 </form>
 ```
@@ -1266,7 +1266,7 @@ window.Flowups.push((Flowups) => {
 1. **Before library loads**: `window.Flowups ||= []` creates an empty array if it doesn't exist
 2. **Queue callbacks**: `window.Flowups.push(callback)` adds your callback to the queue
 3. **Library loads**: The Flowups library script loads asynchronously
-4. **Auto-initialization**: Library finds all forms with `data-form-element="form"` and initializes them (unless `data-form-autoinit="false"`)
+4. **Auto-initialization**: Library finds all forms with `${ATTR}-element="form"` and initializes them (unless `${ATTR}-autoinit="false"`)
 5. **Process queue**: Library replaces the array with the API object and executes all queued callbacks
 6. **Future calls**: Any subsequent `push()` calls execute immediately
 
@@ -1282,7 +1282,7 @@ window.Flowups.push((Flowups) => {
 To prevent a form from initializing automatically (useful for forms in modals or conditional UI):
 
 ```html
-<form data-form-element="form" name="modal-form" data-form-autoinit="false">
+<form ${ATTR}-element="form" name="modal-form" ${ATTR}-autoinit="false">
   <!-- Form will not auto-initialize -->
 </form>
 ```
@@ -1481,8 +1481,8 @@ You can override the default form submission behavior to integrate with your own
   - [x] Element hierarchy types - `/src/form/types/elements.ts`
 - [x] MultiStepForm component (extends StatefulComponent) - **Partially Complete**
   - [x] Attribute parsing utilities (support combined syntax: `element:id`)
-    - `/src/form/utils/parsing/parse-element-attribute.ts` - Parse `data-form-element`
-    - `/src/form/utils/parsing/get-form-attributes.ts` - Extract all data-form-\* attributes
+    - `/src/form/utils/parsing/parse-element-attribute.ts` - Parse `${ATTR}-element`
+    - `/src/form/utils/parsing/get-form-attributes.ts` - Extract all ${ATTR}-\* attributes
     - `/src/form/utils/parsing/parse-boolean-attribute.ts` - Parse boolean values
     - `/src/form/utils/parsing/parse-number-attribute.ts` - Parse number values
     - `/src/form/utils/parsing/extract-title.ts` - Extract titles with priority
@@ -1496,21 +1496,21 @@ You can override the default form submission behavior to integrate with your own
   - [x] State management setup (hierarchical state) - All 30+ state keys configured
   - [x] Behavior configuration (`byField` only for v1)
 - [ ] CardManager
-  - [ ] Discover cards via `[data-form-element="card"]`
+  - [ ] Discover cards via `[${ATTR}-element="card"]`
   - [ ] Parse card IDs and titles
   - [ ] Track card order and relationships
 - [ ] SetManager
-  - [ ] Discover sets via `[data-form-element="set"]`
+  - [ ] Discover sets via `[${ATTR}-element="set"]`
   - [ ] Extract titles from `<legend>` or attributes
   - [ ] Parse set IDs (explicit, from legend, or auto-generate)
   - [ ] Associate sets with parent cards
 - [ ] GroupManager (optional elements)
-  - [ ] Discover groups via `[data-form-element="group"]`
+  - [ ] Discover groups via `[${ATTR}-element="group"]`
   - [ ] Extract titles from `<legend>` or attributes
   - [ ] Parse group IDs
   - [ ] Associate groups with parent sets
 - [ ] FieldManager
-  - [ ] Discover fields via `[data-form-element="field"]`
+  - [ ] Discover fields via `[${ATTR}-element="field"]`
   - [ ] Find input within field wrapper
   - [ ] Associate fields with parent groups/sets
   - [ ] Build field navigation order
@@ -1536,8 +1536,8 @@ You can override the default form submission behavior to integrate with your own
 **Goal:** Add progress indicators and dynamic text/style updates
 
 - [ ] RenderManager
-  - [ ] Discover `[data-form-textcontent]` elements
-  - [ ] Discover `[data-form-stylewidth]` elements
+  - [ ] Discover `[${ATTR}-textcontent]` elements
+  - [ ] Discover `[${ATTR}-stylewidth]` elements
   - [ ] Variable parsing and context building
   - [ ] Expression evaluation (simple and math)
   - [ ] Update on state changes
@@ -1585,7 +1585,7 @@ You can override the default form submission behavior to integrate with your own
 **Goal:** Show/hide fields and sections based on form data
 
 - [ ] ConditionManager
-  - [ ] Discover `[data-form-showif]` and `[data-form-hideif]` elements
+  - [ ] Discover `[${ATTR}-showif]` and `[${ATTR}-hideif]` elements
   - [ ] Parse condition expressions (operators, &&, ||)
   - [ ] Build dependency graph (field → affected elements)
   - [ ] Evaluate conditions on init
@@ -1610,7 +1610,7 @@ You can override the default form submission behavior to integrate with your own
 - [ ] AnimationManager
   - [ ] Fade transition (CSS-based, opacity)
   - [ ] Slide transition (horizontal with direction detection: forward/backward)
-  - [ ] Configurable duration via `data-form-transitionduration`
+  - [ ] Configurable duration via `${ATTR}-transitionduration`
   - [ ] Wait for transitions before cleanup
   - [ ] CSS class-based approach (add/remove classes, CSS handles animation)
   - [ ] Support transitions between fields, sets, and cards
@@ -1677,17 +1677,17 @@ These features are documented for the full product vision but not required for t
 
 ```html
 <!-- Classic multi-step: navigate between sets -->
-<form data-form-behavior="bySet">...</form>
+<form ${ATTR}-behavior="bySet">...</form>
 
 <!-- Typeform-style: navigate one field at a time -->
-<form data-form-behavior="byField">...</form>
+<form ${ATTR}-behavior="byField">...</form>
 
 <!-- Wizard: navigate between major sections -->
-<form data-form-behavior="byCard">...</form>
+<form ${ATTR}-behavior="byCard">...</form>
 
 <!-- Mixed: cards with set navigation inside -->
-<form data-form-behavior="byCard">
-  <div data-form-element="card" data-form-behavior="bySet">
+<form ${ATTR}-behavior="byCard">
+  <div ${ATTR}-element="card" ${ATTR}-behavior="bySet">
     <!-- This card uses set navigation -->
   </div>
 </form>
@@ -1791,11 +1791,11 @@ class ConditionManager {
 
   // Build dependency graph on init
   init(): void {
-    const conditionalElements = this.queryAll('[data-form-showif], [data-form-hideif]');
+    const conditionalElements = this.queryAll('[${ATTR}-showif], [${ATTR}-hideif]');
 
     conditionalElements.forEach((element) => {
       const condition =
-        element.getAttribute('data-form-showif') || element.getAttribute('data-form-hideif');
+        element.getAttribute('${ATTR}-showif') || element.getAttribute('${ATTR}-hideif');
 
       // Parse condition to find field dependencies
       const fields = this.extractFieldNames(condition);
@@ -1865,18 +1865,18 @@ All tokens will be namespaced to clarify their source and prevent naming collisi
 
 ```html
 <!-- Form metadata (library-managed, read-only) -->
-<div data-form-textcontent="{meta.totalSets}"></div>
-<div data-form-textcontent="{meta.currentSet}"></div>
-<div data-form-textcontent="{meta.progress}%"></div>
+<div ${ATTR}-textcontent="{meta.totalSets}"></div>
+<div ${ATTR}-textcontent="{meta.currentSet}"></div>
+<div ${ATTR}-textcontent="{meta.progress}%"></div>
 
 <!-- Form field data (user input values) -->
-<div data-form-textcontent="{data.email}"></div>
-<div data-form-textcontent="{data.firstName}"></div>
+<div ${ATTR}-textcontent="{data.email}"></div>
+<div ${ATTR}-textcontent="{data.firstName}"></div>
 
 <!-- Calculated values (user-defined computed values) -->
-<div data-form-textcontent="{calc.subtotal}"></div>
-<div data-form-textcontent="{calc.tax}"></div>
-<div data-form-textcontent="{calc.total}"></div>
+<div ${ATTR}-textcontent="{calc.subtotal}"></div>
+<div ${ATTR}-textcontent="{calc.tax}"></div>
+<div ${ATTR}-textcontent="{calc.total}"></div>
 ```
 
 **Token Replacement Rules:**
@@ -1979,9 +1979,9 @@ const subtotalFormatted = form.calc.subtotal.formatted;  // "150.00"
 const subtotalSubmit = form.calc.subtotal.submit;        // "150.00"
 
 // In HTML (automatically updates via RenderManager)
-<div data-form-textcontent="{calc.subtotal}">150.00</div>
-<div data-form-textcontent="{calc.subtotal.raw}">150</div>
-<div data-form-textcontent="Total: {calc.total}">Total: $165.00</div>
+<div ${ATTR}-textcontent="{calc.subtotal}">150.00</div>
+<div ${ATTR}-textcontent="{calc.subtotal.raw}">150</div>
+<div ${ATTR}-textcontent="Total: {calc.total}">Total: $165.00</div>
 ```
 
 **Form Submission Behavior:**
@@ -2567,7 +2567,7 @@ class FormInstance {
 
 - **Default:** Sequential with validation guards
 - **Backward:** Always allowed without validation
-- **Forward:** Requires validation unless `data-form-allowinvalid="true"`
+- **Forward:** Requires validation unless `${ATTR}-allowinvalid="true"`
 
 ### Animation Handling
 

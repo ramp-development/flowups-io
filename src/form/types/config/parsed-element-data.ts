@@ -2,7 +2,7 @@ import type { FormElementType } from '../elements';
 
 /**
  * Parsed Element Data
- * Result of parsing data-form-element attribute
+ * Result of parsing ${ATTR}-element attribute
  */
 export interface ParsedElementData {
   /** Element type (card, set, group, field, etc.) */

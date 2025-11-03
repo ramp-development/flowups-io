@@ -17,7 +17,7 @@ import { isValidType } from './is-valid-type';
  * @returns Type predicate indicating if value is a valid TransitionType
  *
  * @example
- * const transition = element.getAttribute('data-form-transition');
+ * const transition = element.getAttribute('${ATTR}-transition');
  * if (isValidTransitionType(transition)) {
  *   // TypeScript knows transition is TransitionType here
  *   config.transition = transition;

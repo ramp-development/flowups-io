@@ -2,7 +2,7 @@ import type { BaseAttributeConfig } from './base-attribute-config';
 
 /**
  * Card Attribute Configuration
- * Parsed from data-form-* attributes on card elements
+ * Parsed from ${ATTR}-* attributes on card elements
  */
 export interface CardAttributeConfig extends BaseAttributeConfig {
   /** Card title */

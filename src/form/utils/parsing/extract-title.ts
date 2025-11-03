@@ -27,9 +27,9 @@ export function extractTitleFromLegend(element: HTMLElement): string | null {
  * Extract title with priority resolution
  *
  * Priority:
- * 1. Explicit title attribute (data-form-{type}title)
+ * 1. Explicit title attribute (${ATTR}-{type}title)
  * 2. <legend> text content (for sets/groups)
- * 3. Combined syntax ID (data-form-element="type:id")
+ * 3. Combined syntax ID (${ATTR}-element="type:id")
  * 4. Auto-generate from index
  *
  * @param element - The DOM element
@@ -49,7 +49,7 @@ export function extractTitle(
   index: number
 ): TitleExtractionResult {
   // Priority 1: Explicit title attribute
-  const titleAttr = element.getAttribute(`data-form-${elementType}title`);
+  const titleAttr = element.getAttribute(`${ATTR}-${elementType}title`);
   if (titleAttr?.trim()) {
     const title = titleAttr.trim();
     return {

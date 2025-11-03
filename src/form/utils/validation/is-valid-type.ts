@@ -16,14 +16,14 @@
  * @returns Type predicate indicating if value is a valid T
  *
  * @example
- * const elementType = element.getAttribute('data-form-element');
+ * const elementType = element.getAttribute('${ATTR}-element');
  * if (isValidType(elementType, VALID_ELEMENT_TYPE_MAP)) {
  *   // TypeScript knows elementType is FormElementType here
  *   console.log(elementType);
  * }
  *
  * @example
- * const transition = element.getAttribute('data-form-transition');
+ * const transition = element.getAttribute('${ATTR}-transition');
  * if (isValidType(transition, VALID_TRANSITION_TYPE_MAP)) {
  *   // TypeScript knows transition is TransitionType here
  *   config.transition = transition;

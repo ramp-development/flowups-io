@@ -3,7 +3,7 @@ import type { BaseAttributeConfig } from './base-attribute-config';
 
 /**
  * Form Attribute Configuration
- * Parsed from data-form-* attributes on the <form> element
+ * Parsed from ${ATTR}-* attributes on the <form> element
  */
 export interface FormAttributeConfig extends BaseAttributeConfig {
   /** Form name */

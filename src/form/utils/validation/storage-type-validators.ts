@@ -17,7 +17,7 @@ import { isValidType } from './is-valid-type';
  * @returns Type predicate indicating if value is a valid StorageType
  *
  * @example
- * const storageType = element.getAttribute('data-form-persist');
+ * const storageType = element.getAttribute('${ATTR}-persist');
  * if (isValidStorageType(storageType)) {
  *   // TypeScript knows storageType is StorageType here
  *   config.persist = storageType;

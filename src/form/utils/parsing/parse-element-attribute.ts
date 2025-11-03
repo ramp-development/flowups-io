@@ -1,14 +1,14 @@
 /**
  * Element Attribute Parser
  *
- * Parse data-form-element attribute with combined or simple syntax.
+ * Parse ${ATTR}-element attribute with combined or simple syntax.
  */
 
 import type { ParsedElementData } from '../../types/config';
 import { assertValidElementType } from '../validation';
 
 /**
- * Parse data-form-element attribute
+ * Parse ${ATTR}-element attribute
  *
  * Supports combined syntax: "card:intro" or simple: "card"
  *

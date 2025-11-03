@@ -2,7 +2,7 @@ import type { BaseAttributeConfig } from './base-attribute-config';
 
 /**
  * Set Attribute Configuration
- * Parsed from data-form-* attributes on set elements
+ * Parsed from ${ATTR}-* attributes on set elements
  */
 export interface SetAttributeConfig extends BaseAttributeConfig {
   /** Set title */

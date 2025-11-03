@@ -17,7 +17,7 @@ import { isValidType } from './is-valid-type';
  * @returns Type predicate indicating if value is a valid FormBehavior
  *
  * @example
- * const behavior = element.getAttribute('data-form-behavior');
+ * const behavior = element.getAttribute('${ATTR}-behavior');
  * if (isValidBehaviorType(behavior)) {
  *   // TypeScript knows behavior is FormBehavior here
  *   config.behavior = behavior;
