@@ -4,6 +4,7 @@
  * Extract titles from elements with priority resolution.
  */
 
+import { ATTR } from '../../constants/attr';
 import type { TitleExtractionResult } from '../../types/config';
 import { generateIdFromTitle } from './generate-id-from-title';
 
