@@ -3,6 +3,7 @@ export * from './data-events';
 export * from './form-event-map';
 export * from './lifecycle-events';
 export * from './navigation-card-events';
+export * from './navigation-command-events';
 export * from './navigation-field-events';
 export * from './navigation-group-events';
 export * from './navigation-set-events';
