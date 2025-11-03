@@ -12,11 +12,7 @@ export interface FieldChangingEvent {
 export interface FieldChangedEvent {
   fieldIndex: number;
   fieldId: string;
-  inputName: string;
-  setIndex: number;
-  setId: string;
-  cardIndex: number;
-  cardId: string;
+  previousFieldIndex: number;
 }
 
 export interface FieldCompleteEvent {
