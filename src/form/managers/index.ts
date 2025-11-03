@@ -5,7 +5,7 @@
  */
 
 export { CardManager } from './card-manager';
-// export { SetManager } from './set-manager';
+export { SetManager } from './set-manager';
 // export { GroupManager } from './group-manager';
 // export { FieldManager } from './field-manager';
 // export { InputManager } from './input-manager';

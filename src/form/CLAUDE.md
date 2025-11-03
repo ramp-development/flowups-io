@@ -1495,15 +1495,15 @@ You can override the default form submission behavior to integrate with your own
   - [x] Form initialization and lifecycle - `/src/form/multi-step-form.ts`
   - [x] State management setup (hierarchical state) - All 30+ state keys configured
   - [x] Behavior configuration (`byField` only for v1)
-- [ ] CardManager
-  - [ ] Discover cards via `[${ATTR}-element="card"]`
-  - [ ] Parse card IDs and titles
-  - [ ] Track card order and relationships
-- [ ] SetManager
-  - [ ] Discover sets via `[${ATTR}-element="set"]`
-  - [ ] Extract titles from `<legend>` or attributes
-  - [ ] Parse set IDs (explicit, from legend, or auto-generate)
-  - [ ] Associate sets with parent cards
+- [x] CardManager
+  - [x] Discover cards via `[${ATTR}-element="card"]`
+  - [x] Parse card IDs and titles
+  - [x] Track card order and relationships
+- [x] SetManager
+  - [x] Discover sets via `[${ATTR}-element="set"]`
+  - [x] Extract titles from `<legend>` or attributes
+  - [x] Parse set IDs (explicit, from legend, or auto-generate)
+  - [x] Associate sets with parent cards
 - [ ] GroupManager (optional elements)
   - [ ] Discover groups via `[${ATTR}-element="group"]`
   - [ ] Extract titles from `<legend>` or attributes
