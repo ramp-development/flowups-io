@@ -11,12 +11,13 @@ export interface ComponentLifecycle {
 }
 
 // Component configuration options
-export interface BaseComponentConfig {
+export interface BaseComponentProps {
+  group?: string;
   id?: string;
   className?: string;
   debug?: boolean;
   autoInit?: boolean;
-  selector?: string; // Optional selector for lazy element initialization
+  selector?: ElementSelector; // Optional selector for lazy element initialization
 }
 
 // DOM query options
@@ -45,7 +46,7 @@ export interface ListenerConfig {
 }
 
 // Interactive component configuration
-export interface InteractiveComponentConfig extends BaseComponentConfig {
+export interface InteractiveComponentProps extends BaseComponentProps {
   events?: {
     [key: string]: EventListener;
   };
@@ -64,7 +65,7 @@ export interface ComponentStateConfig {
 }
 
 // Stateful component configuration
-export interface StatefulComponentConfig extends InteractiveComponentConfig {
+export interface StatefulComponentProps extends InteractiveComponentProps {
   state?: ComponentStateConfig | ComponentStateConfig[];
   persistState?: boolean;
   statePrefix?: string; // Prefix for storage keys
@@ -88,7 +89,8 @@ export class ComponentError extends Error {
   constructor(
     message: string,
     public componentId: string,
-    public phase: 'init' | 'runtime' | 'destroy'
+    public phase: 'init' | 'runtime' | 'destroy',
+    public cause?: unknown
   ) {
     super(message);
     this.name = 'ComponentError';

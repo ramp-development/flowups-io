@@ -7,13 +7,12 @@
 
 import { StatefulComponent } from '$lib/core/components/stateful-component';
 
-import { FORM_INTIAL_STATE } from './form-intial-state';
 import type {
+  FlowupsFormConfig,
+  FlowupsFormProps,
   FormAttributeConfig,
   FormBehavior,
   FormState,
-  MultiStepFormConfig,
-  MultiStepFormProps,
   StorageType,
 } from './types';
 import {
@@ -27,7 +26,7 @@ import {
 } from './utils';
 
 /**
- * Multi-Step Form Component
+ * Flowups Form Component
  *
  * Manages the complete lifecycle of a multi-step form including:
  * - Element hierarchy discovery (cards, sets, groups, fields)
@@ -38,13 +37,13 @@ import {
  * - Animations and transitions
  * - Accessibility
  */
-export class MultiStepForm extends StatefulComponent<FormState> {
+export class FlowupsForm extends StatefulComponent<FormState> {
   // ============================================
   // Properties
   // ============================================
 
   /** Configuration */
-  protected config: MultiStepFormConfig;
+  protected readonly config: FlowupsFormConfig;
 
   // ============================================
   // Managers (to be initialized in Phase 1 Step 3)
@@ -72,19 +71,19 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    *
    * @param props - Props for the MultiStepForm component
    */
-  constructor(props: MultiStepFormProps) {
+  constructor(props: FlowupsFormProps) {
     // Initialize StatefulComponent
-    super({
-      autoInit: false, // We'll manually call init()
-      debug: props.debug,
-      state: FORM_INTIAL_STATE,
-    });
+    super(props);
 
     // Set the form element as the root element
-    this.setRootElement(props.element);
+    this.setRootElement(props.selector);
 
     // Parse configuration from attributes
     this.config = this.parseConfiguration();
+
+    if (this.config.autoInit && !this.isInitialized()) {
+      this.init();
+    }
   }
 
   // ============================================
@@ -95,7 +94,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    * Parse configuration from data-form-* attributes
    * Attributes override config object
    */
-  private parseConfiguration(): MultiStepFormConfig {
+  private parseConfiguration(): FlowupsFormConfig {
     // Get all data-form-* attributes (type-safe with FormAttributeConfig)
     const attrs = getConfigAttributes<FormAttributeConfig>(this.rootElement as HTMLElement);
 
@@ -248,7 +247,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
     await super.onInit();
 
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Initializing form: ${this.config.name}`);
+      this.logDebug(`Initializing form`);
     }
 
     // TODO Phase 1 Step 3:
@@ -257,10 +256,8 @@ export class MultiStepForm extends StatefulComponent<FormState> {
     // - Set initial state
     // - Emit form:initialized event
 
-    this.setState('isInitialized', true);
-
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Form initialized: ${this.config.name}`);
+      this.logDebug(`Form initialized`);
     }
   }
 
@@ -270,7 +267,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
    */
   protected async onDestroy(): Promise<void> {
     if (this.config.debug) {
-      console.log(`[MultiStepForm] Destroying form: ${this.config.name}`);
+      this.logDebug(`Destroying form`);
     }
 
     // TODO Phase 1 Step 3:
@@ -290,7 +287,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
     newValue: FormState[K]
   ): void {
     if (this.config.debug) {
-      console.log(`[MultiStepForm] State changed: ${String(key)}`, {
+      this.logDebug(`State changed: ${String(key)}`, {
         oldValue,
         newValue,
       });
@@ -321,7 +318,7 @@ export class MultiStepForm extends StatefulComponent<FormState> {
   /**
    * Get configuration
    */
-  public getConfig(): Readonly<MultiStepFormConfig> {
+  public getFormConfig(): Readonly<FlowupsFormConfig> {
     return Object.freeze({ ...this.config });
   }
 }

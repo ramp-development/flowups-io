@@ -6,7 +6,7 @@
 import type {
   AppEventMap,
   ComponentEventEmitter,
-  InteractiveComponentConfig,
+  InteractiveComponentProps,
   ListenerConfig,
 } from '$lib/types';
 
@@ -19,8 +19,8 @@ export abstract class InteractiveComponent extends BaseComponent implements Comp
   protected eventUnsubscribers: Array<() => void> = [];
   protected delegatedHandlers: Map<string, EventListener> = new Map();
 
-  constructor(config: InteractiveComponentConfig = {}) {
-    super(config);
+  constructor(props: InteractiveComponentProps = {}) {
+    super(props);
     this.eventBus = EventBus.getInstance();
   }
 
@@ -31,7 +31,7 @@ export abstract class InteractiveComponent extends BaseComponent implements Comp
     await this.setupEventListeners();
 
     // Initialize custom events if provided in config
-    if ((this.config as InteractiveComponentConfig).events) {
+    if ((this.props as InteractiveComponentProps).events) {
       this.bindConfigEvents();
     }
   }
@@ -214,7 +214,7 @@ export abstract class InteractiveComponent extends BaseComponent implements Comp
    * Bind events from configuration
    */
   private bindConfigEvents(): void {
-    const config = this.config as InteractiveComponentConfig;
+    const config = this.props as InteractiveComponentProps;
     if (!config.events || !this.rootElement) return;
 
     Object.entries(config.events).forEach(([eventName, handler]) => {

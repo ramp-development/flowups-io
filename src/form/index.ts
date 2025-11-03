@@ -4,5 +4,5 @@
  * Central export point for the multi-step form system.
  */
 
-export { MultiStepForm } from './multi-step-form';
+export { FlowupsForm as MultiStepForm } from './flowups-form';
 export type * from './types';

@@ -1,4 +1,4 @@
-import type { MultiStepForm } from 'src/form/multi-step-form';
+import type { FlowupsForm } from 'src/form/flowups-form';
 
 /**
  * Base Manager Interface
@@ -12,5 +12,5 @@ export interface BaseManager {
   destroy(): void;
 
   /** Reference to parent form component */
-  form: MultiStepForm;
+  form: FlowupsForm;
 }

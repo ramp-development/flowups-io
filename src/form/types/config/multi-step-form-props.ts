@@ -1,4 +1,5 @@
-export interface MultiStepFormProps {
-  element: HTMLFormElement;
-  debug?: boolean;
+import type { StatefulComponentProps } from '$lib/types';
+
+export interface FlowupsFormProps extends StatefulComponentProps {
+  selector: HTMLFormElement;
 }

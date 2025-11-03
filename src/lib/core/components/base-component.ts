@@ -3,35 +3,37 @@
  * Handles DOM references, lifecycle methods, and safe element access
  */
 
-import type {
-  BaseComponentConfig,
+import {
+  type BaseComponentProps,
   ComponentError,
-  ComponentLifecycle,
-  ComponentMetadata,
-  ElementOrNull,
-  ElementSelector,
-  QueryOptions,
+  type ComponentLifecycle,
+  type ComponentMetadata,
+  type ElementOrNull,
+  type ElementSelector,
+  type QueryOptions,
 } from '$lib/types';
 
 export abstract class BaseComponent implements ComponentLifecycle {
+  protected readonly group: string | undefined;
   protected readonly id: string;
-  protected readonly config: BaseComponentConfig;
+  protected readonly props: BaseComponentProps;
   protected metadata: ComponentMetadata;
   protected rootElement: ElementOrNull = null;
   protected elements: Map<string, HTMLElement> = new Map();
 
-  constructor(config: BaseComponentConfig = {}) {
-    this.config = config;
-    this.id = config.id || this.generateId();
-
+  constructor(props: BaseComponentProps = {}) {
     this.metadata = {
       name: this.constructor.name,
       initialized: false,
       destroyed: false,
     };
 
+    this.props = props;
+    this.group = props.group;
+    this.id = props.id || this.generateId();
+
     // Auto-init if requested
-    if (config.autoInit) {
+    if (props.autoInit) {
       this.init();
     }
   }
@@ -147,8 +149,8 @@ export abstract class BaseComponent implements ComponentLifecycle {
       // Add component identifier
       element.dataset['componentId'] = this.id;
 
-      if (this.config.className) {
-        element.classList.add(this.config.className);
+      if (this.props.className) {
+        element.classList.add(this.props.className);
       }
     }
   }
@@ -202,9 +204,9 @@ export abstract class BaseComponent implements ComponentLifecycle {
    * Generate unique component ID
    */
   protected generateId(): string {
-    const timestamp = Date.now().toString(36);
-    const randomStr = Math.random().toString(36).substring(2, 11);
-    return `${this.metadata.name}-${timestamp}-${randomStr}`;
+    const id = crypto.randomUUID();
+    console.log('Generated ID:', id);
+    return `${this.metadata.name}-${id}`;
   }
 
   /**
@@ -215,7 +217,6 @@ export abstract class BaseComponent implements ComponentLifecycle {
     phase: 'init' | 'runtime' | 'destroy' = 'runtime',
     cause?: unknown
   ): ComponentError {
-    // @ts-expect-error - ComponentError is defined in types
     return new ComponentError(`[${this.id}] ${message}`, this.id, phase, cause);
   }
 
@@ -279,9 +280,12 @@ export abstract class BaseComponent implements ComponentLifecycle {
    * Debug logging (only in debug mode)
    */
   protected logDebug(...args: unknown[]): void {
-    if (this.config.debug) {
+    if (this.props.debug) {
       // eslint-disable-next-line no-console
-      console.log(`[DEBUG][${this.id}]`, ...args);
+      console.log(
+        `[FLOWUPS-DEBUG] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
+        ...args
+      );
     }
   }
 
@@ -290,13 +294,19 @@ export abstract class BaseComponent implements ComponentLifecycle {
    */
   protected logWarn(...args: unknown[]): void {
     // eslint-disable-next-line no-console
-    console.warn(`[WARN][${this.id}]`, ...args);
+    console.warn(
+      `[FLOWUPS-WARN] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
+      ...args
+    );
   }
 
   /**
    * Error logging
    */
   protected logError(...args: unknown[]): void {
-    console.error(`[${this.id}]`, ...args);
+    console.error(
+      `[FLOWUPS-ERROR] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
+      ...args
+    );
   }
 }

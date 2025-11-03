@@ -10,7 +10,7 @@ import type {
  * Form Configuration
  * Top-level configuration for the form component
  */
-export interface MultiStepFormConfig {
+export interface FlowupsFormConfig {
   /** Form name (from name attribute) */
   name: string;
 

@@ -8,7 +8,7 @@ import type {
   ComponentStateConfig,
   PersistenceConfig,
   StateChangeEvent,
-  StatefulComponentConfig,
+  StatefulComponentProps,
   StateValue,
   StorageType,
 } from '$lib/types';
@@ -29,18 +29,18 @@ export abstract class StatefulComponent<
   private statePrefix: string;
   private initialState: Partial<TState> = {};
 
-  constructor(config: StatefulComponentConfig = {}) {
-    super(config);
+  constructor(props: StatefulComponentProps = {}) {
+    super(props);
 
     this.state = {} as TState;
     this.stateManager = StateManager.getInstance();
     this.storageManager = StorageManager.getInstance();
     this.persistenceManager = PersistenceManager.getInstance();
-    this.statePrefix = config.statePrefix || this.id;
+    this.statePrefix = props.statePrefix || this.id;
 
     // Configure state from config
-    if (config.state) {
-      const configs = Array.isArray(config.state) ? config.state : [config.state];
+    if (props.state) {
+      const configs = Array.isArray(props.state) ? props.state : [props.state];
       configs.forEach((stateConfig) => this.configureState(stateConfig));
     }
   }
@@ -63,7 +63,7 @@ export abstract class StatefulComponent<
    */
   protected override async onDestroy(): Promise<void> {
     // Persist state if configured
-    if ((this.config as StatefulComponentConfig).persistState) {
+    if ((this.props as StatefulComponentProps).persistState) {
       this.persistState();
     }
 
