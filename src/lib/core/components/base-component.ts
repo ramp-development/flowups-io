@@ -100,11 +100,11 @@ export abstract class BaseComponent implements ComponentLifecycle {
   /**
    * Query for a DOM element with enhanced options
    */
-  protected query<T extends HTMLElement = HTMLElement>(
+  public query<T extends HTMLElement = HTMLElement>(
     selector: ElementSelector,
     options: QueryOptions = {}
   ): T | null {
-    const { required = false, parent = document } = options;
+    const { required = false, parent = this.rootElement || document } = options;
 
     // Handle direct element passing
     if (selector instanceof HTMLElement) {
@@ -130,11 +130,11 @@ export abstract class BaseComponent implements ComponentLifecycle {
   /**
    * Query for multiple DOM elements
    */
-  protected queryAll<T extends HTMLElement = HTMLElement>(
+  public queryAll<T extends HTMLElement = HTMLElement>(
     selector: string,
     options: Omit<QueryOptions, 'multiple'> = {}
   ): T[] {
-    const { parent = document } = options;
+    const { parent = this.rootElement || document } = options;
     return Array.from(parent.querySelectorAll<T>(selector));
   }
 
@@ -153,6 +153,13 @@ export abstract class BaseComponent implements ComponentLifecycle {
         element.classList.add(this.props.className);
       }
     }
+  }
+
+  /**
+   * Get the root element for the component
+   */
+  public getRootElement<T extends HTMLElement = HTMLElement>(): T | null {
+    return this.rootElement as T | null;
   }
 
   /**
@@ -205,14 +212,13 @@ export abstract class BaseComponent implements ComponentLifecycle {
    */
   protected generateId(): string {
     const id = crypto.randomUUID();
-    console.log('Generated ID:', id);
     return `${this.metadata.name}-${id}`;
   }
 
   /**
    * Create a component-specific error
    */
-  protected createError(
+  public createError(
     message: string,
     phase: 'init' | 'runtime' | 'destroy' = 'runtime',
     cause?: unknown
@@ -279,7 +285,7 @@ export abstract class BaseComponent implements ComponentLifecycle {
   /**
    * Debug logging (only in debug mode)
    */
-  protected logDebug(...args: unknown[]): void {
+  public logDebug(...args: unknown[]): void {
     if (this.props.debug) {
       // eslint-disable-next-line no-console
       console.log(
@@ -292,7 +298,7 @@ export abstract class BaseComponent implements ComponentLifecycle {
   /**
    * Warning logging
    */
-  protected logWarn(...args: unknown[]): void {
+  public logWarn(...args: unknown[]): void {
     // eslint-disable-next-line no-console
     console.warn(
       `[FLOWUPS-WARN] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
@@ -303,7 +309,7 @@ export abstract class BaseComponent implements ComponentLifecycle {
   /**
    * Error logging
    */
-  protected logError(...args: unknown[]): void {
+  public logError(...args: unknown[]): void {
     console.error(
       `[FLOWUPS-ERROR] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
       ...args

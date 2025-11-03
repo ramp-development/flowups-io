@@ -87,7 +87,7 @@ export abstract class StatefulComponent<
   /**
    * Get state value
    */
-  protected getState<K extends keyof TState>(key: K): TState[K] {
+  public getState<K extends keyof TState>(key: K): TState[K] {
     return this.state[key];
   }
 
