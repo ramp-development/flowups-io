@@ -7,12 +7,13 @@
 
 import { StatefulComponent } from '$lib/core/components/stateful-component';
 
-import { CardManager, GroupManager, SetManager } from './managers';
+import { CardManager, FieldManager, GroupManager, SetManager } from './managers';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
   FormAttributeConfig,
   FormBehavior,
+  FormEventMap,
   FormState,
   StorageType,
 } from './types';
@@ -38,7 +39,7 @@ import {
  * - Animations and transitions
  * - Accessibility
  */
-export class FlowupsForm extends StatefulComponent<FormState> {
+export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   // ============================================
   // Properties
   // ============================================
@@ -53,7 +54,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
   public cardManager: CardManager;
   public setManager: SetManager;
   public groupManager: GroupManager;
-  // private fieldManager: FieldManager;
+  public fieldManager: FieldManager;
   // private inputManager: InputManager;
   // private navigationManager: NavigationManager;
   // private validationManager: ValidationManager;
@@ -84,6 +85,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
     this.cardManager = new CardManager(this);
     this.setManager = new SetManager(this);
     this.groupManager = new GroupManager(this);
+    this.fieldManager = new FieldManager(this);
 
     if (this.config.autoInit && !this.isInitialized()) {
       this.init();
@@ -263,6 +265,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
     this.cardManager.init();
     this.setManager.init();
     this.groupManager.init();
+    this.fieldManager.init();
 
     if (this.config.debug) {
       this.logDebug(`Form initialized`);
@@ -285,6 +288,7 @@ export class FlowupsForm extends StatefulComponent<FormState> {
     this.cardManager.destroy();
     this.setManager.destroy();
     this.groupManager.destroy();
+    this.fieldManager.destroy();
 
     await super.onDestroy();
   }
