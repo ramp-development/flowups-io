@@ -48,6 +48,7 @@ export class CardManager implements ICardManager {
    */
   public init(): void {
     this.discoverCards();
+    this.setStates();
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('CardManager initialized', {
@@ -117,7 +118,8 @@ export class CardManager implements ICardManager {
         index,
         visited: false,
         completed: false,
-        active: false,
+        active: index === 0,
+        progress: 0,
         sets: [], // Will be populated by SetManager
       };
 
@@ -132,6 +134,38 @@ export class CardManager implements ICardManager {
         cards: this.cards,
       });
     }
+  }
+
+  /**
+   * Set the form states for cards
+   * Subscribers only notified if the states have changed
+   */
+  private setStates(): void {
+    const currentCardIndex = this.cards.findIndex((card) => card.active);
+    const currentCardId = this.cards[currentCardIndex].id;
+    const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
+    const nextCardIndex = currentCardIndex < this.cards.length - 1 ? currentCardIndex + 1 : null;
+    const completedCards = new Set(
+      this.cards.filter((card) => card.completed).map((card) => card.id)
+    );
+    const visitedCards = new Set(this.cards.filter((card) => card.visited).map((card) => card.id));
+    const totalCards = this.cards.length;
+    const cardsComplete = completedCards.size;
+    const cardProgress = this.cards[currentCardIndex].progress;
+    const currentCardTitle = this.cards[currentCardIndex].title;
+
+    this.form.setStates({
+      currentCardIndex,
+      currentCardId,
+      previousCardIndex,
+      nextCardIndex,
+      completedCards,
+      visitedCards,
+      totalCards,
+      cardsComplete,
+      cardProgress,
+      currentCardTitle,
+    });
   }
 
   // ============================================
