@@ -135,9 +135,9 @@ export class CardManager extends BaseManager implements ICardManager {
    * Subscribers only notified if the states have changed
    */
   private setStates(): void {
-    const currentCardIndex = this.cards.findIndex((card) => card.active) ?? -1;
-    const currentCardId = this.cards[currentCardIndex].id;
-    const currentCardTitle = this.cards[currentCardIndex].title;
+    const currentCardIndex = this.cards.findIndex((card) => card.active);
+    const currentCardId = currentCardIndex >= 0 ? this.cards[currentCardIndex].id : null;
+    const currentCardTitle = currentCardIndex >= 0 ? this.cards[currentCardIndex].title : null;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
     const nextCardIndex = currentCardIndex < this.cards.length - 1 ? currentCardIndex + 1 : null;
     const completedCards = new Set(
@@ -210,7 +210,8 @@ export class CardManager extends BaseManager implements ICardManager {
    */
   public getCurrentCard(): CardElement | null {
     const currentCardIndex = this.form.getState('currentCardIndex');
-    return this.getCardByIndex(currentCardIndex) || null;
+    if (!currentCardIndex) return null;
+    return this.getCardByIndex(currentCardIndex);
   }
 
   // ============================================

@@ -20,6 +20,9 @@ export interface FieldElement extends BaseElement {
   /** Whether this field is included in the navigation order (conditional visibility) */
   isIncluded: boolean;
 
+  /** Whether this field is valid */
+  isValid: boolean;
+
   /** Validation error messages */
   errors: string[];
 }

@@ -9,7 +9,7 @@
  * v1.0: Only 'byField' supported
  * Future: 'byCard' | 'bySet' | 'byGroup'
  */
-export type FormBehavior = 'byField';
+export type FormBehavior = 'byField' | 'byGroup' | 'bySet' | 'byCard';
 
 /**
  * Transition Type

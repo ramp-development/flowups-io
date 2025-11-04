@@ -109,6 +109,13 @@ export class SetManager extends BaseManager implements ISetManager {
 
       // Find parent card (if cards exist)
       const parentHierarchy = this.findParentHierarchy(element);
+      const parentCard = this.findParentCard(element);
+      const behavior = this.form.getBehavior();
+      const active = parentCard
+        ? ['byField', 'byGroup', 'bySet'].includes(behavior)
+          ? parentCard.active && index === 0
+          : parentCard.active
+        : index === 0;
 
       // Create set element object
       const set: SetElement = {
@@ -119,7 +126,7 @@ export class SetManager extends BaseManager implements ISetManager {
         index,
         visited: false,
         completed: false,
-        active: false,
+        active,
         progress: 0,
         parentHierarchy,
         isValid: false,
@@ -165,8 +172,8 @@ export class SetManager extends BaseManager implements ISetManager {
    */
   private setStates(): void {
     const currentSetIndex = this.sets.findIndex((set) => set.active);
-    const currentSetId = this.sets[currentSetIndex].id;
-    const currentSetTitle = this.sets[currentSetIndex].title;
+    const currentSetId = currentSetIndex >= 0 ? this.sets[currentSetIndex].id : null;
+    const currentSetTitle = currentSetIndex >= 0 ? this.sets[currentSetIndex].title : null;
     const previousSetIndex = currentSetIndex > 0 ? currentSetIndex - 1 : null;
     const nextSetIndex = currentSetIndex < this.sets.length - 1 ? currentSetIndex + 1 : null;
     const completedSets = new Set(this.sets.filter((set) => set.completed).map((set) => set.id));
@@ -320,14 +327,20 @@ export class SetManager extends BaseManager implements ISetManager {
   }
 
   /**
-   * Find the parent set and card elements for a group
+   * Find the parent hierarchy for a set
    *
-   * @param groupElement - The group element
+   * @param setElement - The set element
    * @returns Parent hierarchy metadata or null
    */
 
-  private findParentHierarchy(setElement: HTMLElement): SetParentHierarchy {
-    const parentCard = this.findParentCard(setElement);
+  private findParentHierarchy(element: HTMLElement | CardElement): SetParentHierarchy {
+    let parentCard: CardElement | null;
+
+    if (element instanceof HTMLElement) {
+      parentCard = this.findParentCard(element);
+    } else {
+      parentCard = element;
+    }
 
     return {
       cardId: parentCard?.id || null,

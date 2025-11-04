@@ -10,8 +10,11 @@ import type {
   FieldElement,
   FieldInclusionChangedEvent,
   FieldParentHierarchy,
+  FormFieldState,
+  GroupElement,
   IFieldManager,
   NavigationGoToEvent,
+  SetElement,
 } from '../types';
 import { parseElementAttribute } from '../utils';
 import { BaseManager } from './base-manager';
@@ -48,16 +51,17 @@ export class FieldManager extends BaseManager implements IFieldManager {
   public init(): void {
     this.discoverFields();
     this.buildNavigationOrder();
+    this.setStates();
     this.setupEventListeners();
 
     this.logDebug('FieldManager initialized', {
       totalFields: this.fields.length,
       includedFields: this.navigationOrder.length,
-      fields: this.fields.map((f) => ({
-        id: f.id,
-        title: f.title,
-        index: f.index,
-        isIncluded: f.isIncluded,
+      fields: this.fields.map((field) => ({
+        id: field.id,
+        title: field.title,
+        index: field.index,
+        isIncluded: field.isIncluded,
       })),
     });
   }
@@ -112,14 +116,17 @@ export class FieldManager extends BaseManager implements IFieldManager {
       // Skip if not a field
       if (parsed.type !== 'field') return;
 
-      // Find parent hierarchy
-      const parentHierarchy = this.findParentHierarchy(element);
-
       // Generate field ID (use fieldId if available, otherwise index)
       const fieldId = parsed.id || `field-${index}`;
 
       // Generate title (use fieldId)
       const fieldTitle = fieldId;
+
+      // Find parent hierarchy
+      const parent = this.findParentGroup(element) ?? this.findParentSet(element);
+      const parentHierarchy = this.findParentHierarchy(parent);
+      const behavior = this.form.getBehavior();
+      const active = behavior === 'byField' ? parent.active && index === 0 : parent.active;
 
       // Create field element object
       const field: FieldElement = {
@@ -128,11 +135,12 @@ export class FieldManager extends BaseManager implements IFieldManager {
         id: fieldId,
         title: fieldTitle,
         index,
-        parentHierarchy,
-        isIncluded: true,
         visited: false,
         completed: false,
-        active: false,
+        active,
+        parentHierarchy,
+        isIncluded: true,
+        isValid: false,
         errors: [],
       };
 
@@ -158,13 +166,55 @@ export class FieldManager extends BaseManager implements IFieldManager {
       .filter((field) => field.isIncluded)
       .map((field) => field.index);
 
-    // Update form state with total included fields
-    this.form.setState('totalFields', this.navigationOrder.length);
-
     this.logDebug('Navigation order built', {
       total: this.navigationOrder.length,
       order: this.navigationOrder,
     });
+  }
+
+  // ============================================
+  // State Management
+  // ============================================
+
+  /**
+   * Set the form states for fields
+   * Subscribers only notified if the states have changed
+   */
+  private setStates(): void {
+    const currentFieldIndex = this.fields.findIndex((field) => field.active);
+    const currentFieldId = currentFieldIndex >= 0 ? this.fields[currentFieldIndex].id : null;
+    const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
+    const nextFieldIndex =
+      currentFieldIndex < this.fields.length - 1 ? currentFieldIndex + 1 : null;
+    const completedFields = new Set(
+      this.fields.filter((field) => field.completed).map((field) => field.id)
+    );
+    const visitedFields = new Set(
+      this.fields.filter((field) => field.visited).map((field) => field.id)
+    );
+    const totalFields = this.fields.length;
+    const fieldsComplete = completedFields.size;
+    const fieldValidity = this.fields.reduce(
+      (acc, field) => {
+        acc[field.id] = field.isValid;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+
+    const fieldState: FormFieldState = {
+      currentFieldIndex,
+      currentFieldId,
+      previousFieldIndex,
+      nextFieldIndex,
+      completedFields,
+      visitedFields,
+      totalFields,
+      fieldsComplete,
+      fieldValidity,
+    };
+
+    this.form.setStates({ ...fieldState });
   }
 
   // ============================================
@@ -554,39 +604,42 @@ export class FieldManager extends BaseManager implements IFieldManager {
   // ============================================
 
   /**
-   * Find parent hierarchy for a field
-   * Walks up DOM tree to find parent group, set, and card
+   * Find the parent group element for a field
    *
    * @param fieldElement - The field element
-   * @returns Parent hierarchy metadata or null
+   * @returns Parent group metadata or null
    */
-  private findParentHierarchy(fieldElement: HTMLElement): FieldParentHierarchy {
+  private findParentGroup(fieldElement: HTMLElement): GroupElement | null {
     const parentGroupElement = fieldElement.closest(`[${ATTR}-element^="group"]`);
-    if (parentGroupElement) {
-      const { groupManager } = this.form;
-      if (!groupManager) {
-        throw this.createError('Cannot discover fields: group manager is null', 'init', {
-          cause: { manager: 'FieldManager', fieldElement },
-        });
-      }
+    if (!parentGroupElement) return null;
 
-      const parentGroup = groupManager
-        .getGroups()
-        .find((group) => group.element === parentGroupElement);
-
-      if (!parentGroup) {
-        throw this.createError('Cannot discover fields: no parent group found', 'init', {
-          cause: { manager: 'FieldManager', fieldElement },
-        });
-      }
-
-      return {
-        groupId: parentGroup.id,
-        groupIndex: parentGroup.index,
-        ...parentGroup.parentHierarchy,
-      };
+    const { groupManager } = this.form;
+    if (!groupManager) {
+      throw this.createError('Cannot discover fields: group manager is null', 'init', {
+        cause: { manager: 'FieldManager', fieldElement },
+      });
     }
 
+    const parentGroup = groupManager
+      .getGroups()
+      .find((group) => group.element === parentGroupElement);
+
+    if (!parentGroup) {
+      throw this.createError('Cannot discover fields: no parent group found', 'init', {
+        cause: { manager: 'FieldManager', fieldElement },
+      });
+    }
+
+    return parentGroup;
+  }
+
+  /**
+   * Find the parent set element for a field
+   *
+   * @param fieldElement - The field element
+   * @returns Parent set metadata
+   */
+  private findParentSet(fieldElement: HTMLElement): SetElement {
     const parentSetElement = fieldElement.closest(`[${ATTR}-element^="set"]`);
     if (!parentSetElement) {
       throw this.createError('Cannot discover fields: no parent set element found', 'init', {
@@ -608,13 +661,45 @@ export class FieldManager extends BaseManager implements IFieldManager {
       });
     }
 
-    return {
-      groupId: null,
-      groupIndex: null,
-      setId: parentSet.id,
-      setIndex: parentSet.index,
-      ...parentSet.parentHierarchy,
-    };
+    return parentSet;
+  }
+
+  /**
+   * Find parent hierarchy for a field
+   * Walks up DOM tree to find parent group, set, and card
+   *
+   * @param fieldElement - The field element
+   * @returns Parent hierarchy metadata or null
+   */
+  private findParentHierarchy(
+    element: HTMLElement | GroupElement | SetElement
+  ): FieldParentHierarchy {
+    let parent: GroupElement | SetElement | null;
+    let hierarchy: FieldParentHierarchy;
+
+    if (element instanceof HTMLElement) {
+      parent = this.findParentGroup(element) ?? this.findParentSet(element);
+    } else {
+      parent = element;
+    }
+
+    if (parent.type === 'group') {
+      hierarchy = {
+        groupId: parent.id,
+        groupIndex: parent.index,
+        ...parent.parentHierarchy,
+      };
+    } else {
+      hierarchy = {
+        groupId: null,
+        groupIndex: null,
+        setId: parent.id,
+        setIndex: parent.index,
+        ...parent.parentHierarchy,
+      };
+    }
+
+    return hierarchy;
   }
 
   /**

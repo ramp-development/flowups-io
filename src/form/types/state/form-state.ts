@@ -1,12 +1,12 @@
 import type { StateValue } from '$lib/types';
 
 export interface FormCardState {
-  /** Current card index (0-based for internal use) */
+  /** Current card index (0-based for internal use, -1 if no cards active) */
   currentCardIndex: number;
   /** Current card ID (string identifier) */
-  currentCardId: string;
+  currentCardId: string | null;
   /** Current card title */
-  currentCardTitle: string;
+  currentCardTitle: string | null;
   /** Previous card index (for navigation history, null if first) */
   previousCardIndex: number | null;
   /** Next card index (for navigation history, null if last) */
@@ -24,8 +24,8 @@ export interface FormCardState {
 }
 
 export interface FormSetState {
-  /** Current set index (0-based for internal use, null if no sets active) */
-  currentSetIndex: number | null;
+  /** Current set index (0-based for internal use, -1 if no sets active) */
+  currentSetIndex: number;
   /** Current set ID (string identifier, null if no sets active) */
   currentSetId: string | null;
   /** Current set title (null if no sets active) */
@@ -47,8 +47,8 @@ export interface FormSetState {
 }
 
 export interface FormGroupState {
-  /** Current group index (0-based for internal use, null if no groups active) */
-  currentGroupIndex: number | null;
+  /** Current group index (0-based for internal use, -1 if no groups active) */
+  currentGroupIndex: number;
   /** Current group ID (string identifier, null if no groups active) */
   currentGroupId: string | null;
   /** Current group title (null if no groups active) */
@@ -70,8 +70,10 @@ export interface FormGroupState {
 }
 
 export interface FormFieldState {
-  /** Current field index (0-based for internal use, null if no fields active) */
-  currentFieldIndex: number | null;
+  /** Current field index (0-based for internal use, -1 if no fields active) */
+  currentFieldIndex: number;
+  /** Current field ID (string identifier, null if no fields active) */
+  currentFieldId: string | null;
   /** Previous field index (for navigation history, null if first) */
   previousFieldIndex: number | null;
   /** Next field index (for navigation history, null if last) */
@@ -84,12 +86,12 @@ export interface FormFieldState {
   totalFields: number;
   /** Number of fields completed */
   fieldsComplete: number;
-  /** All form field values (key = input name, value = input value) */
-  formData: Record<string, unknown>;
   /** Validity state per field (key = field ID, value = is valid) */
   fieldValidity: Record<string, boolean>;
-  /** Field errors (key = field name, value = error messages array) */
-  fieldErrors: Record<string, string[]>;
+  // /** Field errors (key = field name, value = error messages array) */
+  // fieldErrors: Record<string, string[]>;
+  // /** All form field values (key = input name, value = input value) */
+  // formData: Record<string, unknown>;
 }
 
 /**

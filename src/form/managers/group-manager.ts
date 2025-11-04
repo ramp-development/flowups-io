@@ -6,7 +6,13 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type { FormGroupState, GroupElement, GroupParentHierarchy, IGroupManager } from '../types';
+import type {
+  FormGroupState,
+  GroupElement,
+  GroupParentHierarchy,
+  IGroupManager,
+  SetElement,
+} from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { BaseManager } from './base-manager';
 
@@ -102,7 +108,12 @@ export class GroupManager extends BaseManager implements IGroupManager {
       const titleData = extractTitle(element, 'group', parsed.id, index);
 
       // Find parent hierarchy
-      const parentHierarchy = this.findParentHierarchy(element);
+      const parentSet = this.findParentSet(element);
+      const parentHierarchy = this.findParentHierarchy(parentSet);
+      const behavior = this.form.getBehavior();
+      const active = ['byField', 'byGroup'].includes(behavior)
+        ? parentSet.active && index === 0
+        : parentSet.active;
 
       // Create group element object
       const group: GroupElement = {
@@ -113,7 +124,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
         index,
         visited: false,
         completed: false,
-        active: index === 0,
+        active,
         progress: 0,
         parentHierarchy,
         isValid: false,
@@ -159,8 +170,8 @@ export class GroupManager extends BaseManager implements IGroupManager {
    */
   private setStates(): void {
     const currentGroupIndex = this.groups.findIndex((group) => group.active);
-    const currentGroupId = this.groups[currentGroupIndex].id;
-    const currentGroupTitle = this.groups[currentGroupIndex].title;
+    const currentGroupId = currentGroupIndex >= 0 ? this.groups[currentGroupIndex].id : null;
+    const currentGroupTitle = currentGroupIndex >= 0 ? this.groups[currentGroupIndex].title : null;
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
     const nextGroupIndex =
       currentGroupIndex < this.groups.length - 1 ? currentGroupIndex + 1 : null;
@@ -292,12 +303,13 @@ export class GroupManager extends BaseManager implements IGroupManager {
   // ============================================
 
   /**
-   * Find the parent set and card elements for a group
+   * Find the parent set element for a group
    *
-   * @param groupElement - The group element
-   * @returns Parent hierarchy metadata or null
+   * @param groupElement - The set element
+   * @returns Parent set metadata
    */
-  private findParentHierarchy(groupElement: HTMLElement): GroupParentHierarchy {
+
+  private findParentSet(groupElement: HTMLElement): SetElement {
     // Find the parent set element
     const parentSetElement = groupElement.closest(`[${ATTR}-element^="set"]`);
     if (!parentSetElement) {
@@ -321,6 +333,24 @@ export class GroupManager extends BaseManager implements IGroupManager {
       throw this.createError('Cannot discover groups: no parent set found', 'init', {
         cause: { manager: 'GroupManager', groupElement, parentSet },
       });
+    }
+
+    return parentSet;
+  }
+
+  /**
+   * Find the parent set and card elements for a group
+   *
+   * @param groupElement - The group element
+   * @returns Parent hierarchy metadata or null
+   */
+  private findParentHierarchy(element: HTMLElement | SetElement): GroupParentHierarchy {
+    let parentSet: SetElement;
+
+    if (element instanceof HTMLElement) {
+      parentSet = this.findParentSet(element);
+    } else {
+      parentSet = element;
     }
 
     return {
