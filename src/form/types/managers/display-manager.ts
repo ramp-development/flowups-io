@@ -10,16 +10,4 @@ export interface IDisplayManager extends IBaseManager {
 
   /** Hide an element */
   hideElement(element: HTMLElement): void;
-
-  /** Show elements by field ID */
-  showField(fieldIndex: number): void;
-
-  /** Hide elements by field ID */
-  hideField(fieldIndex: number): void;
-
-  /** Show all fields */
-  showAllFields(): void;
-
-  /** Hide all fields */
-  hideAllFields(): void;
 }

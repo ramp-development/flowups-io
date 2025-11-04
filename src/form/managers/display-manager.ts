@@ -30,12 +30,6 @@ export class DisplayManager implements IDisplayManager {
   /** Reference to parent form component */
   public readonly form: FlowupsForm;
 
-  /** CSS class applied to hidden elements */
-  private readonly hiddenClass = 'is-hidden';
-
-  /** Inline style property for display */
-  private readonly displayProperty = 'display';
-
   // ============================================
   // Constructor
   // ============================================
@@ -190,12 +184,12 @@ export class DisplayManager implements IDisplayManager {
     }
 
     // Hide old field
-    if (previousFieldIndex !== null && previousFieldIndex !== undefined) {
-      this.hideFieldByIndex(previousFieldIndex);
+    if (previousFieldIndex) {
+      this.hideField(previousFieldIndex);
     }
 
     // Show new field
-    this.showFieldByIndex(fieldIndex);
+    this.showField(fieldIndex);
   };
 
   // ============================================
@@ -332,8 +326,7 @@ export class DisplayManager implements IDisplayManager {
    * Removes hidden class and display: none
    */
   public showElement(element: HTMLElement): void {
-    element.classList.remove(this.hiddenClass);
-    element.style.removeProperty(this.displayProperty);
+    element.style.removeProperty('display');
   }
 
   /**
@@ -341,8 +334,7 @@ export class DisplayManager implements IDisplayManager {
    * Adds hidden class and sets display: none
    */
   public hideElement(element: HTMLElement): void {
-    element.classList.add(this.hiddenClass);
-    element.style.setProperty(this.displayProperty, 'none');
+    element.style.setProperty('display', 'none');
   }
 
   // ============================================
@@ -514,7 +506,7 @@ export class DisplayManager implements IDisplayManager {
   /**
    * Show field by ID
    */
-  public showField(fieldIndex: number): void {
+  private showField(fieldIndex: number): void {
     const field = this.form.fieldManager.getFieldByIndex(fieldIndex);
     if (!field) {
       this.form.logWarn(`Cannot show field: field at index "${fieldIndex}" not found`);
@@ -527,33 +519,7 @@ export class DisplayManager implements IDisplayManager {
   /**
    * Hide field by ID
    */
-  public hideField(fieldIndex: number): void {
-    const field = this.form.fieldManager.getFieldByIndex(fieldIndex);
-    if (!field) {
-      this.form.logWarn(`Cannot hide field: field at index "${fieldIndex}" not found`);
-      return;
-    }
-
-    this.hideElement(field.element);
-  }
-
-  /**
-   * Show field by index
-   */
-  private showFieldByIndex(fieldIndex: number): void {
-    const field = this.form.fieldManager.getFieldByIndex(fieldIndex);
-    if (!field) {
-      this.form.logWarn(`Cannot show field: field at index "${fieldIndex}" not found`);
-      return;
-    }
-
-    this.showElement(field.element);
-  }
-
-  /**
-   * Hide field by index
-   */
-  private hideFieldByIndex(fieldIndex: number): void {
+  private hideField(fieldIndex: number): void {
     const field = this.form.fieldManager.getFieldByIndex(fieldIndex);
     if (!field) {
       this.form.logWarn(`Cannot hide field: field at index "${fieldIndex}" not found`);
@@ -566,7 +532,7 @@ export class DisplayManager implements IDisplayManager {
   /**
    * Show all fields
    */
-  public showAllFields(): void {
+  private showAllFields(): void {
     const fields = this.form.fieldManager.getFields();
     fields.forEach((field) => this.showElement(field.element));
 
