@@ -204,6 +204,30 @@ export class SetManager extends BaseManager implements ISetManager {
     this.form.setStates({ ...setState });
   }
 
+  /**
+   * Update metadata values
+   * @param selector - Set ID or index
+   * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
+   */
+  private setMetadata(
+    selector: string | number,
+    metadata: Pick<Partial<SetElement>, 'visited' | 'completed' | 'active' | 'progress' | 'isValid'>
+  ): void {
+    const set =
+      typeof selector === 'string' ? this.getSetById(selector) : this.getSetByIndex(selector);
+    if (!set) return;
+
+    const newData = {
+      ...set,
+      ...metadata,
+    };
+
+    this.setMap.set(set.id, newData);
+    this.sets[set.index] = newData;
+
+    this.setStates();
+  }
+
   // ============================================
   // Access Methods
   // ============================================

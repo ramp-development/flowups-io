@@ -163,6 +163,33 @@ export class CardManager extends BaseManager implements ICardManager {
     this.form.setStates({ ...cardState });
   }
 
+  /**
+   * Update metadata values
+   * @param selector - Card ID or index
+   * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
+   */
+  private setMetadata(
+    selector: string | number,
+    metadata: Pick<
+      Partial<CardElement>,
+      'visited' | 'completed' | 'active' | 'progress' | 'isValid'
+    >
+  ): void {
+    const card =
+      typeof selector === 'string' ? this.getCardById(selector) : this.getCardByIndex(selector);
+    if (!card) return;
+
+    const newData = {
+      ...card,
+      ...metadata,
+    };
+
+    this.cardMap.set(card.id, newData);
+    this.cards[card.index] = newData;
+
+    this.setStates();
+  }
+
   // ============================================
   // Access Methods
   // ============================================

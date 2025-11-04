@@ -207,6 +207,33 @@ export class GroupManager extends BaseManager implements IGroupManager {
     this.form.setStates({ ...groupState });
   }
 
+  /**
+   * Update metadata values
+   * @param selector - Group ID or index
+   * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
+   */
+  private setMetadata(
+    selector: string | number,
+    metadata: Pick<
+      Partial<GroupElement>,
+      'visited' | 'completed' | 'active' | 'progress' | 'isValid'
+    >
+  ): void {
+    const group =
+      typeof selector === 'string' ? this.getGroupById(selector) : this.getGroupByIndex(selector);
+    if (!group) return;
+
+    const newData = {
+      ...group,
+      ...metadata,
+    };
+
+    this.groupMap.set(group.id, newData);
+    this.groups[group.index] = newData;
+
+    this.setStates();
+  }
+
   // ============================================
   // Access Methods
   // ============================================
