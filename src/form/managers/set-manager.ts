@@ -7,7 +7,7 @@
 
 import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
-import type { ISetManager, SetElement } from '../types';
+import type { FormSetState, ISetManager, SetElement } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 
 /**
@@ -49,6 +49,7 @@ export class SetManager implements ISetManager {
    */
   public init(): void {
     this.discoverSets();
+    this.setStates();
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('SetManager initialized', {
@@ -125,13 +126,12 @@ export class SetManager implements ISetManager {
         id: titleData.id,
         title: titleData.title,
         index,
-        cardId: parentCard?.id || '',
-        cardIndex: parentCard?.index ?? -1,
         visited: false,
         completed: false,
-        active: false,
-        groups: [], // Will be populated by GroupManager
-        fields: [], // Will be populated by FieldManager
+        active: index === 0,
+        progress: 0,
+        cardId: parentCard?.id || null,
+        cardIndex: parentCard?.index ?? null,
         isValid: false,
       };
 
@@ -161,6 +161,50 @@ export class SetManager implements ISetManager {
     const index = this.sets.findIndex((s) => s.element === setElement);
     const titleData = extractTitle(setElement, 'set', undefined, index);
     return titleData.title;
+  }
+
+  // ============================================
+  // State Management
+  // ============================================
+
+  /**
+   * Set the form states for sets
+   * Subscribers only notified if the states have changed
+   */
+  private setStates(): void {
+    const currentSetIndex = this.sets.findIndex((set) => set.active);
+    const currentSetId = this.sets[currentSetIndex].id;
+    const currentSetTitle = this.sets[currentSetIndex].title;
+    const previousSetIndex = currentSetIndex > 0 ? currentSetIndex - 1 : null;
+    const nextSetIndex = currentSetIndex < this.sets.length - 1 ? currentSetIndex + 1 : null;
+    const completedSets = new Set(this.sets.filter((set) => set.completed).map((set) => set.id));
+    const visitedSets = new Set(this.sets.filter((set) => set.visited).map((set) => set.id));
+    const totalSets = this.sets.length;
+    const setsComplete = completedSets.size;
+    const setProgress = this.sets[currentSetIndex].progress;
+    const setValidity = this.sets.reduce(
+      (acc, set) => {
+        acc[set.id] = set.isValid;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+
+    const setState: FormSetState = {
+      currentSetIndex,
+      currentSetId,
+      currentSetTitle,
+      previousSetIndex,
+      nextSetIndex,
+      completedSets,
+      visitedSets,
+      totalSets,
+      setsComplete,
+      setProgress,
+      setValidity,
+    };
+
+    this.form.setStates({ ...setState });
   }
 
   // ============================================
