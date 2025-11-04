@@ -37,13 +37,6 @@ export class CardManager extends BaseManager implements ICardManager {
    */
   public init(): void {
     this.discoverCards();
-    if (this.cards.length === 0) {
-      this.logDebug('CardManager initialized', {
-        totalCards: this.cards.length,
-        cards: this.cards.map((c) => ({ id: c.id, title: c.title, index: c.index })),
-      });
-    }
-
     this.setStates();
 
     this.logDebug('CardManager initialized', {
