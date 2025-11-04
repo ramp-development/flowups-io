@@ -1,6 +1,4 @@
 import type { BaseElement } from './base-element';
-import type { FieldElement } from './field-element';
-import type { GroupElement } from './group-element';
 
 /**
  * Set Element
@@ -14,16 +12,10 @@ export interface SetElement extends BaseElement {
   progress: number;
 
   /** Parent card ID */
-  cardId: string;
+  cardId: string | null;
 
   /** Parent card index */
-  cardIndex: number;
-
-  /** Groups contained within this set (optional) */
-  groups: GroupElement[];
-
-  /** Fields contained directly in this set (if no groups) */
-  fields: FieldElement[];
+  cardIndex: number | null;
 
   /** Whether this set is valid */
   isValid: boolean;
