@@ -308,26 +308,27 @@ export class SetManager implements ISetManager {
    * @returns Parent card metadata or null
    */
   private findParentCard(setElement: HTMLElement): { id: string; index: number } | null {
-    // Walk up the DOM tree to find parent card
-    let current = setElement.parentElement;
-
-    while (current && current !== this.form.getRootElement()) {
-      const elementAttr = current.getAttribute(`${ATTR}-element`);
-      if (elementAttr?.startsWith('card')) {
-        // Found a card parent - get its metadata from CardManager
-        const { cardManager } = this.form;
-        if (cardManager) {
-          const cards = cardManager.getCards();
-          const card = cards.find((c) => c.element === current);
-          if (card) {
-            return { id: card.id, index: card.index };
-          }
-        }
-        break;
-      }
-      current = current.parentElement;
+    const parentCardElement = setElement.closest(`[${ATTR}-element^="card"]`);
+    if (!parentCardElement) {
+      throw this.form.createError('Cannot find parent card: no parent card element found', 'init', {
+        cause: { manager: 'SetManager', setElement },
+      });
     }
 
-    return null;
+    const { cardManager } = this.form;
+    if (!cardManager) {
+      throw this.form.createError('Cannot find parent card: card manager is null', 'init', {
+        cause: { manager: 'SetManager', setElement, cardManager },
+      });
+    }
+
+    const parentCard = cardManager.getCards().find((card) => card.element === parentCardElement);
+    if (!parentCard) {
+      throw this.form.createError('Cannot find parent card: no parent card found', 'init', {
+        cause: { manager: 'SetManager', setElement, parentCardElement },
+      });
+    }
+
+    return { id: parentCard.id, index: parentCard.index };
   }
 }
