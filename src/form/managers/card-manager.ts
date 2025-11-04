@@ -170,17 +170,23 @@ export class CardManager extends BaseManager implements ICardManager {
    */
   private setMetadata(
     selector: string | number,
-    metadata: Pick<
-      Partial<CardElement>,
-      'visited' | 'completed' | 'active' | 'progress' | 'isValid'
-    >
+    metadata: Pick<Partial<CardElement>, 'active'>
   ): void {
     const card =
       typeof selector === 'string' ? this.getCardById(selector) : this.getCardByIndex(selector);
     if (!card) return;
 
+    const sets = this.form.setManager.getSetsByCardId(card.id);
+    const completed = sets.every((set) => set.completed);
+    const isValid = sets.every((set) => set.isValid);
+    const progress = sets.reduce((acc, set) => acc + set.progress, 0) / sets.length;
+
     const newData = {
       ...card,
+      visited: true,
+      completed,
+      isValid,
+      progress,
       ...metadata,
     };
 

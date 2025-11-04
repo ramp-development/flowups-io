@@ -217,8 +217,23 @@ export class SetManager extends BaseManager implements ISetManager {
       typeof selector === 'string' ? this.getSetById(selector) : this.getSetByIndex(selector);
     if (!set) return;
 
+    const groups = this.form.groupManager.getGroupsBySetId(set.id);
+    const fields = this.form.fieldManager
+      .getFieldsBySetId(set.id)
+      .filter((field) => field.isIncluded);
+
+    const use = groups.length > 0 ? groups : fields;
+
+    const completed = use.every((item) => item.completed);
+    const isValid = use.every((item) => item.isValid);
+    const progress = use.filter((item) => item.completed).length / use.length;
+
     const newData = {
       ...set,
+      visited: true,
+      completed,
+      isValid,
+      progress,
       ...metadata,
     };
 

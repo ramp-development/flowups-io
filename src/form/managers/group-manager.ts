@@ -214,17 +214,27 @@ export class GroupManager extends BaseManager implements IGroupManager {
    */
   private setMetadata(
     selector: string | number,
-    metadata: Pick<
-      Partial<GroupElement>,
-      'visited' | 'completed' | 'active' | 'progress' | 'isValid'
-    >
+    metadata: Pick<Partial<GroupElement>, 'active'>
   ): void {
     const group =
       typeof selector === 'string' ? this.getGroupById(selector) : this.getGroupByIndex(selector);
     if (!group) return;
 
+    const includedFields = this.form.fieldManager
+      .getFieldsByGroupId(group.id)
+      .filter((field) => field.isIncluded);
+
+    const completed = includedFields.every((field) => field.completed);
+    const isValid = includedFields.every((field) => field.isValid);
+    const progress =
+      includedFields.filter((field) => field.completed).length / includedFields.length;
+
     const newData = {
       ...group,
+      visited: true,
+      completed,
+      isValid,
+      progress,
       ...metadata,
     };
 
@@ -383,8 +393,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
     return {
       setId: parentSet.id,
       setIndex: parentSet.index,
-      cardId: parentSet.parentHierarchy?.cardId || null,
-      cardIndex: parentSet.parentHierarchy?.cardIndex || null,
+      ...parentSet.parentHierarchy,
     };
   }
 }
