@@ -9,6 +9,9 @@ export interface GroupElement extends BaseElement {
   /** Type identifier */
   type: 'group';
 
+  /** Progress of the group (0-100) */
+  progress: number;
+
   /** Parent set ID */
   setId: string;
 

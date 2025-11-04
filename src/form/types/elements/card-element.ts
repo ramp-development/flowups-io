@@ -9,6 +9,9 @@ export interface CardElement extends BaseElement {
   /** Type identifier */
   type: 'card';
 
+  /** Progress of the card (0-100) */
+  progress: number;
+
   /** Sets contained within this card */
   sets: SetElement[];
 }
