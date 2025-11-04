@@ -10,6 +10,7 @@ export * from './animation-manager';
 export * from './base-manager';
 export * from './card-manager';
 export * from './condition-manager';
+export * from './display-manager';
 export * from './error-manager';
 export * from './field-manager';
 export * from './group-manager';
