@@ -7,13 +7,7 @@
  * Will be replaced/enhanced by AnimationManager in future phases.
  */
 
-import type {
-  CardChangingEvent,
-  FieldChangedEvent,
-  GroupChangingEvent,
-  IDisplayManager,
-  SetChangingEvent,
-} from '../types';
+import type { IDisplayManager } from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -34,18 +28,14 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
     this.setupEventListeners();
     this.initializeVisibility();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('DisplayManager initialized');
-    }
+    this.logDebug('DisplayManager initialized');
   }
 
   /**
    * Cleanup manager resources
    */
   public destroy(): void {
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('DisplayManager destroyed');
-    }
+    this.logDebug('DisplayManager destroyed');
   }
 
   // ============================================
@@ -57,32 +47,10 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private setupEventListeners(): void {
     this.form.subscribe('state:changed', (payload) => {
-      console.log('state changed', payload);
+      this.logDebug('state changed', payload);
     });
 
-    const behavior = this.form.getBehavior();
-
-    switch (behavior) {
-      case 'byField':
-        this.form.subscribe('form:field:changed', this.handleFieldChanged);
-        break;
-
-      // case 'byGroup':
-      //   this.form.subscribe('form:group:changed', this.handleGroupChanged);
-      //   break;
-
-      // case 'bySet':
-      //   this.form.subscribe('form:set:changed', this.handleSetChanged);
-      //   break;
-
-      // case 'byCard':
-      //   this.form.subscribe('form:card:changed', this.handleCardChanged);
-      //   break;
-    }
-
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('DisplayManager event listeners setup', { behavior });
-    }
+    this.logDebug('DisplayManager event listeners setup');
   }
 
   // ============================================
@@ -195,44 +163,40 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   }
 
   /**
-   * Initialize card visibility (show first, hide others)
+   * Handle card visibility based on form state
    */
   private handleCardVisibility(): void {
     const cards = this.form.cardManager.getCards();
-
     cards.forEach((card) => this.showElement(card.element, card.active));
 
     this.logDebug('Initialized card visibility', { totalCards: cards.length });
   }
 
   /**
-   * Handle set visibility (show first, hide others)
+   * Handle set visibility based on form state
    */
   private handleSetVisibility(): void {
     const sets = this.form.setManager.getSets();
-
     sets.forEach((set) => this.showElement(set.element, set.active));
 
     this.logDebug('Initialized set visibility', { totalSets: sets.length });
   }
 
   /**
-   * Handle group visibility (show first, hide others)
+   * Handle group visibility based on form state
    */
   private handleGroupVisibility(): void {
     const groups = this.form.groupManager.getGroups();
-
     groups.forEach((group) => this.showElement(group.element, group.active));
 
     this.logDebug('Initialized group visibility', { totalGroups: groups.length });
   }
 
   /**
-   * Handle field visibility (show first, hide others)
+   * Handle field visibility based on form state
    */
   private handleFieldVisibility(): void {
     const fields = this.form.fieldManager.getFields();
-
     fields.forEach((field) => this.showElement(field.element, field.active));
 
     this.logDebug('Initialized field visibility', { totalFields: fields.length });
