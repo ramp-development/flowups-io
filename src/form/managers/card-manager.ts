@@ -7,7 +7,7 @@
 
 import type { FlowupsForm } from '..';
 import { ATTR } from '../constants';
-import type { CardElement, ICardManager } from '../types';
+import type { CardElement, FormCardState, ICardManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 
 /**
@@ -136,6 +136,10 @@ export class CardManager implements ICardManager {
     }
   }
 
+  // ============================================
+  // State Management
+  // ============================================
+
   /**
    * Set the form states for cards
    * Subscribers only notified if the states have changed
@@ -143,6 +147,7 @@ export class CardManager implements ICardManager {
   private setStates(): void {
     const currentCardIndex = this.cards.findIndex((card) => card.active);
     const currentCardId = this.cards[currentCardIndex].id;
+    const currentCardTitle = this.cards[currentCardIndex].title;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
     const nextCardIndex = currentCardIndex < this.cards.length - 1 ? currentCardIndex + 1 : null;
     const completedCards = new Set(
@@ -152,11 +157,11 @@ export class CardManager implements ICardManager {
     const totalCards = this.cards.length;
     const cardsComplete = completedCards.size;
     const cardProgress = this.cards[currentCardIndex].progress;
-    const currentCardTitle = this.cards[currentCardIndex].title;
 
-    this.form.setStates({
+    const cardState: FormCardState = {
       currentCardIndex,
       currentCardId,
+      currentCardTitle,
       previousCardIndex,
       nextCardIndex,
       completedCards,
@@ -164,8 +169,9 @@ export class CardManager implements ICardManager {
       totalCards,
       cardsComplete,
       cardProgress,
-      currentCardTitle,
-    });
+    };
+
+    this.form.setStates({ ...cardState });
   }
 
   // ============================================
