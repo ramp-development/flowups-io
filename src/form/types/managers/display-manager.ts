@@ -6,8 +6,5 @@ import type { IBaseManager } from './base-manager';
  */
 export interface IDisplayManager extends IBaseManager {
   /** Show an element */
-  showElement(element: HTMLElement): void;
-
-  /** Hide an element */
-  hideElement(element: HTMLElement): void;
+  showElement(element: HTMLElement, visible: boolean): void;
 }
