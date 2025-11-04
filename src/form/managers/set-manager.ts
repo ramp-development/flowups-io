@@ -211,7 +211,7 @@ export class SetManager extends BaseManager implements ISetManager {
    */
   private setMetadata(
     selector: string | number,
-    metadata: Pick<Partial<SetElement>, 'visited' | 'completed' | 'active' | 'progress' | 'isValid'>
+    metadata: Pick<Partial<SetElement>, 'active'>
   ): void {
     const set =
       typeof selector === 'string' ? this.getSetById(selector) : this.getSetByIndex(selector);
