@@ -110,7 +110,7 @@ export class CardManager extends BaseManager implements ICardManager {
         index,
         visited: false,
         completed: false,
-        active: false,
+        active: index === 0,
         progress: 0,
         isValid: false,
       };
