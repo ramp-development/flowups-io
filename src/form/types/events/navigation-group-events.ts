@@ -6,14 +6,13 @@ export interface GroupChangingEvent {
   toIndex: number;
   fromId: string;
   toId: string;
+  direction: 'forward' | 'backward';
 }
 
 export interface GroupChangedEvent {
   groupIndex: number;
   groupId: string;
   groupTitle: string;
-  setIndex: number;
-  setId: string;
 }
 
 export interface GroupCompleteEvent {

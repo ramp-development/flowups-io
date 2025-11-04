@@ -6,6 +6,7 @@ export interface CardChangingEvent {
   toIndex: number;
   fromId: string;
   toId: string;
+  direction: 'forward' | 'backward';
 }
 
 export interface CardChangedEvent {

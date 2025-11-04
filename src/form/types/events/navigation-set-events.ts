@@ -6,14 +6,13 @@ export interface SetChangingEvent {
   toIndex: number;
   fromId: string;
   toId: string;
+  direction: 'forward' | 'backward';
 }
 
 export interface SetChangedEvent {
   setIndex: number;
   setId: string;
   setTitle: string;
-  cardIndex: number;
-  cardId: string;
 }
 
 export interface SetCompleteEvent {
