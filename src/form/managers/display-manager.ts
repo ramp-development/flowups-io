@@ -26,7 +26,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   public init(): void {
     this.setupEventListeners();
-    this.initializeVisibility();
+    this.handleVisibility();
 
     this.logDebug('DisplayManager initialized');
   }
@@ -48,6 +48,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   private setupEventListeners(): void {
     this.form.subscribe('state:changed', (payload) => {
       this.logDebug('state changed', payload);
+      this.handleVisibility();
     });
 
     this.logDebug('DisplayManager event listeners setup');
@@ -155,11 +156,11 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Initialize visibility based on behavior mode
    * Shows first item of appropriate level, hides all others
    */
-  private initializeVisibility(): void {
-    this.handleFieldVisibility();
-    this.handleGroupVisibility();
-    this.handleSetVisibility();
+  private handleVisibility(): void {
     this.handleCardVisibility();
+    this.handleSetVisibility();
+    this.handleGroupVisibility();
+    this.handleFieldVisibility();
   }
 
   /**
