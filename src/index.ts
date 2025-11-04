@@ -1,6 +1,5 @@
 import { FlowupsForm } from './form';
 import { ATTR } from './form/constants';
-import { FORM_INTIAL_STATE } from './form/form-intial-state';
 
 window.Webflow ||= [];
 window.Webflow.push(() => {
@@ -15,6 +14,5 @@ window.Webflow.push(() => {
     debug: true,
     autoInit: false,
     selector: form,
-    state: FORM_INTIAL_STATE,
   });
 });
