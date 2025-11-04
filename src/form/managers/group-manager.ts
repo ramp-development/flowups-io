@@ -110,10 +110,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
       // Find parent hierarchy
       const parentSet = this.findParentSet(element);
       const parentHierarchy = this.findParentHierarchy(parentSet);
-      const behavior = this.form.getBehavior();
-      const active = ['byField', 'byGroup'].includes(behavior)
-        ? parentSet.active && index === 0
-        : parentSet.active;
+      const active = this.determineActive(element, index);
 
       // Create group element object
       const group: GroupElement = {
@@ -122,7 +119,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
         id: titleData.id,
         title: titleData.title,
         index,
-        visited: false,
+        visited: active,
         completed: false,
         active,
         progress: 0,
@@ -212,10 +209,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
    * @param selector - Group ID or index
    * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
    */
-  private setMetadata(
-    selector: string | number,
-    metadata: Pick<Partial<GroupElement>, 'active'>
-  ): void {
+  private setMetadata(selector: string | number): void {
     const group =
       typeof selector === 'string' ? this.getGroupById(selector) : this.getGroupByIndex(selector);
     if (!group) return;
@@ -233,15 +227,29 @@ export class GroupManager extends BaseManager implements IGroupManager {
       ...group,
       visited: true,
       completed,
+      active: this.determineActive(group.element, group.index),
       isValid,
       progress,
-      ...metadata,
     };
 
     this.groupMap.set(group.id, newData);
     this.groups[group.index] = newData;
 
     this.setStates();
+  }
+
+  /**
+   * Determine the active state of a group
+   * @param element - Group element
+   * @param index - Group index
+   * @returns Active state
+   */
+  private determineActive(element: HTMLElement, index: number): boolean {
+    const parentSet = this.findParentSet(element);
+    const behavior = this.form.getBehavior();
+    return ['byField', 'byGroup'].includes(behavior)
+      ? parentSet.active && index === 0
+      : parentSet.active;
   }
 
   // ============================================

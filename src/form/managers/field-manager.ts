@@ -125,8 +125,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
       // Find parent hierarchy
       const parent = this.findParentGroup(element) ?? this.findParentSet(element);
       const parentHierarchy = this.findParentHierarchy(parent);
-      const behavior = this.form.getBehavior();
-      const active = behavior === 'byField' ? parent.active && index === 0 : parent.active;
+      const active = this.determineActive(element, index);
 
       // Create field element object
       const field: FieldElement = {
@@ -135,7 +134,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
         id: fieldId,
         title: fieldTitle,
         index,
-        visited: false,
+        visited: active,
         completed: false,
         active,
         parentHierarchy,
@@ -224,10 +223,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   private setMetadata(
     selector: string | number,
-    metadata: Pick<
-      Partial<FieldElement>,
-      'visited' | 'completed' | 'active' | 'isIncluded' | 'isValid' | 'errors'
-    >
+    metadata: Pick<Partial<FieldElement>, 'isIncluded' | 'errors'> = {}
   ): void {
     const field =
       typeof selector === 'string' ? this.getFieldById(selector) : this.getFieldByIndex(selector);
@@ -242,6 +238,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
       ...field,
       visited: true,
       completed,
+      active: this.determineActive(field.element, field.index),
       isValid,
       ...metadata,
     };
@@ -250,6 +247,18 @@ export class FieldManager extends BaseManager implements IFieldManager {
     this.fields[field.index] = newData;
 
     this.setStates();
+  }
+
+  /**
+   * Determine the active state of a field
+   * @param element - Field element
+   * @param index - Field index
+   * @returns Active state
+   */
+  private determineActive(element: HTMLElement, index: number): boolean {
+    const parent = this.findParentGroup(element) ?? this.findParentSet(element);
+    const behavior = this.form.getBehavior();
+    return ['byField'].includes(behavior) ? parent.active && index === 0 : parent.active;
   }
 
   // ============================================

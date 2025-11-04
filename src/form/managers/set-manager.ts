@@ -109,13 +109,7 @@ export class SetManager extends BaseManager implements ISetManager {
 
       // Find parent card (if cards exist)
       const parentHierarchy = this.findParentHierarchy(element);
-      const parentCard = this.findParentCard(element);
-      const behavior = this.form.getBehavior();
-      const active = parentCard
-        ? ['byField', 'byGroup', 'bySet'].includes(behavior)
-          ? parentCard.active && index === 0
-          : parentCard.active
-        : index === 0;
+      const active = this.determineActive(element, index);
 
       // Create set element object
       const set: SetElement = {
@@ -124,7 +118,7 @@ export class SetManager extends BaseManager implements ISetManager {
         id: titleData.id,
         title: titleData.title,
         index,
-        visited: false,
+        visited: active,
         completed: false,
         active,
         progress: 0,
@@ -209,10 +203,7 @@ export class SetManager extends BaseManager implements ISetManager {
    * @param selector - Set ID or index
    * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
    */
-  private setMetadata(
-    selector: string | number,
-    metadata: Pick<Partial<SetElement>, 'active'>
-  ): void {
+  private setMetadata(selector: string | number): void {
     const set =
       typeof selector === 'string' ? this.getSetById(selector) : this.getSetByIndex(selector);
     if (!set) return;
@@ -232,15 +223,31 @@ export class SetManager extends BaseManager implements ISetManager {
       ...set,
       visited: true,
       completed,
+      active: this.determineActive(set.element, set.index),
       isValid,
       progress,
-      ...metadata,
     };
 
     this.setMap.set(set.id, newData);
     this.sets[set.index] = newData;
 
     this.setStates();
+  }
+
+  /**
+   * Determine the active state of a group
+   * @param element - Set element
+   * @param index - Set index
+   * @returns Active state
+   */
+  private determineActive(element: HTMLElement, index: number): boolean {
+    const parentCard = this.findParentCard(element);
+    const behavior = this.form.getBehavior();
+    return parentCard
+      ? ['byField', 'byGroup', 'bySet'].includes(behavior)
+        ? parentCard.active && index === 0
+        : parentCard.active
+      : index === 0;
   }
 
   // ============================================

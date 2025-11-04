@@ -94,6 +94,9 @@ export class CardManager extends BaseManager implements ICardManager {
       // Extract title with priority resolution
       const titleData = extractTitle(element, 'card', parsed.id, index);
 
+      // Check if the card has any sets
+      const hasSets = !!element.querySelector(`[${ATTR}-element^="set"]`);
+
       // Create card element object
       const card: CardElement = {
         element,
@@ -101,11 +104,11 @@ export class CardManager extends BaseManager implements ICardManager {
         id: titleData.id,
         title: titleData.title,
         index,
-        visited: false,
-        completed: false,
+        visited: index === 0,
+        completed: !hasSets,
         active: index === 0,
-        progress: 0,
-        isValid: false,
+        progress: hasSets ? 0 : 100,
+        isValid: !hasSets,
       };
 
       // Store in array and map
@@ -170,16 +173,17 @@ export class CardManager extends BaseManager implements ICardManager {
    */
   private setMetadata(
     selector: string | number,
-    metadata: Pick<Partial<CardElement>, 'active'>
+    metadata: Pick<Partial<CardElement>, 'active'> = {}
   ): void {
     const card =
       typeof selector === 'string' ? this.getCardById(selector) : this.getCardByIndex(selector);
     if (!card) return;
 
     const sets = this.form.setManager.getSetsByCardId(card.id);
-    const completed = sets.every((set) => set.completed);
-    const isValid = sets.every((set) => set.isValid);
-    const progress = sets.reduce((acc, set) => acc + set.progress, 0) / sets.length;
+    const completed = sets.length > 0 ? sets.every((set) => set.completed) : true;
+    const isValid = sets.length > 0 ? sets.every((set) => set.isValid) : true;
+    const progress =
+      sets.length > 0 ? sets.reduce((acc, set) => acc + set.progress, 0) / sets.length : 100;
 
     const newData = {
       ...card,
