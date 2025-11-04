@@ -140,7 +140,7 @@ export abstract class StatefulComponent<
   /**
    * Batch update multiple state values
    */
-  protected setStates(
+  public setStates(
     updates: Partial<TState>,
     options: { silent?: boolean; persist?: boolean } = {}
   ): void {
