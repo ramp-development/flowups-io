@@ -279,11 +279,13 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.groupManager.init();
     this.fieldManager.init();
     this.inputManager.init();
+    this.displayManager.init();
     this.navigationManager.init();
-    this.displayManager.init(); // Must init after fieldManager
 
     if (this.config.debug) {
-      this.logDebug(`Form initialized`);
+      this.logDebug(`Form initialized`, {
+        state: this.getAllState(),
+      });
     }
   }
 
