@@ -180,9 +180,9 @@ export class SetManager implements ISetManager {
    * @param index - Zero-based set index
    * @returns Set element or null if not found
    */
-  public getSetByIndex(index: number): HTMLElement | null {
+  public getSetByIndex(index: number): SetElement | null {
     const set = this.sets[index];
-    return set?.element || null;
+    return set || null;
   }
 
   /**
@@ -191,9 +191,9 @@ export class SetManager implements ISetManager {
    * @param id - Set ID
    * @returns Set element or null if not found
    */
-  public getSetById(id: string): HTMLElement | null {
+  public getSetById(id: string): SetElement | null {
     const set = this.setMap.get(id);
-    return set?.element || null;
+    return set || null;
   }
 
   /**
@@ -201,9 +201,9 @@ export class SetManager implements ISetManager {
    *
    * @returns Current set element or null
    */
-  public getCurrentSet(): HTMLElement | null {
+  public getCurrentSet(): SetElement | null {
     const currentSetIndex = this.form.getState('currentSetIndex');
-    return this.getSetByIndex(currentSetIndex);
+    return this.getSetByIndex(currentSetIndex) || null;
   }
 
   // ============================================

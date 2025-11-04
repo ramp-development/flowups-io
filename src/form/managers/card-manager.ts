@@ -6,7 +6,7 @@
  */
 
 import type { FlowupsForm } from '..';
-import { ATTR } from '../constants/attr';
+import { ATTR } from '../constants';
 import type { CardElement, ICardManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 
@@ -129,7 +129,7 @@ export class CardManager implements ICardManager {
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('Cards discovered', {
         count: this.cards.length,
-        cards: this.cards.map((c) => ({ id: c.id, title: c.title })),
+        cards: this.cards,
       });
     }
   }
@@ -151,9 +151,9 @@ export class CardManager implements ICardManager {
    * @param index - Zero-based card index
    * @returns Card element or null if not found
    */
-  public getCardByIndex(index: number): HTMLElement | null {
+  public getCardByIndex(index: number): CardElement | null {
     const card = this.cards[index];
-    return card?.element || null;
+    return card || null;
   }
 
   /**
@@ -162,9 +162,9 @@ export class CardManager implements ICardManager {
    * @param id - Card ID
    * @returns Card element or null if not found
    */
-  public getCardById(id: string): HTMLElement | null {
+  public getCardById(id: string): CardElement | null {
     const card = this.cardMap.get(id);
-    return card?.element || null;
+    return card || null;
   }
 
   /**
@@ -172,9 +172,9 @@ export class CardManager implements ICardManager {
    *
    * @returns Current card element or null
    */
-  public getCurrentCard(): HTMLElement | null {
+  public getCurrentCard(): CardElement | null {
     const currentCardIndex = this.form.getState('currentCardIndex');
-    return this.getCardByIndex(currentCardIndex);
+    return this.getCardByIndex(currentCardIndex) || null;
   }
 
   // ============================================

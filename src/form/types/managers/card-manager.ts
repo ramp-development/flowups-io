@@ -1,3 +1,4 @@
+import type { CardElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -12,11 +13,11 @@ export interface ICardManager extends IBaseManager {
   getTotalCards(): number;
 
   /** Get card by index */
-  getCardByIndex(index: number): HTMLElement | null;
+  getCardByIndex(index: number): CardElement | null;
 
   /** Get card by ID */
-  getCardById(id: string): HTMLElement | null;
+  getCardById(id: string): CardElement | null;
 
   /** Get current card */
-  getCurrentCard(): HTMLElement | null;
+  getCurrentCard(): CardElement | null;
 }

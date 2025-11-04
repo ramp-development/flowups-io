@@ -180,9 +180,9 @@ export class GroupManager implements IGroupManager {
    * @param index - Zero-based group index
    * @returns Group element or null if not found
    */
-  public getGroupByIndex(index: number): HTMLElement | null {
+  public getGroupByIndex(index: number): GroupElement | null {
     const group = this.groups[index];
-    return group?.element || null;
+    return group || null;
   }
 
   /**
@@ -191,9 +191,9 @@ export class GroupManager implements IGroupManager {
    * @param id - Group ID
    * @returns Group element or null if not found
    */
-  public getGroupById(id: string): HTMLElement | null {
+  public getGroupById(id: string): GroupElement | null {
     const group = this.groupMap.get(id);
-    return group?.element || null;
+    return group || null;
   }
 
   /**
@@ -201,9 +201,9 @@ export class GroupManager implements IGroupManager {
    *
    * @returns Current group element or null
    */
-  public getCurrentGroup(): HTMLElement | null {
+  public getCurrentGroup(): GroupElement | null {
     const currentGroupIndex = this.form.getState('currentGroupIndex');
-    return this.getGroupByIndex(currentGroupIndex);
+    return this.getGroupByIndex(currentGroupIndex) || null;
   }
 
   // ============================================

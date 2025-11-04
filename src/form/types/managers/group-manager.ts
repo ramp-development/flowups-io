@@ -1,3 +1,4 @@
+import type { GroupElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -15,11 +16,11 @@ export interface IGroupManager extends IBaseManager {
   getTotalGroups(): number;
 
   /** Get group by index */
-  getGroupByIndex(index: number): HTMLElement | null;
+  getGroupByIndex(index: number): GroupElement | null;
 
   /** Get group by ID */
-  getGroupById(id: string): HTMLElement | null;
+  getGroupById(id: string): GroupElement | null;
 
   /** Get current group */
-  getCurrentGroup(): HTMLElement | null;
+  getCurrentGroup(): GroupElement | null;
 }

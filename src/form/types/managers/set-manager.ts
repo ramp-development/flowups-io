@@ -1,3 +1,4 @@
+import type { SetElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -15,11 +16,11 @@ export interface ISetManager extends IBaseManager {
   getTotalSets(): number;
 
   /** Get set by index */
-  getSetByIndex(index: number): HTMLElement | null;
+  getSetByIndex(index: number): SetElement | null;
 
   /** Get set by ID */
-  getSetById(id: string): HTMLElement | null;
+  getSetById(id: string): SetElement | null;
 
   /** Get current set */
-  getCurrentSet(): HTMLElement | null;
+  getCurrentSet(): SetElement | null;
 }
