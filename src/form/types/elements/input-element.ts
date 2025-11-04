@@ -1,4 +1,10 @@
 import type { BaseElement } from './base-element';
+import type { FieldParentHierarchy } from './field-element';
+
+export interface InputParentHierarchy extends FieldParentHierarchy {
+  fieldId: string;
+  fieldIndex: number;
+}
 
 /**
  * Input Element
@@ -8,7 +14,7 @@ import type { BaseElement } from './base-element';
  * with the same name attribute. This allows proper value extraction and event binding.
  * The `element` property (from BaseElement) points to the first input element.
  */
-export interface InputElement extends Omit<BaseElement, 'element'> {
+export interface InputElement extends BaseElement {
   /**
    * The primary input element (reference to inputElements[0])
    * Convenience property for quick access to the first/only element
@@ -23,10 +29,7 @@ export interface InputElement extends Omit<BaseElement, 'element'> {
    * - Radio group: [radio1, radio2, radio3] (length > 1)
    * - Checkbox group: [cb1, cb2, cb3] (length > 1)
    */
-  inputElements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[];
-
-  /** Type identifier */
-  type: 'input';
+  inputs: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[];
 
   /**
    * Input type (from the first element's type attribute)
@@ -34,8 +37,11 @@ export interface InputElement extends Omit<BaseElement, 'element'> {
    */
   inputType: string;
 
-  /** Parent field ID */
-  fieldId: string;
+  /** Value of the input */
+  value: unknown;
+
+  /** Parent hierarchy */
+  parentHierarchy: InputParentHierarchy;
 
   /** Input name attribute (for formData) */
   name: string;

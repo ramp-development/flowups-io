@@ -90,8 +90,11 @@ export interface FormFieldState {
   fieldValidity: Record<string, boolean>;
   // /** Field errors (key = field name, value = error messages array) */
   // fieldErrors: Record<string, string[]>;
-  // /** All form field values (key = input name, value = input value) */
-  // formData: Record<string, unknown>;
+}
+
+export interface FormInputState {
+  /** All form field values (key = input name, value = input value) */
+  formData: Record<string, unknown>;
 }
 
 /**
