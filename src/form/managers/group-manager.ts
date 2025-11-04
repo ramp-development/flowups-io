@@ -7,7 +7,7 @@
 
 import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
-import type { GroupElement, IGroupManager } from '../types';
+import type { FormGroupState, GroupElement, IGroupManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 
 /**
@@ -58,7 +58,6 @@ export class GroupManager implements IGroupManager {
           title: g.title,
           index: g.index,
           setId: g.setId,
-          cardId: g.cardId,
         })),
       });
     }
@@ -116,7 +115,7 @@ export class GroupManager implements IGroupManager {
       // Extract title with priority resolution
       const titleData = extractTitle(element, 'group', parsed.id, index);
 
-      // Find parent set and card (if they exist)
+      // Find parent hierarchy
       const parentHierarchy = this.findParentHierarchy(element);
 
       // Create group element object
@@ -126,13 +125,13 @@ export class GroupManager implements IGroupManager {
         id: titleData.id,
         title: titleData.title,
         index,
-        setId: parentHierarchy?.setId || '',
-        setIndex: parentHierarchy?.setIndex ?? -1,
-        cardId: parentHierarchy?.cardId || '',
         visited: false,
         completed: false,
         active: false,
-        fields: [], // Will be populated by FieldManager
+        progress: 0,
+        isValid: false,
+        setId: parentHierarchy.setId,
+        setIndex: parentHierarchy.setIndex,
       };
 
       // Store in array and map
@@ -161,6 +160,55 @@ export class GroupManager implements IGroupManager {
     const index = this.groups.findIndex((g) => g.element === groupElement);
     const titleData = extractTitle(groupElement, 'group', undefined, index);
     return titleData.title;
+  }
+
+  // ============================================
+  // State Management
+  // ============================================
+
+  /**
+   * Set the form states for groups
+   * Subscribers only notified if the states have changed
+   */
+  private setStates(): void {
+    const currentGroupIndex = this.groups.findIndex((group) => group.active);
+    const currentGroupId = this.groups[currentGroupIndex].id;
+    const currentGroupTitle = this.groups[currentGroupIndex].title;
+    const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
+    const nextGroupIndex =
+      currentGroupIndex < this.groups.length - 1 ? currentGroupIndex + 1 : null;
+    const completedGroups = new Set(
+      this.groups.filter((group) => group.completed).map((group) => group.id)
+    );
+    const visitedGroups = new Set(
+      this.groups.filter((group) => group.visited).map((group) => group.id)
+    );
+    const totalGroups = this.groups.length;
+    const groupsComplete = completedGroups.size;
+    const groupProgress = this.groups[currentGroupIndex].progress;
+    const groupValidity = this.groups.reduce(
+      (acc, group) => {
+        acc[group.id] = group.isValid;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+
+    const groupState: FormGroupState = {
+      currentGroupIndex,
+      currentGroupId,
+      currentGroupTitle,
+      previousGroupIndex,
+      nextGroupIndex,
+      completedGroups,
+      visitedGroups,
+      totalGroups,
+      groupsComplete,
+      groupProgress,
+      groupValidity,
+    };
+
+    this.form.setStates({ ...groupState });
   }
 
   // ============================================
@@ -253,17 +301,6 @@ export class GroupManager implements IGroupManager {
     return this.groups.filter((group) => group.setId === setId);
   }
 
-  /**
-   * Get all groups within a specific card
-   * Used by other managers for card-scoped operations
-   *
-   * @param cardId - Card ID
-   * @returns Array of groups in the card
-   */
-  public getGroupsByCardId(cardId: string): GroupElement[] {
-    return this.groups.filter((group) => group.cardId === cardId);
-  }
-
   // ============================================
   // Private Helpers
   // ============================================
@@ -274,59 +311,35 @@ export class GroupManager implements IGroupManager {
    * @param groupElement - The group element
    * @returns Parent hierarchy metadata or null
    */
-  private findParentHierarchy(
-    groupElement: HTMLElement
-  ): { setId: string; setIndex: number; cardId: string } | null {
-    // Walk up the DOM tree to find parent set and card
-    let current = groupElement.parentElement;
-    let parentSet: { id: string; index: number } | null = null;
-    let parentCard: { id: string } | null = null;
-
-    while (current && current !== this.form.getRootElement()) {
-      const elementAttr = current.getAttribute(`${ATTR}-element`);
-
-      if (elementAttr?.startsWith('set') && !parentSet) {
-        // Found a set parent - get its metadata from SetManager
-        const { setManager } = this.form;
-        if (setManager) {
-          const sets = setManager.getSets();
-          const set = sets.find((s) => s.element === current);
-          if (set) {
-            parentSet = { id: set.id, index: set.index };
-            // Also get the card from the set if available
-            if (set.cardId) {
-              parentCard = { id: set.cardId };
-            }
-          }
-        }
-      }
-
-      if (elementAttr?.startsWith('card') && !parentCard) {
-        // Found a card parent - get its metadata from CardManager
-        const { cardManager } = this.form;
-        if (cardManager) {
-          const cards = cardManager.getCards();
-          const card = cards.find((c) => c.element === current);
-          if (card) {
-            parentCard = { id: card.id };
-          }
-        }
-      }
-
-      // Stop if we've found both
-      if (parentSet && parentCard) break;
-
-      current = current.parentElement;
+  private findParentHierarchy(groupElement: HTMLElement): { setId: string; setIndex: number } {
+    // Find the parent set element
+    const parentSetElement = groupElement.closest(`[${ATTR}-element^="set"]`);
+    if (!parentSetElement) {
+      throw this.form.createError('Cannot discover groups: no parent set element found', 'init', {
+        cause: { manager: 'GroupManager', groupElement },
+      });
     }
 
-    if (parentSet) {
-      return {
-        setId: parentSet.id,
-        setIndex: parentSet.index,
-        cardId: parentCard?.id || '',
-      };
+    // Get the set manager
+    const { setManager } = this.form;
+    if (!setManager) {
+      throw this.form.createError('Cannot discover groups: set manager is null', 'init', {
+        cause: { manager: 'GroupManager', groupElement, setManager },
+      });
     }
 
-    return null;
+    // Get the sets
+    const sets = setManager.getSets();
+    const parentSet = sets.find((set) => set.element === parentSetElement);
+    if (!parentSet) {
+      throw this.form.createError('Cannot discover groups: no parent set found', 'init', {
+        cause: { manager: 'GroupManager', groupElement, parentSet },
+      });
+    }
+
+    return {
+      setId: parentSet.id,
+      setIndex: parentSet.index,
+    };
   }
 }
