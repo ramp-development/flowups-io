@@ -218,7 +218,9 @@ export class FieldManager extends BaseManager implements IFieldManager {
   }
 
   /**
-   * Update field values
+   * Update metadata values
+   * @param selector - Field ID or index
+   * @param metadata - Metadata to update (visited, completed, active, isIncluded, isValid, errors)
    */
   private setMetadata(
     selector: string | number,
