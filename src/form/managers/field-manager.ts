@@ -233,8 +233,16 @@ export class FieldManager extends BaseManager implements IFieldManager {
       typeof selector === 'string' ? this.getFieldById(selector) : this.getFieldByIndex(selector);
     if (!field) return;
 
+    const input = this.form.inputManager.getInputByFieldId(field.id);
+    if (!input) return;
+
+    const { completed, isValid } = input;
+
     const newData = {
       ...field,
+      visited: true,
+      completed,
+      isValid,
       ...metadata,
     };
 
