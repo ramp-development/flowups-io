@@ -5,10 +5,10 @@
  * Cards are optional large UI sections (e.g., intro, form, success).
  */
 
-import type { FlowupsForm } from '..';
 import { ATTR } from '../constants';
 import type { CardElement, FormCardState, ICardManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
+import { BaseManager } from './base-manager';
 
 /**
  * CardManager Implementation
@@ -16,27 +16,16 @@ import { extractTitle, parseElementAttribute } from '../utils';
  * Discovers and manages card elements in the form hierarchy.
  * Provides access to cards by index or ID.
  */
-export class CardManager implements ICardManager {
+export class CardManager extends BaseManager implements ICardManager {
   // ============================================
   // Properties
   // ============================================
-
-  /** Reference to parent form component */
-  public readonly form: FlowupsForm;
 
   /** Array of discovered card elements with metadata */
   private cards: CardElement[] = [];
 
   /** Map for O(1) lookup by card ID */
   private cardMap: Map<string, CardElement> = new Map();
-
-  // ============================================
-  // Constructor
-  // ============================================
-
-  constructor(form: FlowupsForm) {
-    this.form = form;
-  }
 
   // ============================================
   // Lifecycle
@@ -48,14 +37,19 @@ export class CardManager implements ICardManager {
    */
   public init(): void {
     this.discoverCards();
-    this.setStates();
-
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('CardManager initialized', {
+    if (this.cards.length === 0) {
+      this.logDebug('CardManager initialized', {
         totalCards: this.cards.length,
         cards: this.cards.map((c) => ({ id: c.id, title: c.title, index: c.index })),
       });
     }
+
+    this.setStates();
+
+    this.logDebug('CardManager initialized', {
+      totalCards: this.cards.length,
+      cards: this.cards.map((c) => ({ id: c.id, title: c.title, index: c.index })),
+    });
   }
 
   /**
@@ -66,9 +60,7 @@ export class CardManager implements ICardManager {
     this.cards = [];
     this.cardMap.clear();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('CardManager destroyed');
-    }
+    this.logDebug('CardManager destroyed');
   }
 
   // ============================================
@@ -84,7 +76,7 @@ export class CardManager implements ICardManager {
   public discoverCards(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.form.createError('Cannot discover cards: root element is null', 'init', {
+      throw this.createError('Cannot discover cards: root element is null', 'init', {
         cause: { manager: 'CardManager', rootElement },
       });
     }
@@ -128,12 +120,10 @@ export class CardManager implements ICardManager {
       this.cardMap.set(card.id, card);
     });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Cards discovered', {
-        count: this.cards.length,
-        cards: this.cards,
-      });
-    }
+    this.logDebug('Cards discovered', {
+      count: this.cards.length,
+      cards: this.cards,
+    });
   }
 
   // ============================================
@@ -145,7 +135,7 @@ export class CardManager implements ICardManager {
    * Subscribers only notified if the states have changed
    */
   private setStates(): void {
-    const currentCardIndex = this.cards.findIndex((card) => card.active);
+    const currentCardIndex = this.cards.findIndex((card) => card.active) ?? -1;
     const currentCardId = this.cards[currentCardIndex].id;
     const currentCardTitle = this.cards[currentCardIndex].title;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;

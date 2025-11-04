@@ -5,10 +5,10 @@
  * Sets are semantic groupings of related fields (typically using <fieldset>).
  */
 
-import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
 import type { FormSetState, ISetManager, SetElement } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
+import { BaseManager } from './base-manager';
 
 /**
  * SetManager Implementation
@@ -17,27 +17,16 @@ import { extractTitle, parseElementAttribute } from '../utils';
  * Provides access to sets by index or ID.
  * Associates sets with their parent cards.
  */
-export class SetManager implements ISetManager {
+export class SetManager extends BaseManager implements ISetManager {
   // ============================================
   // Properties
   // ============================================
-
-  /** Reference to parent form component */
-  public readonly form: FlowupsForm;
 
   /** Array of discovered set elements with metadata */
   private sets: SetElement[] = [];
 
   /** Map for O(1) lookup by set ID */
   private setMap: Map<string, SetElement> = new Map();
-
-  // ============================================
-  // Constructor
-  // ============================================
-
-  constructor(form: FlowupsForm) {
-    this.form = form;
-  }
 
   // ============================================
   // Lifecycle
@@ -51,17 +40,15 @@ export class SetManager implements ISetManager {
     this.discoverSets();
     this.setStates();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('SetManager initialized', {
-        totalSets: this.sets.length,
-        sets: this.sets.map((s) => ({
-          id: s.id,
-          title: s.title,
-          index: s.index,
-          cardId: s.cardId,
-        })),
-      });
-    }
+    this.logDebug('SetManager initialized', {
+      totalSets: this.sets.length,
+      sets: this.sets.map((s) => ({
+        id: s.id,
+        title: s.title,
+        index: s.index,
+        cardId: s.cardId,
+      })),
+    });
   }
 
   /**
@@ -72,9 +59,7 @@ export class SetManager implements ISetManager {
     this.sets = [];
     this.setMap.clear();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('SetManager destroyed');
-    }
+    this.logDebug('SetManager destroyed');
   }
 
   // ============================================
@@ -91,7 +76,7 @@ export class SetManager implements ISetManager {
   public discoverSets(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.form.createError('Cannot discover sets: root element is null', 'init', {
+      throw this.createError('Cannot discover sets: root element is null', 'init', {
         cause: { manager: 'SetManager', rootElement },
       });
     }
@@ -140,12 +125,10 @@ export class SetManager implements ISetManager {
       this.setMap.set(set.id, set);
     });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Sets discovered', {
-        count: this.sets.length,
-        sets: this.sets.map((s) => ({ id: s.id, title: s.title, cardId: s.cardId })),
-      });
-    }
+    this.logDebug('Sets discovered', {
+      count: this.sets.length,
+      sets: this.sets.map((s) => ({ id: s.id, title: s.title, cardId: s.cardId })),
+    });
   }
 
   /**
@@ -310,21 +293,21 @@ export class SetManager implements ISetManager {
   private findParentCard(setElement: HTMLElement): { id: string; index: number } | null {
     const parentCardElement = setElement.closest(`[${ATTR}-element^="card"]`);
     if (!parentCardElement) {
-      throw this.form.createError('Cannot find parent card: no parent card element found', 'init', {
+      throw this.createError('Cannot find parent card: no parent card element found', 'init', {
         cause: { manager: 'SetManager', setElement },
       });
     }
 
     const { cardManager } = this.form;
     if (!cardManager) {
-      throw this.form.createError('Cannot find parent card: card manager is null', 'init', {
+      throw this.createError('Cannot find parent card: card manager is null', 'init', {
         cause: { manager: 'SetManager', setElement, cardManager },
       });
     }
 
     const parentCard = cardManager.getCards().find((card) => card.element === parentCardElement);
     if (!parentCard) {
-      throw this.form.createError('Cannot find parent card: no parent card found', 'init', {
+      throw this.createError('Cannot find parent card: no parent card found', 'init', {
         cause: { manager: 'SetManager', setElement, parentCardElement },
       });
     }

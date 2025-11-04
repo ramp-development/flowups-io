@@ -5,10 +5,10 @@
  * Groups are optional logical subgroups within sets (typically using <fieldset>).
  */
 
-import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
 import type { FormGroupState, GroupElement, IGroupManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
+import { BaseManager } from './base-manager';
 
 /**
  * GroupManager Implementation
@@ -17,27 +17,16 @@ import { extractTitle, parseElementAttribute } from '../utils';
  * Provides access to groups by index or ID.
  * Associates groups with their parent sets and cards.
  */
-export class GroupManager implements IGroupManager {
+export class GroupManager extends BaseManager implements IGroupManager {
   // ============================================
   // Properties
   // ============================================
-
-  /** Reference to parent form component */
-  public readonly form: FlowupsForm;
 
   /** Array of discovered group elements with metadata */
   private groups: GroupElement[] = [];
 
   /** Map for O(1) lookup by group ID */
   private groupMap: Map<string, GroupElement> = new Map();
-
-  // ============================================
-  // Constructor
-  // ============================================
-
-  constructor(form: FlowupsForm) {
-    this.form = form;
-  }
 
   // ============================================
   // Lifecycle
@@ -49,18 +38,17 @@ export class GroupManager implements IGroupManager {
    */
   public init(): void {
     this.discoverGroups();
+    this.setStates();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('GroupManager initialized', {
-        totalGroups: this.groups.length,
-        groups: this.groups.map((g) => ({
-          id: g.id,
-          title: g.title,
-          index: g.index,
-          setId: g.setId,
-        })),
-      });
-    }
+    this.logDebug('GroupManager initialized', {
+      totalGroups: this.groups.length,
+      groups: this.groups.map((g) => ({
+        id: g.id,
+        title: g.title,
+        index: g.index,
+        setId: g.setId,
+      })),
+    });
   }
 
   /**
@@ -71,9 +59,7 @@ export class GroupManager implements IGroupManager {
     this.groups = [];
     this.groupMap.clear();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('GroupManager destroyed');
-    }
+    this.logDebug('GroupManager destroyed');
   }
 
   // ============================================
@@ -90,7 +76,7 @@ export class GroupManager implements IGroupManager {
   public discoverGroups(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.form.createError('Cannot discover groups: root element is null', 'init', {
+      throw this.createError('Cannot discover groups: root element is null', 'init', {
         cause: { manager: 'GroupManager', rootElement },
       });
     }
@@ -127,7 +113,7 @@ export class GroupManager implements IGroupManager {
         index,
         visited: false,
         completed: false,
-        active: false,
+        active: index === 0,
         progress: 0,
         isValid: false,
         setId: parentHierarchy.setId,
@@ -139,12 +125,10 @@ export class GroupManager implements IGroupManager {
       this.groupMap.set(group.id, group);
     });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Groups discovered', {
-        count: this.groups.length,
-        groups: this.groups.map((g) => ({ id: g.id, title: g.title, setId: g.setId })),
-      });
-    }
+    this.logDebug('Groups discovered', {
+      count: this.groups.length,
+      groups: this.groups.map((g) => ({ id: g.id, title: g.title, setId: g.setId })),
+    });
   }
 
   /**
@@ -172,20 +156,30 @@ export class GroupManager implements IGroupManager {
    */
   private setStates(): void {
     const currentGroupIndex = this.groups.findIndex((group) => group.active);
+    console.log('currentGroupIndex', currentGroupIndex);
     const currentGroupId = this.groups[currentGroupIndex].id;
+    console.log('currentGroupId', currentGroupId);
     const currentGroupTitle = this.groups[currentGroupIndex].title;
+    console.log('currentGroupTitle', currentGroupTitle);
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
+    console.log('previousGroupIndex', previousGroupIndex);
     const nextGroupIndex =
       currentGroupIndex < this.groups.length - 1 ? currentGroupIndex + 1 : null;
+    console.log('nextGroupIndex', nextGroupIndex);
     const completedGroups = new Set(
       this.groups.filter((group) => group.completed).map((group) => group.id)
     );
+    console.log('completedGroups', completedGroups);
     const visitedGroups = new Set(
       this.groups.filter((group) => group.visited).map((group) => group.id)
     );
+    console.log('visitedGroups', visitedGroups);
     const totalGroups = this.groups.length;
+    console.log('totalGroups', totalGroups);
     const groupsComplete = completedGroups.size;
+    console.log('groupsComplete', groupsComplete);
     const groupProgress = this.groups[currentGroupIndex].progress;
+    console.log('groupProgress', groupProgress);
     const groupValidity = this.groups.reduce(
       (acc, group) => {
         acc[group.id] = group.isValid;
@@ -193,6 +187,7 @@ export class GroupManager implements IGroupManager {
       },
       {} as Record<string, boolean>
     );
+    console.log('groupValidity', groupValidity);
 
     const groupState: FormGroupState = {
       currentGroupIndex,
@@ -315,7 +310,7 @@ export class GroupManager implements IGroupManager {
     // Find the parent set element
     const parentSetElement = groupElement.closest(`[${ATTR}-element^="set"]`);
     if (!parentSetElement) {
-      throw this.form.createError('Cannot discover groups: no parent set element found', 'init', {
+      throw this.createError('Cannot discover groups: no parent set element found', 'init', {
         cause: { manager: 'GroupManager', groupElement },
       });
     }
@@ -323,7 +318,7 @@ export class GroupManager implements IGroupManager {
     // Get the set manager
     const { setManager } = this.form;
     if (!setManager) {
-      throw this.form.createError('Cannot discover groups: set manager is null', 'init', {
+      throw this.createError('Cannot discover groups: set manager is null', 'init', {
         cause: { manager: 'GroupManager', groupElement, setManager },
       });
     }
@@ -332,7 +327,7 @@ export class GroupManager implements IGroupManager {
     const sets = setManager.getSets();
     const parentSet = sets.find((set) => set.element === parentSetElement);
     if (!parentSet) {
-      throw this.form.createError('Cannot discover groups: no parent set found', 'init', {
+      throw this.createError('Cannot discover groups: no parent set found', 'init', {
         cause: { manager: 'GroupManager', groupElement, parentSet },
       });
     }

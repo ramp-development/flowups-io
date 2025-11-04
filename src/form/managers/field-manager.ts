@@ -5,7 +5,6 @@
  * Central to the byField behavior in v1.0.
  */
 
-import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
 import type {
   FieldElement,
@@ -14,6 +13,7 @@ import type {
   NavigationGoToEvent,
 } from '../types';
 import { parseElementAttribute } from '../utils';
+import { BaseManager } from './base-manager';
 
 /**
  * FieldManager Implementation
@@ -22,13 +22,10 @@ import { parseElementAttribute } from '../utils';
  * Builds navigation order for byField behavior.
  * Provides field-by-field navigation with conditional visibility support.
  */
-export class FieldManager implements IFieldManager {
+export class FieldManager extends BaseManager implements IFieldManager {
   // ============================================
   // Properties
   // ============================================
-
-  /** Reference to parent form component */
-  public readonly form: FlowupsForm;
 
   /** Array of discovered field elements with metadata */
   private fields: FieldElement[] = [];
@@ -38,14 +35,6 @@ export class FieldManager implements IFieldManager {
 
   /** Navigation order (indexes of included fields) */
   private navigationOrder: number[] = [];
-
-  // ============================================
-  // Constructor
-  // ============================================
-
-  constructor(form: FlowupsForm) {
-    this.form = form;
-  }
 
   // ============================================
   // Lifecycle
@@ -60,18 +49,16 @@ export class FieldManager implements IFieldManager {
     this.buildNavigationOrder();
     this.setupEventListeners();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('FieldManager initialized', {
-        totalFields: this.fields.length,
-        includedFields: this.navigationOrder.length,
-        fields: this.fields.map((f) => ({
-          id: f.id,
-          title: f.title,
-          index: f.index,
-          isIncluded: f.isIncluded,
-        })),
-      });
-    }
+    this.logDebug('FieldManager initialized', {
+      totalFields: this.fields.length,
+      includedFields: this.navigationOrder.length,
+      fields: this.fields.map((f) => ({
+        id: f.id,
+        title: f.title,
+        index: f.index,
+        isIncluded: f.isIncluded,
+      })),
+    });
   }
 
   /**
@@ -85,9 +72,7 @@ export class FieldManager implements IFieldManager {
     this.fieldMap.clear();
     this.navigationOrder = [];
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('FieldManager destroyed');
-    }
+    this.logDebug('FieldManager destroyed');
   }
 
   // ============================================
@@ -104,7 +89,7 @@ export class FieldManager implements IFieldManager {
   public discoverFields(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.form.createError('Cannot discover fields: root element is null', 'init', {
+      throw this.createError('Cannot discover fields: root element is null', 'init', {
         cause: { manager: 'FieldManager', rootElement },
       });
     }
@@ -157,12 +142,10 @@ export class FieldManager implements IFieldManager {
       this.fieldMap.set(field.id, field);
     });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Fields discovered', {
-        count: this.fields.length,
-        fields: this.fields.map((f) => ({ id: f.id, setId: f.setId })),
-      });
-    }
+    this.logDebug('Fields discovered', {
+      count: this.fields.length,
+      fields: this.fields.map((f) => ({ id: f.id, setId: f.setId })),
+    });
   }
 
   /**
@@ -179,12 +162,10 @@ export class FieldManager implements IFieldManager {
     // Update form state with total included fields
     this.form.setState('totalFields', this.navigationOrder.length);
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation order built', {
-        total: this.navigationOrder.length,
-        order: this.navigationOrder,
-      });
-    }
+    this.logDebug('Navigation order built', {
+      total: this.navigationOrder.length,
+      order: this.navigationOrder,
+    });
   }
 
   // ============================================
@@ -203,9 +184,7 @@ export class FieldManager implements IFieldManager {
       this.form.subscribe('form:navigation:goTo', this.handleNavigationGoTo);
       this.form.subscribe('form:field:inclusion-changed', this.handleFieldInclusion);
 
-      if (this.form.getFormConfig().debug) {
-        this.form.logDebug('FieldManager subscribed to navigation events');
-      }
+      this.logDebug('FieldManager subscribed to navigation events');
     }
   }
 
@@ -277,7 +256,7 @@ export class FieldManager implements IFieldManager {
     if (field) {
       await this.goToField(field.index);
     } else {
-      throw this.form.createError(
+      throw this.createError(
         `Cannot navigate to field: field ID "${target}" not found`,
         'runtime',
         {
@@ -306,9 +285,7 @@ export class FieldManager implements IFieldManager {
     const nextIndex = this.getNextIncludedFieldIndex();
 
     if (nextIndex === null) {
-      if (this.form.getFormConfig().debug) {
-        this.form.logDebug('Cannot navigate to next field: already on last field');
-      }
+      this.logDebug('Cannot navigate to next field: already on last field');
       return;
     }
 
@@ -325,9 +302,7 @@ export class FieldManager implements IFieldManager {
     const prevIndex = this.getPrevIncludedFieldIndex();
 
     if (prevIndex === null) {
-      if (this.form.getFormConfig().debug) {
-        this.form.logDebug('Cannot navigate to previous field: already on first field');
-      }
+      this.logDebug('Cannot navigate to previous field: already on first field');
       return;
     }
 
@@ -344,13 +319,13 @@ export class FieldManager implements IFieldManager {
     const field = this.fields[index];
 
     if (!field) {
-      throw this.form.createError(`Cannot navigate to field: invalid index ${index}`, 'runtime', {
+      throw this.createError(`Cannot navigate to field: invalid index ${index}`, 'runtime', {
         cause: { index, totalFields: this.fields.length },
       });
     }
 
     if (!field.isIncluded) {
-      throw this.form.createError(
+      throw this.createError(
         `Cannot navigate to field: field at index ${index} is not included in the navigation order`,
         'runtime',
         {
@@ -388,12 +363,10 @@ export class FieldManager implements IFieldManager {
       }
     }
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigated to field', {
-        index,
-        fieldId: field.id,
-      });
-    }
+    this.logDebug('Navigated to field', {
+      index,
+      fieldId: field.id,
+    });
 
     // Emit navigation event
     this.form.emit('form:field:changed', {
@@ -570,9 +543,7 @@ export class FieldManager implements IFieldManager {
     // Rebuild navigation order (excludes fields with isIncluded: false)
     this.buildNavigationOrder();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug(`Field "${fieldId}" inclusion updated: ${isIncluded}`);
-    }
+    this.logDebug(`Field "${fieldId}" inclusion updated: ${isIncluded}`);
   }
 
   // ============================================
