@@ -6,7 +6,13 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type { FormSetState, ISetManager, SetElement } from '../types';
+import type {
+  CardElement,
+  FormSetState,
+  ISetManager,
+  SetElement,
+  SetParentHierarchy,
+} from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { BaseManager } from './base-manager';
 
@@ -42,11 +48,11 @@ export class SetManager extends BaseManager implements ISetManager {
 
     this.logDebug('SetManager initialized', {
       totalSets: this.sets.length,
-      sets: this.sets.map((s) => ({
-        id: s.id,
-        title: s.title,
-        index: s.index,
-        cardId: s.cardId,
+      sets: this.sets.map((set) => ({
+        id: set.id,
+        title: set.title,
+        index: set.index,
+        hierarchy: set.parentHierarchy,
       })),
     });
   }
@@ -102,7 +108,7 @@ export class SetManager extends BaseManager implements ISetManager {
       const titleData = extractTitle(element, 'set', parsed.id, index);
 
       // Find parent card (if cards exist)
-      const parentCard = this.findParentCard(element);
+      const parentHierarchy = this.findParentHierarchy(element);
 
       // Create set element object
       const set: SetElement = {
@@ -113,10 +119,9 @@ export class SetManager extends BaseManager implements ISetManager {
         index,
         visited: false,
         completed: false,
-        active: index === 0,
+        active: false,
         progress: 0,
-        cardId: parentCard?.id || null,
-        cardIndex: parentCard?.index ?? null,
+        parentHierarchy,
         isValid: false,
       };
 
@@ -127,7 +132,11 @@ export class SetManager extends BaseManager implements ISetManager {
 
     this.logDebug('Sets discovered', {
       count: this.sets.length,
-      sets: this.sets.map((s) => ({ id: s.id, title: s.title, cardId: s.cardId })),
+      sets: this.sets.map((set) => ({
+        id: set.id,
+        title: set.title,
+        hierarchy: set.parentHierarchy,
+      })),
     });
   }
 
@@ -164,7 +173,6 @@ export class SetManager extends BaseManager implements ISetManager {
     const visitedSets = new Set(this.sets.filter((set) => set.visited).map((set) => set.id));
     const totalSets = this.sets.length;
     const setsComplete = completedSets.size;
-    const setProgress = this.sets[currentSetIndex].progress;
     const setValidity = this.sets.reduce(
       (acc, set) => {
         acc[set.id] = set.isValid;
@@ -183,7 +191,6 @@ export class SetManager extends BaseManager implements ISetManager {
       visitedSets,
       totalSets,
       setsComplete,
-      setProgress,
       setValidity,
     };
 
@@ -230,7 +237,8 @@ export class SetManager extends BaseManager implements ISetManager {
    */
   public getCurrentSet(): SetElement | null {
     const currentSetIndex = this.form.getState('currentSetIndex');
-    return this.getSetByIndex(currentSetIndex) || null;
+    if (!currentSetIndex) return null;
+    return this.getSetByIndex(currentSetIndex);
   }
 
   // ============================================
@@ -277,7 +285,7 @@ export class SetManager extends BaseManager implements ISetManager {
    * @returns Array of sets in the card
    */
   public getSetsByCardId(cardId: string): SetElement[] {
-    return this.sets.filter((set) => set.cardId === cardId);
+    return this.sets.filter((set) => set.parentHierarchy?.cardId === cardId);
   }
 
   // ============================================
@@ -290,13 +298,9 @@ export class SetManager extends BaseManager implements ISetManager {
    * @param setElement - The set element
    * @returns Parent card metadata or null
    */
-  private findParentCard(setElement: HTMLElement): { id: string; index: number } | null {
+  private findParentCard(setElement: HTMLElement): CardElement | null {
     const parentCardElement = setElement.closest(`[${ATTR}-element^="card"]`);
-    if (!parentCardElement) {
-      throw this.createError('Cannot find parent card: no parent card element found', 'init', {
-        cause: { manager: 'SetManager', setElement },
-      });
-    }
+    if (!parentCardElement) return null;
 
     const { cardManager } = this.form;
     if (!cardManager) {
@@ -312,6 +316,22 @@ export class SetManager extends BaseManager implements ISetManager {
       });
     }
 
-    return { id: parentCard.id, index: parentCard.index };
+    return parentCard;
+  }
+
+  /**
+   * Find the parent set and card elements for a group
+   *
+   * @param groupElement - The group element
+   * @returns Parent hierarchy metadata or null
+   */
+
+  private findParentHierarchy(setElement: HTMLElement): SetParentHierarchy {
+    const parentCard = this.findParentCard(setElement);
+
+    return {
+      cardId: parentCard?.id || null,
+      cardIndex: parentCard?.index || null,
+    };
   }
 }

@@ -37,15 +37,6 @@ export interface InputElement extends Omit<BaseElement, 'element'> {
   /** Parent field ID */
   fieldId: string;
 
-  /** Parent group ID (if in a group) */
-  groupId: string | null;
-
-  /** Parent set ID */
-  setId: string;
-
-  /** Parent card ID */
-  cardId: string;
-
   /** Input name attribute (for formData) */
   name: string;
 

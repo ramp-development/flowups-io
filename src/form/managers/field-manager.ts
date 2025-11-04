@@ -9,6 +9,7 @@ import { ATTR } from '../constants/attr';
 import type {
   FieldElement,
   FieldInclusionChangedEvent,
+  FieldParentHierarchy,
   IFieldManager,
   NavigationGoToEvent,
 } from '../types';
@@ -127,10 +128,8 @@ export class FieldManager extends BaseManager implements IFieldManager {
         id: fieldId,
         title: fieldTitle,
         index,
-        groupId: parentHierarchy?.groupId || null,
-        setId: parentHierarchy?.setId || '',
-        cardId: parentHierarchy?.cardId || '',
-        isIncluded: true, // Will be updated by ConditionManager
+        parentHierarchy,
+        isIncluded: true,
         visited: false,
         completed: false,
         active: false,
@@ -144,7 +143,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
 
     this.logDebug('Fields discovered', {
       count: this.fields.length,
-      fields: this.fields.map((f) => ({ id: f.id, setId: f.setId })),
+      fields: this.fields.map((field) => ({ id: field.id, setId: field.parentHierarchy.setId })),
     });
   }
 
@@ -369,10 +368,11 @@ export class FieldManager extends BaseManager implements IFieldManager {
     });
 
     // Emit navigation event
-    this.form.emit('form:field:changed', {
-      fieldIndex: index,
-      fieldId: field.id,
-      previousFieldIndex,
+    this.form.emit('form:navigation:request', {
+      element: 'field',
+      type: 'goTo',
+      fromIndex: previousFieldIndex,
+      toIndex: index,
     });
   }
 
@@ -413,6 +413,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   public getCurrentField(): FieldElement | null {
     const currentFieldIndex = this.form.getState('currentFieldIndex');
+    if (!currentFieldIndex) return null;
     return this.getFieldByIndex(currentFieldIndex);
   }
 
@@ -424,6 +425,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   public getNextIncludedFieldIndex(): number | null {
     const currentIndex = this.form.getState('currentFieldIndex');
+    if (!currentIndex) return null;
     const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
 
     if (currentNavPosition === -1 || currentNavPosition === this.navigationOrder.length - 1) {
@@ -441,6 +443,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   public getPrevIncludedFieldIndex(): number | null {
     const currentIndex = this.form.getState('currentFieldIndex');
+    if (!currentIndex) return null;
     const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
 
     if (currentNavPosition <= 0) {
@@ -509,7 +512,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * @returns Array of fields in the set
    */
   public getFieldsBySetId(setId: string): FieldElement[] {
-    return this.fields.filter((field) => field.setId === setId);
+    return this.fields.filter((field) => field.parentHierarchy.setId === setId);
   }
 
   /**
@@ -519,7 +522,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * @returns Array of fields in the group
    */
   public getFieldsByGroupId(groupId: string): FieldElement[] {
-    return this.fields.filter((field) => field.groupId === groupId);
+    return this.fields.filter((field) => field.parentHierarchy.groupId === groupId);
   }
 
   /**
@@ -557,65 +560,60 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * @param fieldElement - The field element
    * @returns Parent hierarchy metadata or null
    */
-  private findParentHierarchy(
-    fieldElement: HTMLElement
-  ): { groupId: string | null; setId: string; cardId: string } | null {
-    let current = fieldElement.parentElement;
-    let parentGroup: { id: string } | null = null;
-    let parentSet: { id: string } | null = null;
-    let parentCard: { id: string } | null = null;
-
-    while (current && current !== this.form.getRootElement()) {
-      const elementAttr = current.getAttribute(`${ATTR}-element`);
-
-      if (elementAttr?.startsWith('group') && !parentGroup) {
-        const { groupManager } = this.form;
-        if (groupManager) {
-          const groups = groupManager.getGroups();
-          const group = groups.find((g) => g.element === current);
-          if (group) {
-            parentGroup = { id: group.id };
-            // Inherit parent set/card from group
-            if (group.setId) parentSet = { id: group.setId };
-            if (group.cardId) parentCard = { id: group.cardId };
-          }
-        }
+  private findParentHierarchy(fieldElement: HTMLElement): FieldParentHierarchy {
+    const parentGroupElement = fieldElement.closest(`[${ATTR}-element^="group"]`);
+    if (parentGroupElement) {
+      const { groupManager } = this.form;
+      if (!groupManager) {
+        throw this.createError('Cannot discover fields: group manager is null', 'init', {
+          cause: { manager: 'FieldManager', fieldElement },
+        });
       }
 
-      if (elementAttr?.startsWith('set') && !parentSet) {
-        const { setManager } = this.form;
-        if (setManager) {
-          const sets = setManager.getSets();
-          const set = sets.find((s) => s.element === current);
-          if (set) {
-            parentSet = { id: set.id };
-            // Inherit parent card from set
-            if (set.cardId) parentCard = { id: set.cardId };
-          }
-        }
+      const parentGroup = groupManager
+        .getGroups()
+        .find((group) => group.element === parentGroupElement);
+
+      if (!parentGroup) {
+        throw this.createError('Cannot discover fields: no parent group found', 'init', {
+          cause: { manager: 'FieldManager', fieldElement },
+        });
       }
 
-      if (elementAttr?.startsWith('card') && !parentCard) {
-        const { cardManager } = this.form;
-        if (cardManager) {
-          const cards = cardManager.getCards();
-          const card = cards.find((c) => c.element === current);
-          if (card) {
-            parentCard = { id: card.id };
-          }
-        }
-      }
+      return {
+        groupId: parentGroup.id,
+        groupIndex: parentGroup.index,
+        ...parentGroup.parentHierarchy,
+      };
+    }
 
-      // Stop if we've found all
-      if (parentGroup && parentSet && parentCard) break;
+    const parentSetElement = fieldElement.closest(`[${ATTR}-element^="set"]`);
+    if (!parentSetElement) {
+      throw this.createError('Cannot discover fields: no parent set element found', 'init', {
+        cause: { manager: 'FieldManager', fieldElement },
+      });
+    }
 
-      current = current.parentElement;
+    const { setManager } = this.form;
+    if (!setManager) {
+      throw this.createError('Cannot discover fields: set manager is null', 'init', {
+        cause: { manager: 'FieldManager', fieldElement },
+      });
+    }
+
+    const parentSet = setManager.getSets().find((set) => set.element === parentSetElement);
+    if (!parentSet) {
+      throw this.createError('Cannot discover fields: no parent set found', 'init', {
+        cause: { manager: 'FieldManager', fieldElement },
+      });
     }
 
     return {
-      groupId: parentGroup?.id || null,
-      setId: parentSet?.id || '',
-      cardId: parentCard?.id || '',
+      groupId: null,
+      groupIndex: null,
+      setId: parentSet.id,
+      setIndex: parentSet.index,
+      ...parentSet.parentHierarchy,
     };
   }
 
@@ -627,10 +625,10 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   private updateHierarchyContext(field: FieldElement): void {
     // Update card context
-    if (field.cardId) {
+    if (field.parentHierarchy.cardId) {
       const { cardManager } = this.form;
       if (cardManager) {
-        const card = cardManager.getCardMetadataById(field.cardId);
+        const card = cardManager.getCardMetadataById(field.parentHierarchy.cardId);
         if (card) {
           this.form.setState('currentCardId', card.id);
           this.form.setState('currentCardTitle', card.title);
@@ -640,10 +638,10 @@ export class FieldManager extends BaseManager implements IFieldManager {
     }
 
     // Update set context
-    if (field.setId) {
+    if (field.parentHierarchy.setId) {
       const { setManager } = this.form;
       if (setManager) {
-        const set = setManager.getSetMetadataById(field.setId);
+        const set = setManager.getSetMetadataById(field.parentHierarchy.setId);
         if (set) {
           this.form.setState('currentSetId', set.id);
           this.form.setState('currentSetTitle', set.title);
@@ -653,10 +651,10 @@ export class FieldManager extends BaseManager implements IFieldManager {
     }
 
     // Update group context (if field is in a group)
-    if (field.groupId) {
+    if (field.parentHierarchy.groupId) {
       const { groupManager } = this.form;
       if (groupManager) {
-        const group = groupManager.getGroupMetadataById(field.groupId);
+        const group = groupManager.getGroupMetadataById(field.parentHierarchy.groupId);
         if (group) {
           this.form.setState('currentGroupId', group.id);
           this.form.setState('currentGroupIndex', group.index);
@@ -670,8 +668,9 @@ export class FieldManager extends BaseManager implements IFieldManager {
    *
    * @returns Current field element or undefined
    */
-  public getCurrentFieldMetadata(): FieldElement | undefined {
+  public getCurrentFieldMetadata(): FieldElement | null {
     const currentIndex = this.form.getState('currentFieldIndex');
+    if (!currentIndex) return null;
     return this.fields[currentIndex];
   }
 
@@ -684,8 +683,10 @@ export class FieldManager extends BaseManager implements IFieldManager {
    */
   private getFieldContext(field: FieldElement): 'field' | 'group' | 'set' | 'card' {
     // If in a group, check if this is the last field in the group
-    if (field.groupId) {
-      const groupFields = this.getFieldsByGroupId(field.groupId).filter((f) => f.isIncluded);
+    if (field.parentHierarchy.groupId) {
+      const groupFields = this.getFieldsByGroupId(field.parentHierarchy.groupId).filter(
+        (field) => field.isIncluded
+      );
       const isLastInGroup = groupFields[groupFields.length - 1]?.id === field.id;
       if (isLastInGroup) {
         return 'group';
@@ -693,15 +694,19 @@ export class FieldManager extends BaseManager implements IFieldManager {
     }
 
     // Check if last field in set
-    const setFields = this.getFieldsBySetId(field.setId).filter((f) => f.isIncluded);
+    const setFields = this.getFieldsBySetId(field.parentHierarchy.setId).filter(
+      (field) => field.isIncluded
+    );
     const isLastInSet = setFields[setFields.length - 1]?.id === field.id;
     if (isLastInSet) {
       return 'set';
     }
 
     // Check if last field in card (if cards exist)
-    if (field.cardId) {
-      const cardFields = this.fields.filter((f) => f.cardId === field.cardId && f.isIncluded);
+    if (field.parentHierarchy.cardId) {
+      const cardFields = this.fields.filter(
+        (field) => field.parentHierarchy.cardId === field.parentHierarchy.cardId && field.isIncluded
+      );
       const isLastInCard = cardFields[cardFields.length - 1]?.id === field.id;
       if (isLastInCard) {
         return 'card';

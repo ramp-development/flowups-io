@@ -16,6 +16,11 @@ import type {
   NavigationPrevEvent,
 } from './navigation-command-events';
 import type {
+  ElementCompleteEvent,
+  NavigationChangedEvent,
+  NavigationRequestEvent,
+} from './navigation-events';
+import type {
   FieldChangedEvent,
   FieldChangingEvent,
   FieldCompleteEvent,
@@ -46,12 +51,17 @@ export interface FormEventMap extends AppEventMap {
   'form:destroyed': FormDestroyedEvent;
 
   // Navigation commands (emitted by NavigationManager)
+  'form:navigation:request': NavigationRequestEvent;
   'form:navigation:next': NavigationNextEvent;
   'form:navigation:prev': NavigationPrevEvent;
   'form:navigation:goTo': NavigationGoToEvent;
+  'form:navigation:changed': NavigationChangedEvent;
 
   // Boundary events (emitted by managers when reaching start/end)
   'form:navigation:boundary': BoundaryReachedEvent;
+
+  // Element complete
+  'form:element:complete': ElementCompleteEvent;
 
   // Card navigation
   'form:card:changing': CardChangingEvent;

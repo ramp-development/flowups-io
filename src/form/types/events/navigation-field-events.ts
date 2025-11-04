@@ -2,11 +2,11 @@
  * Navigation Events - Field
  */
 export interface FieldChangingEvent {
+  direction: 'forward' | 'backward';
   fromIndex: number;
   toIndex: number;
   fromId: string;
   toId: string;
-  direction: 'forward' | 'backward';
 }
 
 export interface FieldChangedEvent {

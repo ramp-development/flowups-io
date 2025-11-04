@@ -4,20 +4,16 @@
 export interface NavigationRequestEvent {
   element: 'card' | 'set' | 'group' | 'field';
   type: 'prev' | 'next' | 'goTo';
-  fromIndex: number;
+  fromIndex: number | null;
   toIndex: number;
-  fromId: string;
-  toId: string;
 }
 
-export interface CardChangedEvent {
-  cardIndex: number;
-  cardId: string;
-  cardTitle: string;
-  previousCardIndex: number;
+export interface NavigationChangedEvent {
+  element: 'card' | 'set' | 'group' | 'field';
+  index: number;
 }
 
-export interface CardCompleteEvent {
-  cardId: string;
-  cardIndex: number;
+export interface ElementCompleteEvent {
+  element: 'card' | 'set' | 'group' | 'field';
+  index: number;
 }

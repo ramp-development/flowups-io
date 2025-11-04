@@ -110,9 +110,9 @@ export class CardManager extends BaseManager implements ICardManager {
         index,
         visited: false,
         completed: false,
-        active: index === 0,
+        active: false,
         progress: 0,
-        sets: [], // Will be populated by SetManager
+        isValid: false,
       };
 
       // Store in array and map
@@ -146,7 +146,13 @@ export class CardManager extends BaseManager implements ICardManager {
     const visitedCards = new Set(this.cards.filter((card) => card.visited).map((card) => card.id));
     const totalCards = this.cards.length;
     const cardsComplete = completedCards.size;
-    const cardProgress = this.cards[currentCardIndex].progress;
+    const cardValidity = this.cards.reduce(
+      (acc, card) => {
+        acc[card.id] = card.isValid;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
 
     const cardState: FormCardState = {
       currentCardIndex,
@@ -158,7 +164,7 @@ export class CardManager extends BaseManager implements ICardManager {
       visitedCards,
       totalCards,
       cardsComplete,
-      cardProgress,
+      cardValidity,
     };
 
     this.form.setStates({ ...cardState });

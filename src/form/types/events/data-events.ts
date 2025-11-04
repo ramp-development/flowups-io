@@ -3,7 +3,7 @@
  */
 export interface DataChangedEvent {
   field: string;
-  value: unknown;
+  newValue: unknown;
   oldValue: unknown;
 }
 

@@ -1,5 +1,4 @@
 import type { BaseElement } from './base-element';
-import type { SetElement } from './set-element';
 
 /**
  * Card Element
@@ -12,6 +11,6 @@ export interface CardElement extends BaseElement {
   /** Progress of the card (0-100) */
   progress: number;
 
-  /** Sets contained within this card */
-  sets: SetElement[];
+  /** Whether this set is valid */
+  isValid: boolean;
 }

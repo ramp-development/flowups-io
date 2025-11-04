@@ -2,11 +2,11 @@
  * Navigation Events - Card
  */
 export interface CardChangingEvent {
+  direction: 'forward' | 'backward';
   fromIndex: number;
   toIndex: number;
   fromId: string;
   toId: string;
-  direction: 'forward' | 'backward';
 }
 
 export interface CardChangedEvent {

@@ -1,4 +1,10 @@
 import type { BaseElement } from './base-element';
+import type { SetParentHierarchy } from './set-element';
+
+export interface GroupParentHierarchy extends SetParentHierarchy {
+  setId: string;
+  setIndex: number;
+}
 
 /**
  * Group Element
@@ -11,12 +17,9 @@ export interface GroupElement extends BaseElement {
   /** Progress of the group (0-100) */
   progress: number;
 
+  /** Parent hierarchy */
+  parentHierarchy: GroupParentHierarchy;
+
   /** Validity of the group */
   isValid: boolean;
-
-  /** Parent set ID */
-  setId: string;
-
-  /** Parent set index */
-  setIndex: number;
 }

@@ -6,7 +6,7 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type { FormGroupState, GroupElement, IGroupManager } from '../types';
+import type { FormGroupState, GroupElement, GroupParentHierarchy, IGroupManager } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { BaseManager } from './base-manager';
 
@@ -42,11 +42,11 @@ export class GroupManager extends BaseManager implements IGroupManager {
 
     this.logDebug('GroupManager initialized', {
       totalGroups: this.groups.length,
-      groups: this.groups.map((g) => ({
-        id: g.id,
-        title: g.title,
-        index: g.index,
-        setId: g.setId,
+      groups: this.groups.map((group) => ({
+        id: group.id,
+        title: group.title,
+        index: group.index,
+        hierarchy: group.parentHierarchy,
       })),
     });
   }
@@ -115,9 +115,8 @@ export class GroupManager extends BaseManager implements IGroupManager {
         completed: false,
         active: index === 0,
         progress: 0,
+        parentHierarchy,
         isValid: false,
-        setId: parentHierarchy.setId,
-        setIndex: parentHierarchy.setIndex,
       };
 
       // Store in array and map
@@ -127,7 +126,11 @@ export class GroupManager extends BaseManager implements IGroupManager {
 
     this.logDebug('Groups discovered', {
       count: this.groups.length,
-      groups: this.groups.map((g) => ({ id: g.id, title: g.title, setId: g.setId })),
+      groups: this.groups.map((group) => ({
+        id: group.id,
+        title: group.title,
+        hierarchy: group.parentHierarchy,
+      })),
     });
   }
 
@@ -156,30 +159,19 @@ export class GroupManager extends BaseManager implements IGroupManager {
    */
   private setStates(): void {
     const currentGroupIndex = this.groups.findIndex((group) => group.active);
-    console.log('currentGroupIndex', currentGroupIndex);
     const currentGroupId = this.groups[currentGroupIndex].id;
-    console.log('currentGroupId', currentGroupId);
     const currentGroupTitle = this.groups[currentGroupIndex].title;
-    console.log('currentGroupTitle', currentGroupTitle);
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
-    console.log('previousGroupIndex', previousGroupIndex);
     const nextGroupIndex =
       currentGroupIndex < this.groups.length - 1 ? currentGroupIndex + 1 : null;
-    console.log('nextGroupIndex', nextGroupIndex);
     const completedGroups = new Set(
       this.groups.filter((group) => group.completed).map((group) => group.id)
     );
-    console.log('completedGroups', completedGroups);
     const visitedGroups = new Set(
       this.groups.filter((group) => group.visited).map((group) => group.id)
     );
-    console.log('visitedGroups', visitedGroups);
     const totalGroups = this.groups.length;
-    console.log('totalGroups', totalGroups);
     const groupsComplete = completedGroups.size;
-    console.log('groupsComplete', groupsComplete);
-    const groupProgress = this.groups[currentGroupIndex].progress;
-    console.log('groupProgress', groupProgress);
     const groupValidity = this.groups.reduce(
       (acc, group) => {
         acc[group.id] = group.isValid;
@@ -187,7 +179,6 @@ export class GroupManager extends BaseManager implements IGroupManager {
       },
       {} as Record<string, boolean>
     );
-    console.log('groupValidity', groupValidity);
 
     const groupState: FormGroupState = {
       currentGroupIndex,
@@ -199,7 +190,6 @@ export class GroupManager extends BaseManager implements IGroupManager {
       visitedGroups,
       totalGroups,
       groupsComplete,
-      groupProgress,
       groupValidity,
     };
 
@@ -246,7 +236,8 @@ export class GroupManager extends BaseManager implements IGroupManager {
    */
   public getCurrentGroup(): GroupElement | null {
     const currentGroupIndex = this.form.getState('currentGroupIndex');
-    return this.getGroupByIndex(currentGroupIndex) || null;
+    if (!currentGroupIndex) return null;
+    return this.getGroupByIndex(currentGroupIndex);
   }
 
   // ============================================
@@ -293,7 +284,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
    * @returns Array of groups in the set
    */
   public getGroupsBySetId(setId: string): GroupElement[] {
-    return this.groups.filter((group) => group.setId === setId);
+    return this.groups.filter((group) => group.parentHierarchy.setId === setId);
   }
 
   // ============================================
@@ -306,7 +297,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
    * @param groupElement - The group element
    * @returns Parent hierarchy metadata or null
    */
-  private findParentHierarchy(groupElement: HTMLElement): { setId: string; setIndex: number } {
+  private findParentHierarchy(groupElement: HTMLElement): GroupParentHierarchy {
     // Find the parent set element
     const parentSetElement = groupElement.closest(`[${ATTR}-element^="set"]`);
     if (!parentSetElement) {
@@ -335,6 +326,8 @@ export class GroupManager extends BaseManager implements IGroupManager {
     return {
       setId: parentSet.id,
       setIndex: parentSet.index,
+      cardId: parentSet.parentHierarchy?.cardId || null,
+      cardIndex: parentSet.parentHierarchy?.cardIndex || null,
     };
   }
 }

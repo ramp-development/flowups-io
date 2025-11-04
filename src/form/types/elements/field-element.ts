@@ -1,4 +1,10 @@
 import type { BaseElement } from './base-element';
+import type { GroupParentHierarchy } from './group-element';
+
+export interface FieldParentHierarchy extends GroupParentHierarchy {
+  groupId: string | null;
+  groupIndex: number | null;
+}
 
 /**
  * Field Element
@@ -8,14 +14,8 @@ export interface FieldElement extends BaseElement {
   /** Type identifier */
   type: 'field';
 
-  /** Parent group ID (if in a group) */
-  groupId: string | null;
-
-  /** Parent set ID */
-  setId: string;
-
-  /** Parent card ID */
-  cardId: string;
+  /** Parent hierarchy */
+  parentHierarchy: FieldParentHierarchy;
 
   /** Whether this field is included in the navigation order (conditional visibility) */
   isIncluded: boolean;

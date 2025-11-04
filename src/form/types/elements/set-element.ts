@@ -1,5 +1,10 @@
 import type { BaseElement } from './base-element';
 
+export interface SetParentHierarchy {
+  cardId: string | null;
+  cardIndex: number | null;
+}
+
 /**
  * Set Element
  * Semantic grouping of related fields (uses <fieldset>)
@@ -11,11 +16,8 @@ export interface SetElement extends BaseElement {
   /** Progress of the set (0-100) */
   progress: number;
 
-  /** Parent card ID */
-  cardId: string | null;
-
-  /** Parent card index */
-  cardIndex: number | null;
+  /** Parent hierarchy */
+  parentHierarchy: SetParentHierarchy;
 
   /** Whether this set is valid */
   isValid: boolean;
