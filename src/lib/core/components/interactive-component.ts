@@ -27,7 +27,7 @@ export abstract class InteractiveComponent<TEventMap extends AppEventMap = AppEv
 
   constructor(props: InteractiveComponentProps = {}) {
     super(props);
-    this.eventBus = EventBus.getInstance();
+    this.eventBus = EventBus.getInstance({ debug: true });
   }
 
   /**
@@ -79,7 +79,7 @@ export abstract class InteractiveComponent<TEventMap extends AppEventMap = AppEv
       key = `${target}-${event}`;
     } else {
       element = target;
-      key = `${element.constructor.name}-${event}-${Date.now()}`;
+      key = `${element.constructor.name}-${event}`;
     }
 
     // Remove existing listener if present
