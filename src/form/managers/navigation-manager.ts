@@ -5,9 +5,9 @@
  * Emits navigation commands that managers respond to based on current behavior mode.
  */
 
-import type { FlowupsForm } from '..';
 import { ATTR } from '../constants/attr';
 import type { BoundaryReachedEvent, ButtonElement, INavigationManager } from '../types';
+import { BaseManager } from './base-manager';
 
 /**
  * NavigationManager Implementation
@@ -15,13 +15,10 @@ import type { BoundaryReachedEvent, ButtonElement, INavigationManager } from '..
  * Discovers navigation buttons and emits navigation:next/prev events.
  * Listens for boundary events to update button states.
  */
-export class NavigationManager implements INavigationManager {
+export class NavigationManager extends BaseManager implements INavigationManager {
   // ============================================
   // Properties
   // ============================================
-
-  /** Reference to parent form component */
-  public readonly form: FlowupsForm;
 
   /** Navigation buttons */
   private prevButtons: ButtonElement[] = [];
@@ -30,14 +27,6 @@ export class NavigationManager implements INavigationManager {
 
   /** Whether navigation is currently enabled */
   private navigationEnabled: boolean = true;
-
-  // ============================================
-  // Constructor
-  // ============================================
-
-  constructor(form: FlowupsForm) {
-    this.form = form;
-  }
 
   // ============================================
   // Lifecycle
