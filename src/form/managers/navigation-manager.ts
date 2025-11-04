@@ -79,7 +79,7 @@ export class NavigationManager implements INavigationManager {
 
   /**
    * Discover all navigation buttons in the form
-   * Finds buttons with [data-form-element="prev"] and [data-form-element="next"]
+   * Finds buttons with [data-form-element="prev"], [data-form-element="next"], [data-form-element="submit"]
    */
   public discoverButtons(): void {
     const rootElement = this.form.getRootElement();
@@ -91,7 +91,6 @@ export class NavigationManager implements INavigationManager {
           cause: rootElement,
         }
       );
-      return;
     }
 
     this.discoverButtonsForKey(rootElement, 'prev');
@@ -142,7 +141,7 @@ export class NavigationManager implements INavigationManager {
       button.element.addEventListener('click', this.handleSubmitClick);
     });
 
-    // Subscribe to boundary events to update button states
+    // Subscribe to boundary events
     this.form.subscribe('form:navigation:boundary', this.handleBoundaryReached);
 
     if (this.form.getFormConfig().debug) {
@@ -192,7 +191,7 @@ export class NavigationManager implements INavigationManager {
     const behavior = this.form.getBehavior();
 
     // Emit navigation command
-    this.form.emit('navigation:prev', { behavior });
+    this.form.emit('form:navigation:prev', { behavior });
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('Navigation prev triggered', { behavior });
@@ -209,7 +208,7 @@ export class NavigationManager implements INavigationManager {
     const behavior = this.form.getBehavior();
 
     // Emit navigation command
-    this.form.emit('navigation:next', { behavior });
+    this.form.emit('form:navigation:next', { behavior });
 
     if (this.form.getFormConfig().debug) {
       this.form.logDebug('Navigation next triggered', { behavior });
@@ -297,9 +296,7 @@ export class NavigationManager implements INavigationManager {
    */
   private updateButtonStatesForByField(): void {
     const currentFieldIndex = this.form.getState('currentFieldIndex');
-    console.log('currentFieldIndex', currentFieldIndex);
     const navigationOrder = this.form.fieldManager.getNavigationOrder();
-    console.log('navigationOrder', navigationOrder);
 
     if (navigationOrder.length === 0) {
       this.disableButtons([...this.prevButtons, ...this.nextButtons]);
@@ -307,11 +304,9 @@ export class NavigationManager implements INavigationManager {
     }
 
     const currentPositionInOrder = navigationOrder.indexOf(currentFieldIndex);
-    console.log('currentPositionInOrder', currentPositionInOrder);
 
     // Update prev buttons (disabled if at first field)
     if (currentPositionInOrder === 0) {
-      console.log('disable prev buttons');
       this.disableButtons(this.prevButtons);
     } else {
       this.enableButtons(this.prevButtons);
