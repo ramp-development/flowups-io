@@ -217,6 +217,31 @@ export class FieldManager extends BaseManager implements IFieldManager {
     this.form.setStates({ ...fieldState });
   }
 
+  /**
+   * Update field values
+   */
+  private setMetadata(
+    selector: string | number,
+    metadata: Pick<
+      Partial<FieldElement>,
+      'visited' | 'completed' | 'active' | 'isIncluded' | 'isValid' | 'errors'
+    >
+  ): void {
+    const field =
+      typeof selector === 'string' ? this.getFieldById(selector) : this.getFieldByIndex(selector);
+    if (!field) return;
+
+    const newData = {
+      ...field,
+      ...metadata,
+    };
+
+    this.fieldMap.set(field.id, newData);
+    this.fields[field.index] = newData;
+
+    this.setStates();
+  }
+
   // ============================================
   // Event Listeners
   // ============================================
@@ -452,7 +477,18 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * @returns Field element or null if not found
    */
   public getFieldByIndex(index: number): FieldElement | null {
-    const field = this.fields[index];
+    const field = this.fields[index] ?? null;
+    return field;
+  }
+
+  /**
+   * Get field by id
+   *
+   * @param id - Field ID
+   * @returns Field element or null if not found
+   */
+  public getFieldById(id: string): FieldElement | null {
+    const field = this.fieldMap.get(id) ?? null;
     return field;
   }
 
