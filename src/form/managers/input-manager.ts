@@ -8,30 +8,26 @@
 
 import { ATTR } from '../constants';
 import type {
+  ElementData,
   FieldElement,
   FormInputState,
   IInputManager,
   InputElement,
   InputParentHierarchy,
+  SetParentHierarchy,
 } from '../types';
-import { BaseManager } from './base-manager';
+import { ElementManager } from './element-manager';
 
 /**
  * InputManager Implementation
  *
  * Discovers inputs within field wrappers and groups them by name.
- * Implements lazy event binding - only the current field's input has active listeners.
+ * Implements lazy event binding - only the active field inputs are bound to events.
  */
-export class InputManager extends BaseManager implements IInputManager {
-  // ============================================
-  // Properties
-  // ============================================
-
-  /** Array of discovered input elements with metadata */
-  private inputs: InputElement[] = [];
-
-  /** Map for O(1) lookup by input name */
-  private inputMap: Map<string, InputElement> = new Map();
+export class InputManager extends ElementManager<InputElement> implements IInputManager {
+  protected elements: InputElement[] = [];
+  protected elementMap: Map<string, InputElement> = new Map();
+  protected readonly elementType = 'input';
 
   /** Currently bound input name (for cleanup) */
   private boundInputName: string | null = null;
@@ -43,191 +39,167 @@ export class InputManager extends BaseManager implements IInputManager {
     handler: EventListener;
   }> = [];
 
-  // ============================================
-  // Lifecycle
-  // ============================================
-
   /**
-   * Initialize the manager
-   */
-  public init(): void {
-    this.discoverInputs();
-    this.setStates();
-
-    this.logDebug('InputManager initialized', {
-      totalInputs: this.inputs.length,
-      inputs: this.inputs.map((input) => ({
-        name: input.name,
-        type: input.inputType,
-        isGroup: input.isGroup,
-        isRequired: input.isRequired,
-        isValid: input.isValid,
-        isIncluded: input.isIncluded,
-      })),
-    });
-  }
-
-  /**
-   * Cleanup manager resources
+   * Destroy InputManager
    */
   public destroy(): void {
     this.unbindAllInputs();
-    this.inputs = [];
-    this.inputMap.clear();
+    super.destroy();
   }
-
-  // ============================================
-  // Discovery
-  // ============================================
 
   /**
    * Discover all inputs in the form
    * Queries within each field wrapper and groups by name attribute
    */
-  public discoverInputs(): void {
-    this.inputs = [];
-    this.inputMap.clear();
-
+  protected discoverElements(): void {
     const fields = this.form.fieldManager.getAll();
+
+    this.elements = [];
+    this.elementMap.clear();
 
     // Track which names we've already processed to avoid duplicates
     const processedNames = new Set<string>();
 
     fields.forEach((field, index) => {
       // Query for inputs within this field wrapper
-      const inputElements = Array.from(
+      const inputs = Array.from(
         field.element.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
           'input, select, textarea'
         )
       );
 
-      if (inputElements.length === 0) {
+      if (inputs.length === 0) {
         this.form.logWarn(`Field "${field.id}" has no input elements`, { field });
         return;
       }
 
-      const parentHierarchy = this.findParentHierarchy(field);
+      const parentHierarchy = this.findParentHierarchy<InputParentHierarchy>(field);
 
       // Process each input found
-      inputElements.forEach((inputElement) => {
-        const name = inputElement.getAttribute('name');
-        if (!name) {
-          throw this.createError(`Input in field "${field.id}" missing name attribute`, 'init', {
-            cause: {
-              field: field.element,
-              input: inputElement,
-            },
-          });
-        }
-
-        // If we've already processed this name, it's part of a radio/checkbox group
-        if (processedNames.has(name)) {
-          // Find the existing InputElement and add this element to it
-          const existingInput = this.inputMap.get(name);
-          if (existingInput) {
-            existingInput.inputs.push(inputElement);
-            existingInput.isGroup = existingInput.inputs.length > 1;
-          }
-          return;
-        }
-
-        // New input - create InputElement
-        processedNames.add(name);
-
-        const inputType = this.getInputType(inputElement);
-
-        // // For radio/checkbox, check if there are more with the same name in the form
-        // let allElements: (HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)[] = [
-        //   inputElement,
-        // ];
-
-        // if (inputType === 'radio' || inputType === 'checkbox') {
-        //   // Query the entire form for all inputs with this name
-        //   const rootElement = this.form.getRootElement();
-        //   if (!rootElement) {
-        //     this.form.logWarn(`Root element not found`, { field });
-        //     return;
-        //   }
-        //   allElements = Array.from(
-        //     rootElement.querySelectorAll<HTMLInputElement>(
-        //       `input[type="${inputType}"][name="${name}"]`
-        //     )
-        //   );
-        // }
-
-        const isRequiredOriginal = this.checkIfRequired(inputElement);
-
-        const input: InputElement = {
-          element: inputElement,
-          type: 'input',
-          id: name,
-          title: name,
-          index,
-          visited: false,
-          completed: false,
-          active: false,
-          current: false,
-          inputs: [inputElement],
-          inputType,
-          value: this.getInputValue(name),
+      inputs.forEach((inputElement) => {
+        const elementData = this.createInputElementData(inputElement, index, {
+          field,
+          processedNames,
           parentHierarchy,
-          name,
-          isGroup: inputElements.length > 1,
-          isRequiredOriginal,
-          isRequired: isRequiredOriginal,
-          isValid: false,
-          isIncluded: field.isIncluded,
-          errors: [],
-        };
+          isGroup: inputs.length > 1,
+        });
 
-        this.inputs.push(input);
-        this.inputMap.set(name, input);
+        if (!elementData) return;
+        this.updateStorage(elementData);
       });
     });
-
-    this.form.logDebug(`Discovered ${this.inputs.length} inputs`);
   }
 
-  // ============================================
-  // State Management
-  // ============================================
+  /**
+   * Create element data object
+   * Required by abstract class but not directly used
+   * InputManager uses createInputElementData() instead due to unique discovery needs
+   *
+   * @param element - HTMLElement
+   * @param index - Index of the element
+   * @returns InputElement | undefined
+   */
+  protected createElementData(): undefined {
+    // Not used - InputManager has custom discovery logic in discoverElements()
+    return undefined;
+  }
 
   /**
-   * Set the form states for inputs
-   * Subscribers only notified if the states have changed
+   * Create input element data with additional context
+   * Private helper used by discoverElements() to handle input-specific logic
+   *
+   * @param element - HTMLElement (input/select/textarea)
+   * @param index - Index of the element
+   * @param props - Additional context for input discovery
+   * @returns InputElement | undefined
    */
-  private setStates(): void {
-    const inputState: FormInputState = {
+  private createInputElementData(
+    element: HTMLElement,
+    index: number,
+    props: {
+      field: FieldElement;
+      processedNames: Set<string>;
+      parentHierarchy: InputParentHierarchy;
+      isGroup: boolean;
+    }
+  ): InputElement | undefined {
+    if (
+      !(
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLSelectElement ||
+        element instanceof HTMLTextAreaElement
+      )
+    )
+      return;
+    const { field, processedNames, parentHierarchy, isGroup } = props;
+
+    const name = element.getAttribute('name');
+    if (!name) {
+      throw this.createError(`Input in field "${field.id}" missing name attribute`, 'init', {
+        cause: {
+          field: field.element,
+          input: element,
+        },
+      });
+    }
+
+    // If we've already processed this name, it's part of a radio/checkbox group
+    if (processedNames.has(name)) {
+      // Find the existing element and add this element to it
+      const existingInput = this.elementMap.get(name);
+      if (existingInput) {
+        existingInput.inputs.push(element);
+        existingInput.isGroup = existingInput.inputs.length > 1;
+      }
+      return;
+    }
+
+    // New input - create InputElement
+    processedNames.add(name);
+
+    const inputType = this.getInputType(element);
+
+    const isRequiredOriginal = this.checkIfRequired(element);
+
+    return {
+      element: element,
+      type: 'input',
+      id: name,
+      title: name,
+      index,
+      visited: false,
+      completed: false,
+      active: false,
+      current: false,
+      inputs: [element],
+      inputType,
+      value: this.getInputValue(name),
+      parentHierarchy,
+      name,
+      isGroup,
+      isRequiredOriginal,
+      isRequired: isRequiredOriginal,
+      isValid: false,
+      isIncluded: field.isIncluded,
+      errors: [],
+    };
+  }
+
+  /**
+   * Calculate input-specific states
+   * Returns formData object with all input values
+   *
+   * @returns FormInputState - Complete input state object
+   */
+  public calculateStates(): FormInputState {
+    return {
       formData: this.getAllFormData(),
     };
-
-    this.form.setStates({ ...inputState });
   }
 
   // ============================================
   // Access Methods
   // ============================================
-
-  /**
-   * Get all inputs
-   */
-  public getInputs(): InputElement[] {
-    return this.inputs;
-  }
-
-  /**
-   * Get input by name
-   */
-  public getInputByName(name: string): InputElement | null {
-    return this.inputMap.get(name) || null;
-  }
-
-  /**
-   * Get input by field ID
-   */
-  public getInputByFieldId(fieldId: string): InputElement | null {
-    return this.inputs.find((input) => input.parentHierarchy.fieldId === fieldId) || null;
-  }
 
   // ============================================
   // Event Binding
@@ -277,7 +249,7 @@ export class InputManager extends BaseManager implements IInputManager {
    * @param name - Input name
    */
   public unbindInput(name: string): void {
-    const input = this.inputMap.get(name);
+    const input = this.elementMap.get(name);
     if (!input) return;
 
     // Remove all listeners associated with this input's elements
@@ -407,7 +379,7 @@ export class InputManager extends BaseManager implements IInputManager {
    * @returns Current value or undefined if not found
    */
   public getInputValue(name: string): unknown {
-    const input = this.inputMap.get(name);
+    const input = this.elementMap.get(name);
     if (!input) return undefined;
 
     return this.extractInputValue(input);
@@ -423,7 +395,7 @@ export class InputManager extends BaseManager implements IInputManager {
    * @param value - Value to set
    */
   public setInputValue(name: string, value: unknown): void {
-    const input = this.inputMap.get(name);
+    const input = this.elementMap.get(name);
     if (!input) {
       this.form.logWarn(`Cannot set value for input "${name}" - not found`);
       return;
@@ -483,7 +455,7 @@ export class InputManager extends BaseManager implements IInputManager {
   public getAllFormData(): Record<string, unknown> {
     const formData: Record<string, unknown> = {};
 
-    this.inputs.forEach((input) => {
+    this.elements.forEach((input) => {
       formData[input.name] = this.extractInputValue(input);
     });
 
@@ -564,56 +536,52 @@ export class InputManager extends BaseManager implements IInputManager {
   /**
    * Find the parent set element for a field
    *
-   * @param inputElement - The input element
+   * @param element - The input element
    * @returns Parent field metadata
    */
-  private findParentField(inputElement: HTMLElement): FieldElement {
-    const parentFieldElement = inputElement.closest(`[${ATTR}-element^="field"]`);
-    if (!parentFieldElement) {
-      throw this.createError('Cannot discover inputs: no parent field element found', 'init', {
-        cause: { manager: 'InputManager', inputElement },
-      });
-    }
-
-    const { fieldManager } = this.form;
-    if (!fieldManager) {
-      throw this.createError('Cannot discover inputs: field manager is null', 'init', {
-        cause: { manager: 'InputManager', inputElement },
-      });
-    }
-
-    const parentField = fieldManager.getAll().find((field) => field.element === parentFieldElement);
+  protected findParentElement(element: HTMLElement): FieldElement {
+    const parentField = this.findParentBySelector(element, 'field', () =>
+      this.form.fieldManager.getAll()
+    );
 
     if (!parentField) {
       throw this.createError('Cannot discover inputs: no parent field found', 'init', {
-        cause: { manager: 'InputManager', inputElement },
+        cause: { manager: 'InputManager', input: element },
       });
     }
 
     return parentField;
   }
 
-  /**
-   * Find the parent hierarchy for an input
-   *
-   * @param inputElement - The group element
-   * @returns Parent hierarchy metadata or null
-   */
-  private findParentHierarchy(element: HTMLElement | FieldElement): InputParentHierarchy {
-    let parentField: FieldElement;
+  // /**
+  //  * Find the parent hierarchy for an input
+  //  * Overrides base class method with input-specific logic
+  //  * Always returns InputParentHierarchy which extends SetParentHierarchy
+  //  *
+  //  * @param element - HTMLElement or ElementData (FieldElement)
+  //  * @returns Input parent hierarchy
+  //  */
+  // protected findParentHierarchy<THierarchy extends SetParentHierarchy>(
+  //   element: HTMLElement | ElementData
+  // ): THierarchy {
+  //   let parentField: FieldElement;
 
-    if (element instanceof HTMLElement) {
-      parentField = this.findParentField(element);
-    } else {
-      parentField = element;
-    }
+  //   if (element instanceof HTMLElement) {
+  //     parentField = this.findParentElement(element);
+  //   } else if ('type' in element && element.type === 'field') {
+  //     parentField = element as FieldElement;
+  //   } else {
+  //     throw this.createError('findParentHierarchy requires FieldElement', 'runtime', {
+  //       cause: { element },
+  //     });
+  //   }
 
-    return {
-      fieldId: parentField.id,
-      fieldIndex: parentField.index,
-      ...parentField.parentHierarchy,
-    };
-  }
+  //   return {
+  //     fieldId: parentField.id,
+  //     fieldIndex: parentField.index,
+  //     ...parentField.parentHierarchy,
+  //   } as unknown as THierarchy;
+  // }
 
   /**
    * Get the input type from an element
