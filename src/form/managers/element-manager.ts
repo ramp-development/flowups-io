@@ -159,7 +159,7 @@ export abstract class ElementManager<TElement extends ElementData>
   /**
    * Write states to form
    */
-  public writeStatesToForm(): void {
+  public setStates(): void {
     const states = this.calculateStates();
     this.form.setStates(states as StateForElement<TElement>);
   }

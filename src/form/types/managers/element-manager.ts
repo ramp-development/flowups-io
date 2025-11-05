@@ -82,6 +82,9 @@ export interface IElementManager<TElement extends ElementData> extends IBaseMana
   /** Get all elements */
   getAll(): TElement[];
 
+  /** Write states to form */
+  setStates(): void;
+
   /**
    * Update storage with the complete element
    * Used internally after merging data
