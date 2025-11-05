@@ -18,9 +18,7 @@ export abstract class BaseManager implements IBaseManager {
    * Debug logging (only in debug mode)
    */
   logDebug(...args: unknown[]): void {
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug(...args);
-    }
+    this.form.logDebug(...args);
   }
 
   /**

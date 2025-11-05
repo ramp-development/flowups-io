@@ -90,6 +90,7 @@ DOM updated (elements shown/hidden based on active flags)
 1. ✅ Created abstract `ElementManager<TElement extends ElementData>` base class
 2. ✅ All managers (Card, Set, Group, Field) now extend `ElementManager`
 3. ✅ Implemented all required methods in base class:
+
    - `clearActive()` - clears all active flags
    - `setActiveByParent()` - sets multiple children active
    - `calculateStates()` - abstract method (each manager implements its own state calculation)
@@ -102,6 +103,7 @@ DOM updated (elements shown/hidden based on active flags)
    - Lifecycle: `init()`, `destroy()`, `discoverElements()`
 
 4. ✅ Type-safe implementation using TypeScript generics:
+
    - `UpdatableElementData<T>` - Only updatable properties
    - `StateForElement<T>` - Mapped type for state returns
    - Type guards for runtime safety (`'property' in object`)
@@ -111,6 +113,7 @@ DOM updated (elements shown/hidden based on active flags)
    - All common logic inherited from base class
 
 **Files Modified:**
+
 - [src/form/types/managers/element-manager.ts](src/form/types/managers/element-manager.ts) - Type definitions
 - [src/form/managers/element-manager.ts](src/form/managers/element-manager.ts) - Base class implementation
 - [src/form/managers/card-manager.ts](src/form/managers/card-manager.ts) - Refactored to extend ElementManager
@@ -1460,20 +1463,74 @@ interface FormSetChangedEventPayload {
 
 ### Phase 2: State Shape
 
-- [ ] Add `activeFieldIndices`, `activeGroupIndices`, `activeSetIndices`, `activeCardIndices` to FormState
-- [ ] Update initial state to include new keys (empty arrays)
+- [x] Add `activeFieldIndices`, `activeGroupIndices`, `activeSetIndices`, `activeCardIndices` to FormState
+- [x] Update initial state to include new keys (empty arrays)
+- [x] Add function to update active indices.
 
-### Phase 3: NavigationManager
+### Phase 3: NavigationManager ✅ **COMPLETED**
 
-- [ ] **Refactor** `handleByField()` to use batching (currently calls `setStates()` on each manager)
-- [ ] **Rename/refactor** `handleByField(fromIndex, toIndex)` → `nextField()` (remove parameters, get from state)
-- [ ] **Implement** `nextGroup()`, `nextSet()`, `nextCard()` (stubs exist, need full implementation)
-- [ ] **Add** `updateParentMetadata()` (generic helper) - does not exist
-- [ ] **Add** `batchStateUpdates()` - does not exist
-- [ ] **Add** `handleBoundary()` for cross-level navigation - does not exist
-- [ ] **Add** `goToSet()` and `goToCard()` helpers - does not exist
-- [ ] **Add** `validateCurrent()` and validation methods - does not exist
-- [ ] No navigation-specific methods exist in other managers (all navigation code is commented out)
+**Status:** Phase 3 is complete! NavigationManager has been fully refactored with clean navigation logic, natural cascading, and batched state updates.
+
+**Major Achievement:** Implemented elegant cascade pattern where navigation methods call up the hierarchy (field → group → set → card → form complete), eliminating the need for complex boundary handling logic.
+
+**Completed Work:**
+
+1. ✅ **Implemented navigation methods**:
+   - `nextField()` - Navigate to next field (byField behavior)
+   - `nextGroup()` - Navigate to next group (byGroup behavior)
+   - `nextSet()` - Navigate to next set (bySet behavior)
+   - `nextCard()` - Navigate to next card (byCard behavior)
+   - All methods are synchronous (no unnecessary async/await)
+
+2. ✅ **Implemented helper methods**:
+   - `updateHierarchyData(element)` - Updates parent metadata (cascades up: field → group → set → card)
+   - `clearHierarchyData(elementType)` - Clears child metadata (cascades down: card → set → group → field)
+   - `batchStateUpdates()` - Collects state from all managers and writes once (includes InputManager!)
+   - `handleFormComplete()` - Emits form:complete event
+
+3. ✅ **Key architectural decisions**:
+   - **Natural cascade**: When at end of fields, `nextField()` calls `nextGroup()`, which calls `nextSet()`, etc.
+   - **No circular dependencies**: Each level only calls UP the hierarchy
+   - **No `handleBoundary()` needed**: The cascade IS the boundary handling
+   - **Synchronous flow**: All operations are sync (no promises, no async/await overhead)
+   - **Batched state updates**: Single state write prevents multiple `state:changed` events
+
+4. ✅ **Enhanced ElementManager with**:
+   - `clearActiveAndCurrent()` - Clears both active and current flags (maintains invariant)
+   - `setActive(selector)` - Sets element active without calling setStates() (for batching)
+   - `setCurrent(selector)` - Sets element as current, automatically clears others
+   - `setActiveByParent(parentId, parentType, options)` - Options include `setFirstChildCurrent: boolean`
+
+5. ✅ **Navigation flow**:
+   ```
+   User clicks Next
+   → handleNext() calls nextField/nextGroup/nextSet/nextCard based on behavior
+   → Navigation method:
+     1. Gets next position via getNextPosition()
+     2. If null, cascades up (nextField → nextGroup → nextSet → nextCard → handleFormComplete)
+     3. Clears hierarchy via clearHierarchyData()
+     4. Sets new element active/current
+     5. Sets children active via setActiveByParent()
+     6. Updates parents via updateHierarchyData()
+     7. Batches all state updates via batchStateUpdates()
+   → DisplayManager reacts to single state:changed event
+   ```
+
+**Files Modified:**
+- [src/form/managers/navigation-manager.ts](src/form/managers/navigation-manager.ts) - Complete refactor
+- [src/form/managers/element-manager.ts](src/form/managers/element-manager.ts) - Added navigation helpers
+
+**Original Phase 3 Goals (kept for reference):**
+
+- [x] **Refactor** `handleByField()` to use batching - ✅ Renamed to `nextField()`, uses `batchStateUpdates()`
+- [x] **Rename/refactor** `handleByField(fromIndex, toIndex)` → `nextField()` - ✅ Now `nextField()` with no parameters
+- [x] **Implement** `nextGroup()`, `nextSet()`, `nextCard()` - ✅ All implemented with cascade pattern
+- [x] **Add** `updateHierarchyData()` (generic helper) - ✅ Implemented, cascades up hierarchy
+- [x] **Add** `clearHierarchyData()` (generic helper) - ✅ Implemented, cascades down hierarchy (bonus!)
+- [x] **Add** `batchStateUpdates()` - ✅ Implemented, includes InputManager
+- [x] **Removed** `handleBoundary()` - ✅ Not needed, cascade pattern handles boundaries naturally
+- [x] **Removed** `goToSet()` and `goToCard()` - ✅ Not needed, cascade pattern handles this
+- [ ] **Add** `validateCurrent()` and validation methods - ⚠️ Deferred to Phase 5 (validation)
 
 ### Phase 4: DisplayManager
 

@@ -6,7 +6,13 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type { BoundaryReachedEvent, ButtonElement, INavigationManager } from '../types';
+import type {
+  ButtonElement,
+  FieldElement,
+  GroupElement,
+  INavigationManager,
+  SetElement,
+} from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -16,21 +22,12 @@ import { BaseManager } from './base-manager';
  * Listens for boundary events to update button states.
  */
 export class NavigationManager extends BaseManager implements INavigationManager {
-  // ============================================
-  // Properties
-  // ============================================
-
-  /** Navigation buttons */
   private prevButtons: ButtonElement[] = [];
   private nextButtons: ButtonElement[] = [];
   private submitButtons: ButtonElement[] = [];
 
   /** Whether navigation is currently enabled */
   private navigationEnabled: boolean = true;
-
-  // ============================================
-  // Lifecycle
-  // ============================================
 
   /**
    * Initialize the manager
@@ -40,13 +37,11 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.setupEventListeners();
     this.updateButtonStates();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('NavigationManager initialized', {
-        prevButtons: this.prevButtons.length,
-        nextButtons: this.nextButtons.length,
-        submitButtons: this.submitButtons.length,
-      });
-    }
+    this.form.logDebug('NavigationManager initialized', {
+      prevButtons: this.prevButtons.length,
+      nextButtons: this.nextButtons.length,
+      submitButtons: this.submitButtons.length,
+    });
   }
 
   /**
@@ -57,9 +52,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.nextButtons = [];
     this.submitButtons = [];
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('NavigationManager destroyed');
-    }
+    this.form.logDebug('NavigationManager destroyed');
   }
 
   // ============================================
@@ -86,13 +79,11 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.discoverButtonsForKey(rootElement, 'next');
     this.discoverButtonsForKey(rootElement, 'submit');
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation buttons discovered', {
-        prev: this.prevButtons.length,
-        next: this.nextButtons.length,
-        submit: this.submitButtons.length,
-      });
-    }
+    this.form.logDebug('Navigation buttons discovered', {
+      prev: this.prevButtons.length,
+      next: this.nextButtons.length,
+      submit: this.submitButtons.length,
+    });
   }
 
   private discoverButtonsForKey(rootElement: HTMLElement, key: 'prev' | 'next' | 'submit'): void {
@@ -130,12 +121,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
       button.element.addEventListener('click', this.handleSubmitClick);
     });
 
-    // Subscribe to boundary events
-    this.form.subscribe('form:navigation:boundary', this.handleBoundaryReached);
-
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('NavigationManager event listeners setup');
-    }
+    this.form.logDebug('NavigationManager event listeners setup');
   }
 
   // ============================================
@@ -182,9 +168,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
     // Emit navigation command
     this.form.emit('form:navigation:prev', { behavior });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation prev triggered', { behavior });
-    }
+    this.form.logDebug('Navigation prev triggered', { behavior });
   }
 
   /**
@@ -194,29 +178,27 @@ export class NavigationManager extends BaseManager implements INavigationManager
   public async handleNext(): Promise<void> {
     if (!this.navigationEnabled) return;
 
-    // const nextFieldIndex = this.form.getState('nextFieldIndex');
-    // if (nextFieldIndex === null) return; // No more fields to navigate to @todo
-    // const nextField = this.form.fieldManager.getFieldByIndex(nextFieldIndex);
-    // if (!nextField) return;
+    // const canAdvance = await this.validateCurrent();
+    // if (!canAdvance) {
+    //   this.showValidationErrors();
+    //   return;
+    // }
 
     const behavior = this.form.getBehavior();
 
     switch (behavior) {
       case 'byField':
-        this.handleByField(
-          this.form.getState('currentFieldIndex'),
-          this.form.getState('nextFieldIndex') ?? 9999 // @todo: remove this once we have a real next field index
-        );
+        await this.nextField();
         break;
-      // case 'byGroup':
-      //   this.handleByGroup(fromIndex, toIndex);
-      //   break;
-      // case 'bySet':
-      //   this.handleBySet(fromIndex, toIndex);
-      //   break;
-      // case 'byCard':
-      //   this.handleByCard(fromIndex, toIndex);
-      //   break;
+      case 'byGroup':
+        await this.nextGroup();
+        break;
+      case 'bySet':
+        await this.nextSet();
+        break;
+      case 'byCard':
+        await this.nextCard();
+        break;
       default:
         throw this.form.createError('Invalid behavior', 'runtime', {
           cause: { behavior },
@@ -249,201 +231,310 @@ export class NavigationManager extends BaseManager implements INavigationManager
       action,
     });
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Form submit requested', {
-        behavior,
-        skipValidation,
-        action,
-      });
-    }
+    this.form.logDebug('Form submit requested', {
+      behavior,
+      skipValidation,
+      action,
+    });
   }
-
-  // ============================================
-  // Navigation Handling
-  // ============================================
 
   /**
-   * Plan
-   * 1. Check form behavior
-   * - if byField, handle next field
-   * - if byGroup, handle next group
-   * - if bySet, handle next set
-   * - if byCard, handle next card
-   *
-   * byField:
-   * - get next field index
-   * - check if in same context as current field
-   * - if in same context, get next field index
-   * - update hierarchy context with next field
-   *
-   * byGroup:
-   * - check group is complete
-   * - check if next group is in same context as current group
-   * - if in same context, get next group index
-   * - update hierarchy context with next group
-   *
-   * bySet:
-   * - check set is complete
-   * - if context exists, check if next set is in same context as current set
-   * - if in same context, get next set index
-   * - update hierarchy context with next set
-   *
-   * byCard:
-   * - check card is complete
-   * - update hierarchy context with next card
-   *
-   * for all:
-   * - check if at end of current context
-   *     - check card is complete (if exists)
-   *     - check set is complete (if exists)
-   *     - check group is complete (if exists)
-   *     - check field is complete (if exists)
-   * - update meta for from and to index
-   * - cascade the context down to the lower levels
+   * Navigate to next field (byField behavior)
    */
+  private nextField(): void {
+    const next = this.form.fieldManager.getNextPosition();
+
+    // At end of fields - check if we can advance to next group/set/card
+    if (next === null) {
+      this.nextGroup();
+      return;
+    }
+
+    const nextField = this.form.fieldManager.getByIndex(next);
+    if (!nextField) {
+      throw this.form.createError('Cannot handle navigation: next field is null', 'runtime', {
+        cause: { nextField },
+      });
+    }
+
+    this.clearHierarchyData('field');
+    this.form.fieldManager.updateElementData(nextField.id, { active: true, current: true });
+    this.updateHierarchyData(nextField);
+    this.batchStateUpdates();
+  }
 
   /**
-   * Move from one field to another
-   * Plan:
-   * - get next field index
-   * - check if in same context as current field
-   * - if in same context, get next field index
-   * - update hierarchy context with next field
-   * @param fromIndex - The index of the current field
-   * @param toIndex - The index of the next field
+   * Navigate to next group (byGroup behavior)
    */
-  private handleByField(fromIndex: number, toIndex: number): void {
-    // get the to field
-    const fromField = this.form.fieldManager.getByIndex(fromIndex);
-    const toField = this.form.fieldManager.getByIndex(toIndex);
+  private nextGroup(): void {
+    const next = this.form.groupManager.getNextPosition();
 
-    if (!toField) {
-      throw this.form.createError('Cannot handle navigation: to field is null', 'runtime', {
-        cause: { toField },
+    // At end of groups - check if we can advance to next group/set/card
+    if (next === null) {
+      this.nextSet();
+      return;
+    }
+
+    const nextGroup = this.form.groupManager.getByIndex(next);
+    if (!nextGroup) {
+      throw this.form.createError('Cannot handle navigation: next group is null', 'runtime', {
+        cause: { nextGroup },
       });
     }
 
-    console.log('handleByField', { fromIndex, toIndex, toField });
+    // Clear active flags
+    this.clearHierarchyData('group');
 
-    // update the field metadata for from and to
-    this.form.fieldManager.updateElementData(fromIndex, { active: false });
-    this.form.fieldManager.updateElementData(toIndex, { active: true });
-    this.form.fieldManager.setStates();
+    // Set new group active and current
+    this.form.groupManager.setActive(nextGroup.id);
+    this.form.groupManager.setCurrent(nextGroup.id);
 
-    // update parent metadata based on the to field
-    if (fromField && fromField.parentHierarchy.groupIndex !== null) {
-      this.form.groupManager.updateElementData(fromField.parentHierarchy.groupIndex, {
-        active: false,
-      });
-    }
-    if (toField.parentHierarchy.groupIndex !== null) {
-      this.form.groupManager.updateElementData(toField.parentHierarchy.groupIndex, {
-        active: true,
-      });
-      this.form.groupManager.setStates();
-    }
-
-    if (fromField) {
-      this.form.setManager.updateElementData(fromField.parentHierarchy.setIndex, { active: false });
-    }
-    this.form.setManager.updateElementData(toField.parentHierarchy.setIndex, { active: true });
-    this.form.setManager.setStates();
-
-    if (fromField && fromField.parentHierarchy.cardIndex !== null) {
-      this.form.cardManager.updateElementData(fromField.parentHierarchy.cardIndex, {
-        active: false,
-      });
-    }
-    if (toField.parentHierarchy.cardIndex !== null) {
-      this.form.cardManager.updateElementData(toField.parentHierarchy.cardIndex, { active: true });
-      this.form.cardManager.setStates();
-    }
+    this.form.fieldManager.setActiveByParent(nextGroup.id, 'group');
+    this.updateHierarchyData(nextGroup);
+    this.batchStateUpdates();
   }
-
-  private handleByGroup(fromIndex: number, toIndex: number): void {
-    // get the to group
-    const toGroup = this.form.groupManager.getByIndex(toIndex);
-
-    if (!toGroup) {
-      throw this.form.createError('Cannot handle navigation: to group is null', 'runtime', {
-        cause: { toGroup },
-      });
-    }
-
-    // update the group metadata for from and to
-    this.form.groupManager.updateElementData(fromIndex, { active: false });
-    this.form.groupManager.updateElementData(toIndex, { active: true });
-
-    // update parent metadata based on the to group
-    this.form.setManager.updateElementData(toGroup.parentHierarchy.setIndex, { active: true });
-
-    if (toGroup.parentHierarchy.cardIndex)
-      this.form.cardManager.updateElementData(toGroup.parentHierarchy.cardIndex, { active: true });
-  }
-
-  private handleBySet(fromIndex: number, toIndex: number): void {
-    // get the to group
-    const toSet = this.form.setManager.getByIndex(toIndex);
-
-    if (!toSet) {
-      throw this.form.createError('Cannot handle navigation: to set is null', 'runtime', {
-        cause: { toSet },
-      });
-    }
-
-    // update the group metadata for from and to
-    this.form.setManager.updateElementData(fromIndex, { active: false });
-    this.form.setManager.updateElementData(toIndex, { active: true });
-
-    // update parent metadata based on the to group
-    if (toSet.parentHierarchy.cardIndex)
-      this.form.cardManager.updateElementData(toSet.parentHierarchy.cardIndex, { active: true });
-  }
-
-  private handleByCard(fromIndex: number, toIndex: number): void {
-    // get the to group
-    const toCard = this.form.cardManager.getByIndex(toIndex);
-
-    if (!toCard) {
-      throw this.form.createError('Cannot handle navigation: to card is null', 'runtime', {
-        cause: { toCard },
-      });
-    }
-
-    // update the group metadata for from and to
-    this.form.cardManager.updateElementData(fromIndex, { active: false });
-    this.form.cardManager.updateElementData(toIndex, { active: true });
-  }
-
-  // ============================================
-  // Boundary Event Handling
-  // ============================================
 
   /**
-   * Handle boundary reached event
-   * Updates button states when navigation reaches start/end
+   * Navigate to next group (byGroup behavior)
    */
-  private handleBoundaryReached = (payload: BoundaryReachedEvent): void => {
-    const { boundary, direction } = payload;
+  private nextSet(): void {
+    const next = this.form.setManager.getNextPosition();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation boundary reached', payload);
+    // At end of sets - check if we can advance to next group/set/card
+    if (next === null) {
+      this.nextCard();
+      return;
     }
 
-    // Disable prev buttons if at start
-    if (boundary === 'start' && direction === 'backward') {
-      this.disableButtons(this.prevButtons);
-    } else {
-      this.enableButtons(this.prevButtons);
+    const nextSet = this.form.setManager.getByIndex(next);
+    if (!nextSet) {
+      throw this.form.createError('Cannot handle navigation: next set is null', 'runtime', {
+        cause: { nextSet },
+      });
     }
 
-    // Disable next buttons if at end
-    if (boundary === 'end' && direction === 'forward') {
-      this.disableButtons(this.nextButtons);
-    } else {
-      this.enableButtons(this.nextButtons);
+    // Clear active flags
+    this.clearHierarchyData('set');
+
+    // Set new group active and current
+    this.form.setManager.setActive(nextSet.id);
+    this.form.setManager.setCurrent(nextSet.id);
+
+    this.form.groupManager.setActiveByParent(nextSet.id, 'set');
+    this.updateHierarchyData(nextSet);
+    this.batchStateUpdates();
+  }
+
+  /**
+   * Navigate to next group (byGroup behavior)
+   */
+  private nextCard(): void {
+    const next = this.form.cardManager.getNextPosition();
+
+    // At end of cards - check if we can advance to next group/set/card
+    if (next === null) {
+      // this.handleFormComplete();
+      return;
     }
-  };
+
+    const nextCard = this.form.cardManager.getByIndex(next);
+    if (!nextCard) {
+      throw this.form.createError('Cannot handle navigation: next card is null', 'runtime', {
+        cause: { nextCard },
+      });
+    }
+
+    // Clear active flags
+    this.clearHierarchyData('card');
+
+    // Set new group active and current
+    this.form.cardManager.setActive(nextCard.id);
+    this.form.cardManager.setCurrent(nextCard.id);
+
+    this.form.setManager.setActiveByParent(nextCard.id, 'card');
+    this.batchStateUpdates();
+  }
+
+  /**
+   * Clear child metadata for any element
+   * Cascades down the hierarchy: card → set → group → field
+   * Clears all levels below and including the given element type
+   *
+   * @param elementType - The element type to start clearing from
+   */
+  private clearHierarchyData(elementType: 'card' | 'set' | 'group' | 'field'): void {
+    // Clear card and below
+    if (elementType === 'card') {
+      this.form.cardManager.clearActiveAndCurrent();
+    }
+
+    // Clear set and below
+    if (elementType === 'card' || elementType === 'set') {
+      this.form.setManager.clearActiveAndCurrent();
+    }
+
+    // Clear group and below
+    if (elementType === 'card' || elementType === 'set' || elementType === 'group') {
+      this.form.groupManager.clearActiveAndCurrent();
+    }
+
+    // Clear field (always cleared for all element types)
+    this.form.fieldManager.clearActiveAndCurrent();
+  }
+
+  /**
+   * Update parent metadata for any element
+   * Cascades up the hierarchy: field � group � set � card
+   * Only updates parents that exist in the element's hierarchy
+   *
+   * @param element - Any form element (field, group, set, card)
+   */
+  private updateHierarchyData(element: SetElement | GroupElement | FieldElement): void {
+    // Update group (only if element is a field)
+    if (element.type === 'field') {
+      const { groupId } = element.parentHierarchy;
+      if (groupId) {
+        this.form.groupManager.clearActiveAndCurrent();
+        this.form.groupManager.setActive(groupId);
+        this.form.groupManager.setCurrent(groupId);
+      }
+    }
+
+    // Update set (if element is field or group)
+    if (element.type === 'field' || element.type === 'group') {
+      const { setId } = element.parentHierarchy;
+      if (setId) {
+        this.form.setManager.clearActiveAndCurrent();
+        this.form.setManager.setActive(setId);
+        this.form.setManager.setCurrent(setId);
+      }
+    }
+
+    // Update card (always, since all elements have a parent card)
+    const { cardId } = element.parentHierarchy;
+    if (cardId) {
+      this.form.cardManager.clearActiveAndCurrent();
+      this.form.cardManager.setActive(cardId);
+      this.form.cardManager.setCurrent(cardId);
+    }
+  }
+
+  /**
+   * Batch all manager state calculations into one setStates() call
+   * Prevents multiple state:changed events and DisplayManager flicker
+   */
+  private batchStateUpdates(): void {
+    // Collect state from all managers (doesn't write to state yet)
+    const allStates = {
+      ...this.form.cardManager.calculateStates(),
+      ...this.form.setManager.calculateStates(),
+      ...this.form.groupManager.calculateStates(),
+      ...this.form.fieldManager.calculateStates(),
+      ...this.form.inputManager.calculateStates(),
+    };
+
+    // Single state write (emits one state:changed event)
+    this.form.setStates(allStates);
+  }
+
+  // /**
+  //  * Handle boundary conditions (end of fields/groups/sets)
+  //  * Determines if we can advance to next container level
+  //  *
+  //  * @param boundary - 'start' or 'end' of current level
+  //  * @param direction - 'forward' or 'backward'
+  //  */
+  // private async handleBoundary(
+  //   boundary: 'start' | 'end',
+  //   direction: 'forward' | 'backward'
+  // ): Promise<void> {
+  //   const behavior = this.form.getBehavior();
+
+  //   if (boundary === 'end' && direction === 'forward') {
+  //     // End of the current level - try to advance forward
+
+  //     if (behavior === 'byField') {
+  //       const nextGroupPosition = this.form.groupManager.getNextPosition();
+  //       if (nextGroupPosition !== null) {
+  //         await this.nextGroup();
+  //         return;
+  //       }
+  //     }
+
+  //     if (behavior === 'byField' || behavior === 'byGroup') {
+  //       // Try next set
+  //       const nextSetPosition = this.form.setManager.getNextPosition();
+  //       if (nextSetPosition !== null) {
+  //         await this.nextSet();
+  //         return;
+  //       }
+  //     }
+
+  //     if (behavior === 'byField' || behavior === 'byGroup' || behavior === 'bySet') {
+  //       // Try next card
+  //       const nextCardPosition = this.form.cardManager.getNextPosition();
+  //       if (nextCardPosition !== null) {
+  //         await this.nextCard();
+  //         return;
+  //       }
+  //     }
+
+  //     // At end of form
+  //     this.handleFormComplete();
+  //     return;
+  //   }
+
+  //   if (behavior === 'byField') {
+  //     // At end of fields - check if we can move to next group
+  //     const currentField = this.form.fieldManager.getCurrent();
+  //     if (!currentField) return;
+
+  //     const { groupId, setId, cardId } = currentField.parentHierarchy;
+
+  //     // Try next group in current set
+  //     if (groupId) {
+  //       const currentGroup = this.form.groupManager.getById(groupId);
+  //       const nextGroupPosition = this.form.groupManager.getNextPosition();
+  //       if (!nextGroupPosition) return;
+  //       const nextGroup = this.form.groupManager.getByIndex(nextGroupPosition);
+
+  //       if (nextGroup && nextGroup.parentHierarchy.setId === setId) {
+  //         // Move to first field in next group
+  //         this.form.groupManager.setMetadata(nextGroup.index, { active: true });
+  //         const firstField = this.form.fieldManager.getFieldsByGroupId(nextGroup.id)[0];
+  //         if (firstField) {
+  //           this.form.fieldManager.setMetadata(firstField.index, { active: true });
+  //           await this.batchStateUpdates();
+  //           return;
+  //         }
+  //       }
+  //     }
+
+  //     // Try next set in current card
+  //     if (setId) {
+  //       const nextSet = this.form.setManager.getNextIncludedSet();
+
+  //       if (nextSet && nextSet.parentHierarchy.cardId === cardId) {
+  //         // Move to first group/field in next set
+  //         await this.goToSet(nextSet);
+  //         return;
+  //       }
+  //     }
+
+  //     // Try next card
+  //     const nextCard = this.form.cardManager.getNextIncludedCard();
+  //     if (nextCard) {
+  //       await this.goToCard(nextCard);
+  //       return;
+  //     }
+
+  //     // At end of form
+  //     this.handleFormComplete();
+  //   }
+
+  //   // Similar logic for byGroup, bySet behaviors
+  //   // ...
+  // }
 
   // ============================================
   // Button State Management
@@ -498,9 +589,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.navigationEnabled = true;
     this.updateButtonStates();
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation enabled');
-    }
+    this.form.logDebug('Navigation enabled');
   }
 
   /**
@@ -511,9 +600,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.navigationEnabled = false;
     this.disableButtons([...this.prevButtons, ...this.nextButtons]);
 
-    if (this.form.getFormConfig().debug) {
-      this.form.logDebug('Navigation disabled');
-    }
+    this.form.logDebug('Navigation disabled');
   }
 
   // ============================================
