@@ -42,7 +42,7 @@ export abstract class ElementManager<TElement extends ElementData>
 
   public init(): void {
     this.discoverElements();
-    this.buildNavigationOrder();
+    if (this.elementType !== 'input') this.buildNavigationOrder();
     this.setStates();
 
     this.logDebug(`${this.constructor.name} initialized`, {
@@ -443,7 +443,10 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /** Get all by parent ID */
-  public getAllByParentId(parentId: string, parentType: 'card' | 'set' | 'group'): TElement[] {
+  public getAllByParentId(
+    parentId: string,
+    parentType: 'card' | 'set' | 'group' | 'field'
+  ): TElement[] {
     return this.elements.filter((element) => {
       if (!('parentHierarchy' in element)) return false;
       switch (parentType) {
@@ -454,6 +457,10 @@ export abstract class ElementManager<TElement extends ElementData>
         case 'group':
           return (
             'groupId' in element.parentHierarchy && element.parentHierarchy.groupId === parentId
+          );
+        case 'field':
+          return (
+            'fieldId' in element.parentHierarchy && element.parentHierarchy.fieldId === parentId
           );
         default:
           return false;

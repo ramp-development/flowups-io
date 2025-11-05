@@ -6,15 +6,12 @@
  * Only binds events to the current field's input for optimal performance.
  */
 
-import { ATTR } from '../constants';
 import type {
-  ElementData,
   FieldElement,
   FormInputState,
   IInputManager,
   InputElement,
   InputParentHierarchy,
-  SetParentHierarchy,
 } from '../types';
 import { ElementManager } from './element-manager';
 
@@ -197,14 +194,6 @@ export class InputManager extends ElementManager<InputElement> implements IInput
     };
   }
 
-  // ============================================
-  // Access Methods
-  // ============================================
-
-  // ============================================
-  // Event Binding
-  // ============================================
-
   /**
    * Bind events to the current field's input
    * Automatically determines the correct event type based on input type
@@ -215,10 +204,9 @@ export class InputManager extends ElementManager<InputElement> implements IInput
     if (!currentField) return;
 
     // Get the input for this field
-    const input = this.getInputByFieldId(currentField.id);
-    if (!input) return;
+    const input = this.getAllByParentId(currentField.id, 'field')[0];
 
-    // Unbind previous input if different
+    // Unbind previous input
     if (this.boundInputName !== null && this.boundInputName !== input.name) {
       this.unbindInput(this.boundInputName);
     }
@@ -493,20 +481,13 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * @param isIncluded - New inclusion state
    */
   public syncInputInclusionWithField(fieldId: string, isIncluded: boolean): void {
-    const input = this.getInputByFieldId(fieldId);
-    if (!input) return;
+    const input = this.getAllByParentId(fieldId, 'field')[0];
 
     input.isIncluded = isIncluded;
+    this.setInputRequired(input, isIncluded && input.isRequiredOriginal);
 
-    if (isIncluded) {
-      // Field is now included - restore original required state
-      this.setInputRequired(input, input.isRequiredOriginal);
-    } else {
-      // Field is excluded - remove required attribute
-      this.setInputRequired(input, false);
-    }
-
-    this.form.logDebug(`Synced input "${input.name}"`, {
+    this.form.logDebug(`Synced input with field "${fieldId}"`, {
+      input: input.name,
       inclusion: isIncluded,
       required: input.isRequired,
     });
@@ -552,36 +533,6 @@ export class InputManager extends ElementManager<InputElement> implements IInput
 
     return parentField;
   }
-
-  // /**
-  //  * Find the parent hierarchy for an input
-  //  * Overrides base class method with input-specific logic
-  //  * Always returns InputParentHierarchy which extends SetParentHierarchy
-  //  *
-  //  * @param element - HTMLElement or ElementData (FieldElement)
-  //  * @returns Input parent hierarchy
-  //  */
-  // protected findParentHierarchy<THierarchy extends SetParentHierarchy>(
-  //   element: HTMLElement | ElementData
-  // ): THierarchy {
-  //   let parentField: FieldElement;
-
-  //   if (element instanceof HTMLElement) {
-  //     parentField = this.findParentElement(element);
-  //   } else if ('type' in element && element.type === 'field') {
-  //     parentField = element as FieldElement;
-  //   } else {
-  //     throw this.createError('findParentHierarchy requires FieldElement', 'runtime', {
-  //       cause: { element },
-  //     });
-  //   }
-
-  //   return {
-  //     fieldId: parentField.id,
-  //     fieldIndex: parentField.index,
-  //     ...parentField.parentHierarchy,
-  //   } as unknown as THierarchy;
-  // }
 
   /**
    * Get the input type from an element

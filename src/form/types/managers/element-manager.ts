@@ -1,13 +1,25 @@
 import type { FlowupsForm } from 'src/form';
 
-import type { CardElement, FieldElement, GroupElement, SetElement } from '../elements';
-import type { FormCardState, FormFieldState, FormGroupState, FormSetState } from '../state';
+import type {
+  CardElement,
+  FieldElement,
+  GroupElement,
+  InputElement,
+  SetElement,
+} from '../elements';
+import type {
+  FormCardState,
+  FormFieldState,
+  FormGroupState,
+  FormInputState,
+  FormSetState,
+} from '../state';
 import type { IBaseManager } from './base-manager';
 
 /**
  * Union of all element types
  */
-export type ElementData = CardElement | SetElement | GroupElement | FieldElement;
+export type ElementData = CardElement | SetElement | GroupElement | FieldElement | InputElement;
 
 /**
  * Updatable element data
@@ -38,6 +50,7 @@ export type ElementStateMap = {
   set: FormSetState;
   group: FormGroupState;
   field: FormFieldState;
+  input: FormInputState;
 };
 
 /**

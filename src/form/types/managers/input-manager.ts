@@ -1,4 +1,3 @@
-import type { InputElement } from '../elements';
 import type { IBaseManager } from './base-manager';
 
 /**
@@ -6,9 +5,6 @@ import type { IBaseManager } from './base-manager';
  * Handles input discovery, value tracking, and lazy event binding
  */
 export interface IInputManager extends IBaseManager {
-  /** Discover all inputs in the form */
-  discoverInputs(): void;
-
   /** Bind events to current field's input */
   bindCurrentFieldInput(): void;
 
@@ -23,7 +19,4 @@ export interface IInputManager extends IBaseManager {
 
   /** Get all form data */
   getAllFormData(): Record<string, unknown>;
-
-  /** Get input element by name */
-  getInputByName(name: string): InputElement | null;
 }

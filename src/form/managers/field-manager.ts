@@ -26,7 +26,6 @@ export class FieldManager extends ElementManager<FieldElement> {
   protected elements: FieldElement[] = [];
   protected elementMap: Map<string, FieldElement> = new Map();
   protected readonly elementType = 'field';
-  protected navigationOrder: number[] = [];
 
   /**
    * Create element data object
@@ -136,7 +135,7 @@ export class FieldManager extends ElementManager<FieldElement> {
     element: FieldElement,
     data: UpdatableElementData<FieldElement>
   ): FieldElement {
-    const input = this.form.inputManager.getInputByFieldId(element.id);
+    const input = this.form.inputManager.getAllByParentId(element.id, 'field')[0];
     if (!input) {
       throw this.createError('Cannot merge field data: input not found', 'runtime', {
         cause: { manager: 'FieldManager', element, input },
