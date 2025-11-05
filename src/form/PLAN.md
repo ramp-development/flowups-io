@@ -90,6 +90,7 @@ All managers (Card, Set, Group, Field) need these methods:
 **Status:** ❌ Does not exist - needs to be added
 
 **Implementation:**
+
 ```typescript
 class FieldManager extends BaseManager {
   /**
@@ -106,6 +107,7 @@ class FieldManager extends BaseManager {
 ```
 
 **Pattern for other managers:**
+
 - CardManager: Clear `this.cards` and `this.cardMap`
 - SetManager: Clear `this.sets` and `this.setMap`
 - GroupManager: Clear `this.groups` and `this.groupMap`
@@ -113,10 +115,12 @@ class FieldManager extends BaseManager {
 **Why:** Ensures only intended elements are active. Prevents stale active flags.
 
 **Edge cases:**
+
 - If no fields exist, method should safely do nothing
 - Should not emit state changes (metadata-only operation)
 
 **Clean up:** Remove `console.log()` statements from:
+
 - [group-manager.ts:229-231](src/form/managers/group-manager.ts#L229-L231)
 - [field-manager.ts:241-243](src/form/managers/field-manager.ts#L241-L243)
 
@@ -129,6 +133,7 @@ class FieldManager extends BaseManager {
 **Note:** FieldManager already has `getFieldsByGroupId()` and `getFieldsBySetId()` - leverage these.
 
 **Implementation:**
+
 ```typescript
 class FieldManager extends BaseManager {
   /**
@@ -182,6 +187,7 @@ class FieldManager extends BaseManager {
 **Status:** ⚠️ Partially exists - `setStates()` exists but writes directly. Need to split into `calculateStates()` (returns) and `setStates()` (calls calculateStates then writes).
 
 **Current implementation (field-manager.ts:172-209):**
+
 ```typescript
 public setStates(): void {
   // Calculates values and writes directly to form.setStates()
@@ -192,6 +198,7 @@ public setStates(): void {
 ```
 
 **New pattern:**
+
 ```typescript
 class FieldManager extends BaseManager {
   /**
@@ -274,6 +281,7 @@ class FieldManager extends BaseManager {
 **Status:** ✅ Already exists - just needs to be refactored to call `calculateStates()`
 
 **Refactor existing `setStates()` to:**
+
 ```typescript
 class FieldManager extends BaseManager {
   /**
@@ -297,11 +305,13 @@ class FieldManager extends BaseManager {
 #### 1.5 Helper methods for navigation (CHECK/ADD - Some exist, some need adding)
 
 **Status:**
+
 - ✅ FieldManager has: `getNextIncludedFieldIndex()`, `getPrevIncludedFieldIndex()`, `getCurrentField()`
 - ⚠️ Returns `number | null` (index) not `FieldMetadata | null`
 - ❌ Other managers need similar methods: `getNextIncludedGroup()`, `getNextIncludedSet()`, `getNextIncludedCard()`
 
 **Existing FieldManager methods (field-manager.ts:525-553):**
+
 ```typescript
 // ✅ Already exists - returns index
 public getNextIncludedFieldIndex(): number | null { ... }
@@ -310,6 +320,7 @@ public getCurrentField(): FieldElement | null { ... } // Uses getCurrentFieldMet
 ```
 
 **Need to add wrapper methods that return elements:**
+
 ```typescript
 class FieldManager extends BaseManager {
   /**
@@ -334,11 +345,13 @@ class FieldManager extends BaseManager {
 ```
 
 **Add to other managers:**
+
 - GroupManager: `getNextIncludedGroup()`, `getPreviousIncludedGroup()`, `getCurrentGroup()`
 - SetManager: `getNextIncludedSet()`, `getPreviousIncludedSet()`, `getCurrentSet()` (getCurrentSet exists)
 - CardManager: `getNextIncludedCard()`, `getPreviousIncludedCard()`, `getCurrentCard()` (getCurrentCard exists)
 
 **Edge cases:**
+
 - If all fields are excluded (`isIncluded = false`), return `null`
 - If at end of fields, return `null` (NavigationManager handles boundary)
 - If currentFieldIndex doesn't exist (stale state), return first field
@@ -405,6 +418,7 @@ export interface FormState {
 ### Phase 3: Refactor NavigationManager
 
 **Current Status:** NavigationManager has `handleByField()` (navigation-manager.ts:315-355) but needs refactoring:
+
 - ❌ Calls `setStates()` on each manager individually (should batch)
 - ❌ Missing `handleByGroup()`, `handleBySet()`, `handleByCard()` implementations
 - ❌ No `batchStateUpdates()` method
@@ -418,6 +432,7 @@ NavigationManager orchestrates navigation but doesn't contain navigation logic i
 **Status:** ✅ `handleNext()` exists (navigation-manager.ts:194-230) but needs refactoring
 
 **Current implementation:**
+
 ```typescript
 public async handleNext(): Promise<void> {
   const behavior = this.form.getBehavior();
@@ -434,6 +449,7 @@ public async handleNext(): Promise<void> {
 ```
 
 **Refactor to:**
+
 ```typescript
 class NavigationManager extends BaseManager {
   private async handleNext(): Promise<void> {
@@ -470,10 +486,12 @@ class NavigationManager extends BaseManager {
 #### 3.2 Behavior-specific handlers (REFACTOR - Update existing `handleByField`, add others)
 
 **Status:**
+
 - ⚠️ `handleByField()` exists (navigation-manager.ts:315-355) - needs refactoring
 - ❌ `handleByGroup()`, `handleBySet()`, `handleByCard()` stubbed but incomplete (357-410)
 
 **Current `handleByField` implementation:**
+
 ```typescript
 private handleByField(fromIndex: number, toIndex: number): void {
   const toField = this.form.fieldManager.getFieldByIndex(toIndex);
@@ -494,6 +512,7 @@ private handleByField(fromIndex: number, toIndex: number): void {
 ```
 
 **Refactor to:**
+
 ```typescript
 /**
  * Navigate to next field (byField behavior)
@@ -887,6 +906,7 @@ private async validateCurrentField(): Promise<boolean> {
 ### Phase 4: Refactor DisplayManager
 
 **Current Status:** DisplayManager exists with partial implementation:
+
 - ✅ Has: `showElement()` (display-manager.ts:260-263), `state:changed` subscription (51-56), `displayByField()` (243-250)
 - ❌ Missing: `displayByGroup()`, `displayBySet()`, `displayByCard()`, `ensureParentVisibility()`
 - ⚠️ No RAF debouncing for state changes
@@ -898,6 +918,7 @@ DisplayManager reacts to state changes and updates DOM visibility.
 **Status:** ✅ Partial - Has subscription and `updateDisplay()`, missing RAF
 
 **Current implementation (display-manager.ts:50-76, 180-201):**
+
 ```typescript
 private setupEventListeners(): void {
   this.form.subscribe('state:changed', (payload) => {
@@ -920,6 +941,7 @@ private handleStateChange = (payload: StateChangePayload): void => {
 ```
 
 **Update to:**
+
 ```typescript
 class DisplayManager extends BaseManager {
   private rafId: number | null = null; // ❌ Add this property
@@ -995,10 +1017,12 @@ class DisplayManager extends BaseManager {
 #### 4.2 Behavior-specific display methods (UPDATE/ADD)
 
 **Status:**
+
 - ✅ `displayByField()` exists (display-manager.ts:243-250) - needs update to add `ensureParentVisibility()`
 - ❌ `displayByGroup()`, `displayBySet()`, `displayByCard()` need to be added
 
 **Current `displayByField()` implementation:**
+
 ```typescript
 private displayByField(): void {
   const currentFieldIndex = this.form.getState('currentFieldIndex');
@@ -1012,6 +1036,7 @@ private displayByField(): void {
 ```
 
 **Update to:**
+
 ```typescript
 /**
  * Display by field (show only current field)
@@ -1144,10 +1169,12 @@ private displayByCard(): void {
 #### 4.3 Helper methods (UPDATE/ADD)
 
 **Status:**
+
 - ✅ `showElement()` exists (display-manager.ts:260-263) - needs update to add `data-active` attribute
 - ❌ `ensureParentVisibility()` needs to be added
 
 **Current `showElement()` implementation:**
+
 ```typescript
 public showElement(element: HTMLElement, visible: boolean): void {
   if (visible) element.style.removeProperty('display');
@@ -1157,6 +1184,7 @@ public showElement(element: HTMLElement, visible: boolean): void {
 ```
 
 **Update to:**
+
 ```typescript
 /**
  * Show or hide an element
