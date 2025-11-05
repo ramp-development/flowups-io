@@ -281,9 +281,9 @@ export abstract class ElementManager<TElement extends ElementData>
   public setActiveByParent(
     parentId: string,
     parentType: 'card' | 'set' | 'group',
-    options: { active: boolean; firstIsCurrent: boolean } = { active: true, firstIsCurrent: false }
+    options?: { active?: boolean; firstIsCurrent?: boolean }
   ): void {
-    const { active, firstIsCurrent } = options;
+    const { active = true, firstIsCurrent = false } = options ?? {};
 
     const children = this.getElementsByParentId(parentId, parentType);
     children.forEach((element, index) => {
@@ -292,10 +292,12 @@ export abstract class ElementManager<TElement extends ElementData>
     });
 
     this.logDebug(`${this.elementType}: Set active by parent`, {
+      count: children.length,
       parentId,
       parentType,
       active,
-      count: children.length,
+      children,
+      endElements: this.elements,
     });
   }
 

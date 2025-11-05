@@ -267,6 +267,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
    * Navigate to next group (byGroup behavior)
    */
   private nextGroup(): void {
+    console.log('NavigationManager: nextGroup');
     const next = this.form.groupManager.getNextPosition();
 
     // At end of groups - check if we can advance to next group/set/card
@@ -289,7 +290,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.form.groupManager.setActive(nextGroup.id);
     this.form.groupManager.setCurrent(nextGroup.id);
 
-    this.form.fieldManager.setActiveByParent(nextGroup.id, 'group');
+    this.form.fieldManager.setActiveByParent(nextGroup.id, 'group', { firstIsCurrent: true });
     this.updateHierarchyData(nextGroup);
     this.batchStateUpdates();
   }
@@ -320,7 +321,8 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.form.setManager.setActive(nextSet.id);
     this.form.setManager.setCurrent(nextSet.id);
 
-    this.form.groupManager.setActiveByParent(nextSet.id, 'set');
+    this.form.groupManager.setActiveByParent(nextSet.id, 'set', { firstIsCurrent: true });
+    this.form.fieldManager.setActiveByParent(nextSet.id, 'set', { firstIsCurrent: true });
     this.updateHierarchyData(nextSet);
     this.batchStateUpdates();
   }
@@ -351,7 +353,9 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.form.cardManager.setActive(nextCard.id);
     this.form.cardManager.setCurrent(nextCard.id);
 
-    this.form.setManager.setActiveByParent(nextCard.id, 'card');
+    this.form.setManager.setActiveByParent(nextCard.id, 'card', { firstIsCurrent: true });
+    this.form.groupManager.setActiveByParent(nextCard.id, 'card', { firstIsCurrent: true });
+    this.form.fieldManager.setActiveByParent(nextCard.id, 'card', { firstIsCurrent: true });
     this.batchStateUpdates();
   }
 
