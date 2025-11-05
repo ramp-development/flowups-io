@@ -122,7 +122,7 @@ export class GroupManager extends ElementManager<GroupElement> {
    * @param element - Group Element
    * @param data - Data to merge
    */
-  protected mergeElementData(
+  public mergeElementData(
     element: GroupElement,
     data: UpdatableElementData<GroupElement>
   ): GroupElement {
