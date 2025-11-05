@@ -11,6 +11,9 @@ export interface CardElement extends BaseElement {
   /** Progress of the card (0-100) */
   progress: number;
 
-  /** Whether this set is valid */
+  /** Whether this card is included in the navigation order (conditional visibility) */
+  isIncluded: boolean;
+
+  /** Whether this card is valid */
   isValid: boolean;
 }

@@ -1,198 +1,116 @@
 /**
  * Field Manager
  *
- * Handles field discovery, navigation order, and field-by-field progression.
- * Central to the byField behavior in v1.0.
+ * Handles field discovery and navigation order.
  */
 
 import { ATTR } from '../constants/attr';
 import type {
   FieldElement,
-  FieldInclusionChangedEvent,
   FieldParentHierarchy,
   FormFieldState,
   GroupElement,
-  IFieldManager,
-  // NavigationGoToEvent,
   SetElement,
+  UpdatableElementData,
 } from '../types';
 import { parseElementAttribute } from '../utils';
-import { BaseManager } from './base-manager';
+import { ElementManager } from './element-manager';
 
 /**
  * FieldManager Implementation
  *
  * Discovers and manages field elements in the form hierarchy.
- * Builds navigation order for byField behavior.
- * Provides field-by-field navigation with conditional visibility support.
+ * Builds navigation order.
  */
-export class FieldManager extends BaseManager implements IFieldManager {
-  // ============================================
-  // Properties
-  // ============================================
-
-  /** Array of discovered field elements with metadata */
-  private fields: FieldElement[] = [];
-
-  /** Map for O(1) lookup by field ID */
-  private fieldMap: Map<string, FieldElement> = new Map();
-
-  /** Navigation order (indexes of included fields) */
-  private navigationOrder: number[] = [];
-
-  // ============================================
-  // Lifecycle
-  // ============================================
+export class FieldManager extends ElementManager<FieldElement> {
+  protected elements: FieldElement[] = [];
+  protected elementMap: Map<string, FieldElement> = new Map();
+  protected readonly elementType = 'field';
+  protected navigationOrder: number[] = [];
 
   /**
-   * Initialize the manager
-   * Called during form initialization
-   */
-  public init(): void {
-    this.discoverFields();
-    this.buildNavigationOrder();
-    this.setStates();
-    // this.setupEventListeners();
-
-    this.logDebug('FieldManager initialized', {
-      totalFields: this.fields.length,
-      includedFields: this.navigationOrder.length,
-      fields: this.fields,
-    });
-  }
-
-  /**
-   * Cleanup and remove references
-   * Called during form destruction
+   * Create element data object
+   * Parses the element attribute and creates a FieldElement object
    *
-   * Note: Event subscriptions are automatically cleaned up by InteractiveComponent
+   * @param element - HTMLElement
+   * @param index - Index of the element within the list of fields
+   * @returns FieldElement | undefined
    */
-  public destroy(): void {
-    this.fields = [];
-    this.fieldMap.clear();
-    this.navigationOrder = [];
+  protected createElementData(element: HTMLElement, index: number): FieldElement | undefined {
+    if (!(element instanceof HTMLElement)) return;
 
-    this.logDebug('FieldManager destroyed');
-  }
+    const attrValue = element.getAttribute(`${ATTR}-element`);
+    if (!attrValue) return;
 
-  // ============================================
-  // Discovery
-  // ============================================
+    const parsed = parseElementAttribute(attrValue);
 
-  /**
-   * Discover all fields in the form
-   *
-   * Finds all elements with [data-form-element="field"] or [data-form-element="field:id"]
-   * Associates fields with their parent group/set/card
-   * Finds input element within each field wrapper
-   */
-  public discoverFields(): void {
-    const rootElement = this.form.getRootElement();
-    if (!rootElement) {
-      throw this.createError('Cannot discover fields: root element is null', 'init', {
-        cause: { manager: 'FieldManager', rootElement },
+    // Skip if not a field
+    if (parsed.type !== this.elementType) return;
+
+    // Generate id (use parsed id if available, otherwise generate from index)
+    const id = parsed.id || `${this.elementType}-${index}`;
+
+    // Generate title (use id)
+    const title = id;
+
+    // Find parent hierarchy
+    const parent = this.findParentElement(element);
+    if (!parent) {
+      throw this.createError('Cannot discover fields: no parent element found', 'init', {
+        cause: { manager: 'FieldManager', element },
       });
     }
+    // const parent = this.findParentGroup(element) ?? this.findParentSet(element);
+    const parentHierarchy = this.findParentHierarchy<FieldParentHierarchy>(parent);
+    const active = this.determineActive(element, index);
 
-    // Query all field elements
-    const fieldElements = this.form.queryAll(`[${ATTR}-element^="field"]`);
-
-    this.fields = [];
-    this.fieldMap.clear();
-
-    fieldElements.forEach((element, index) => {
-      if (!(element instanceof HTMLElement)) return;
-
-      const attrValue = element.getAttribute(`${ATTR}-element`);
-      if (!attrValue) return;
-
-      const parsed = parseElementAttribute(attrValue);
-
-      // Skip if not a field
-      if (parsed.type !== 'field') return;
-
-      // Generate field ID (use fieldId if available, otherwise index)
-      const fieldId = parsed.id || `field-${index}`;
-
-      // Generate title (use fieldId)
-      const fieldTitle = fieldId;
-
-      // Find parent hierarchy
-      const parent = this.findParentGroup(element) ?? this.findParentSet(element);
-      const parentHierarchy = this.findParentHierarchy(parent);
-      const active = this.determineActive(element, index);
-
-      // Create field element object
-      const field: FieldElement = {
-        element,
-        type: 'field',
-        id: fieldId,
-        title: fieldTitle,
-        index,
-        visited: active,
-        completed: false,
-        active,
-        parentHierarchy,
-        isIncluded: true,
-        isValid: false,
-        errors: [],
-      };
-
-      // Store in array and map
-      this.fields.push(field);
-      this.fieldMap.set(field.id, field);
-    });
+    // Create field element object
+    return {
+      element,
+      type: this.elementType,
+      id,
+      title,
+      index,
+      visited: active,
+      completed: false,
+      active,
+      parentHierarchy,
+      isIncluded: true,
+      isValid: false,
+      errors: [],
+    };
   }
 
   /**
-   * Build navigation order
+   * Calculate field-specific states
+   * Aggregates data from all fields and their child groups and sets
    *
-   * Creates array of field indexes in display order, skipping hidden fields
-   * Should be called after discovery and whenever field visibility changes
+   * @returns FormFieldState - Complete field state object
    */
-  public buildNavigationOrder(): void {
-    this.navigationOrder = this.fields
-      .filter((field) => field.isIncluded)
-      .map((field) => field.index);
-
-    this.logDebug('Navigation order built', {
-      total: this.navigationOrder.length,
-      order: this.navigationOrder,
-    });
-  }
-
-  // ============================================
-  // State Management
-  // ============================================
-
-  /**
-   * Set the form states for fields
-   * Subscribers only notified if the states have changed
-   */
-  public setStates(): void {
-    const currentFieldIndex = this.fields.findIndex((field) => field.active);
-    const currentFieldId = currentFieldIndex >= 0 ? this.fields[currentFieldIndex].id : null;
+  public calculateStates(): FormFieldState {
+    const currentFieldIndex = this.elements.findIndex((element) => element.active);
+    const currentFieldId = currentFieldIndex >= 0 ? this.elements[currentFieldIndex].id : null;
     const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
     const nextFieldIndex =
-      currentFieldIndex < this.fields.length - 1 ? currentFieldIndex + 1 : null;
+      currentFieldIndex < this.elements.length - 1 ? currentFieldIndex + 1 : null;
     const completedFields = new Set(
-      this.fields.filter((field) => field.completed).map((field) => field.id)
+      this.elements.filter((element) => element.completed).map((element) => element.id)
     );
     const visitedFields = new Set(
-      this.fields.filter((field) => field.visited).map((field) => field.id)
+      this.elements.filter((element) => element.visited).map((element) => element.id)
     );
-    const totalFields = this.fields.length;
-    const totalIncludedFields = this.fields.filter((field) => field.isIncluded).length;
+    const totalFields = this.elements.length;
+    const totalIncludedFields = this.elements.filter((element) => element.isIncluded).length;
     const fieldsComplete = completedFields.size;
-    const fieldValidity = this.fields.reduce(
-      (acc, field) => {
-        acc[field.id] = field.isValid;
+    const fieldValidity = this.elements.reduce(
+      (acc, element) => {
+        acc[element.id] = element.isValid;
         return acc;
       },
       {} as Record<string, boolean>
     );
 
-    const fieldState: FormFieldState = {
+    return {
       currentFieldIndex,
       currentFieldId,
       previousFieldIndex,
@@ -204,650 +122,51 @@ export class FieldManager extends BaseManager implements IFieldManager {
       fieldsComplete,
       fieldValidity,
     };
-
-    this.form.setStates({ ...fieldState });
   }
 
   /**
-   * Update metadata values
-   * @param selector - Field ID or index
-   * @param metadata - Metadata to update (visited, completed, active, isIncluded, isValid, errors)
+   * Update data values
+   * @param element - Field Element
+   * @param data - Data to merge
    */
-  public setMetadata(
-    selector: string | number,
-    metadata: Pick<Partial<FieldElement>, 'active' | 'isIncluded' | 'errors'> = {}
-  ): void {
-    const field =
-      typeof selector === 'string' ? this.getFieldById(selector) : this.getFieldByIndex(selector);
-    if (!field) return;
-
-    const input = this.form.inputManager.getInputByFieldId(field.id);
-    if (!input) return;
+  protected mergeElementData(
+    element: FieldElement,
+    data: UpdatableElementData<FieldElement>
+  ): FieldElement {
+    const input = this.form.inputManager.getInputByFieldId(element.id);
+    if (!input) {
+      throw this.createError('Cannot merge field data: input not found', 'runtime', {
+        cause: { manager: 'FieldManager', element, input },
+      });
+    }
 
     const { completed, isValid } = input;
 
-    const newData = {
-      ...field,
+    return {
+      ...element,
       visited: true,
       completed,
-      active: metadata.active ?? this.determineActive(field.element, field.index),
+      active: data.active ?? this.determineActive(element.element, element.index),
       isValid,
-      ...metadata,
+      ...data,
     };
-
-    this.fieldMap.set(field.id, newData);
-    this.fields[field.index] = newData;
-
-    console.log('fieldManager setMetadata', newData);
-    console.log(this.fields);
-    console.log(this.fieldMap);
   }
 
   /**
-   * Determine the active state of a field
-   * @param element - Field element
-   * @param index - Field index
-   * @returns Active state
-   */
-  private determineActive(element: HTMLElement, index: number): boolean {
-    const parent = this.findParentGroup(element) ?? this.findParentSet(element);
-    const behavior = this.form.getBehavior();
-    return ['byField'].includes(behavior) ? parent.active && index === 0 : parent.active;
-  }
-
-  // ============================================
-  // Event Listeners
-  // ============================================
-
-  // /**
-  //  * Setup event listeners
-  //  * Only subscribes if behavior is byField
-  //  */
-  // private setupEventListeners(): void {
-  //   // Only subscribe to navigation events if in byField mode
-  //   if (this.form.getBehavior() === 'byField') {
-  //     this.form.subscribe('form:navigation:next', this.handleNavigationNext);
-  //     this.form.subscribe('form:navigation:prev', this.handleNavigationPrev);
-  //     this.form.subscribe('form:navigation:goTo', this.handleNavigationGoTo);
-  //     this.form.subscribe('form:field:inclusion-changed', this.handleFieldInclusion);
-
-  //     this.logDebug('FieldManager subscribed to navigation events');
-  //   }
-  // }
-
-  // /**
-  //  * Handle navigation:next event
-  //  * Attempts to move to next field, emits boundary event if at end
-  //  */
-  // private handleNavigationNext = async (): Promise<void> => {
-  //   const nextIndex = this.getNextIncludedFieldIndex();
-
-  //   if (nextIndex === null) {
-  //     // At boundary - emit event for NavigationManager to handle
-  //     const currentField = this.getCurrentFieldMetadata();
-  //     if (currentField) {
-  //       const context = this.getFieldContext(currentField);
-  //       this.form.emit('form:navigation:boundary', {
-  //         context,
-  //         currentId: currentField.id,
-  //         boundary: 'end',
-  //         direction: 'forward',
-  //       });
-  //     }
-  //     return;
-  //   }
-
-  //   await this.goToField(nextIndex);
-  // };
-
-  // /**
-  //  * Handle navigation:prev event
-  //  * Attempts to move to previous field, emits boundary event if at start
-  //  */
-  // private handleNavigationPrev = async (): Promise<void> => {
-  //   const prevIndex = this.getPrevIncludedFieldIndex();
-
-  //   if (prevIndex === null) {
-  //     // At boundary - emit event for NavigationManager to handle
-  //     const currentField = this.getCurrentFieldMetadata();
-  //     if (currentField) {
-  //       const context = this.getFieldContext(currentField);
-  //       this.form.emit('navigation:boundary', {
-  //         context,
-  //         currentId: currentField.id,
-  //         boundary: 'start',
-  //         direction: 'backward',
-  //       });
-  //     }
-  //     return;
-  //   }
-
-  //   await this.goToField(prevIndex);
-  // };
-
-  // /**
-  //  * Handle navigation:goTo event
-  //  * Navigate to specific field by ID or index
-  //  */
-  // private handleNavigationGoTo = async (payload: NavigationGoToEvent): Promise<void> => {
-  //   const { target } = payload;
-
-  //   // If target is a number, treat as index
-  //   if (typeof target === 'number') {
-  //     await this.goToField(target);
-  //     return;
-  //   }
-
-  //   // If target is a string, treat as field ID
-  //   const field = this.fieldMap.get(target);
-  //   if (field) {
-  //     await this.goToField(field.index);
-  //   } else {
-  //     throw this.createError(
-  //       `Cannot navigate to field: field ID "${target}" not found`,
-  //       'runtime',
-  //       {
-  //         cause: { target },
-  //       }
-  //     );
-  //   }
-  // };
-
-  // ============================================
-  // Navigation Methods (Internal API for NavigationManager)
-  // ============================================
-  //
-  // These methods should be called by NavigationManager only.
-  // NavigationManager provides the unified navigation interface
-  // that routes to the appropriate manager based on behavior.
-  // ============================================
-
-  // /**
-  //  * Navigate to next field
-  //  * Updates form state and triggers managers
-  //  *
-  //  * @internal Called by NavigationManager - use navigationManager.next() instead
-  //  */
-  // public async nextField(): Promise<void> {
-  //   const nextIndex = this.getNextIncludedFieldIndex();
-
-  //   if (nextIndex === null) {
-  //     this.logDebug('Cannot navigate to next field: already on last field');
-  //     return;
-  //   }
-
-  //   await this.goToField(nextIndex);
-  // }
-
-  // /**
-  //  * Navigate to previous field
-  //  * Updates form state and triggers managers
-  //  *
-  //  * @internal Called by NavigationManager - use navigationManager.prev() instead
-  //  */
-  // public async prevField(): Promise<void> {
-  //   const prevIndex = this.getPrevIncludedFieldIndex();
-
-  //   if (prevIndex === null) {
-  //     this.logDebug('Cannot navigate to previous field: already on first field');
-  //     return;
-  //   }
-
-  //   await this.goToField(prevIndex);
-  // }
-
-  // /**
-  //  * Navigate to specific field by index
-  //  *
-  //  * @param index - Field index (global, not navigation order index)
-  //  * @internal Called by NavigationManager - use navigationManager.goTo() instead
-  //  */
-  // public async goToField(index: number): Promise<void> {
-  //   const field = this.fields[index];
-
-  //   if (!field) {
-  //     throw this.createError(`Cannot navigate to field: invalid index ${index}`, 'runtime', {
-  //       cause: { index, totalFields: this.fields.length },
-  //     });
-  //   }
-
-  //   if (!field.isIncluded) {
-  //     throw this.createError(
-  //       `Cannot navigate to field: field at index ${index} is not included in the navigation order`,
-  //       'runtime',
-  //       {
-  //         cause: { index, fieldId: field.id },
-  //       }
-  //     );
-  //   }
-
-  //   // Store previous field index
-  //   const previousFieldIndex = this.form.getState('currentFieldIndex');
-
-  //   // Update form state
-  //   this.form.setState('previousFieldIndex', previousFieldIndex);
-  //   this.form.setState('currentFieldIndex', index);
-  //   this.form.setState('currentFieldId', field.id);
-
-  //   // Update hierarchy context
-  //   this.updateHierarchyContext(field);
-
-  //   // Mark field as visited
-  //   const visitedFields = this.form.getState('visitedFields');
-  //   const updatedVisitedFields = new Set(visitedFields);
-  //   updatedVisitedFields.add(field.id);
-  //   this.form.setState('visitedFields', updatedVisitedFields);
-
-  //   // Update field metadata
-  //   // field.visited = true;
-  //   // field.active = true;
-
-  //   // Deactivate previous field
-  //   if (previousFieldIndex !== null && previousFieldIndex !== index) {
-  //     const prevField = this.fields[previousFieldIndex];
-  //     if (prevField) {
-  //       prevField.active = false;
-  //     }
-  //   }
-
-  //   this.logDebug('Navigated to field', {
-  //     index,
-  //     fieldId: field.id,
-  //   });
-
-  //   // Emit navigation event
-  //   this.form.emit('form:navigation:request', {
-  //     element: 'field',
-  //     type: 'goTo',
-  //     fromIndex: previousFieldIndex,
-  //     toIndex: index,
-  //   });
-  // }
-
-  // ============================================
-  // Access Methods
-  // ============================================
-
-  /**
-   * Get navigation order
-   * @returns Array of field indexes in display order
-   */
-  public getNavigationOrder(): number[] {
-    return this.navigationOrder;
-  }
-
-  /**
-   * Get total number of fields (included only)
-   */
-  public getTotalFields(): number {
-    return this.navigationOrder.length;
-  }
-
-  /**
-   * Get field by index
+   * Find the parent element for a field
    *
-   * @param index - Zero-based field index
-   * @returns Field element or null if not found
+   * @param element - The field element
+   * @returns Parent data or null
    */
-  public getFieldByIndex(index: number): FieldElement | null {
-    const field = this.fields[index] ?? null;
-    return field;
-  }
-
-  /**
-   * Get field by id
-   *
-   * @param id - Field ID
-   * @returns Field element or null if not found
-   */
-  public getFieldById(id: string): FieldElement | null {
-    const field = this.fieldMap.get(id) ?? null;
-    return field;
-  }
-
-  /**
-   * Get current field based on form state
-   *
-   * @returns Current field element or null
-   */
-  public getCurrentField(): FieldElement | null {
-    const currentFieldIndex = this.form.getState('currentFieldIndex');
-    if (!currentFieldIndex) return null;
-    return this.getFieldByIndex(currentFieldIndex);
-  }
-
-  /**
-   * Get next included field index
-   * Skips hidden fields in navigation order
-   *
-   * @returns Next field index or null if on last field
-   */
-  public getNextIncludedFieldIndex(): number | null {
-    const currentIndex = this.form.getState('currentFieldIndex');
-    if (!currentIndex) return null;
-    const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
-
-    if (currentNavPosition >= this.navigationOrder.length - 1) {
-      return null;
-    }
-
-    return this.navigationOrder[currentNavPosition + 1];
-  }
-
-  /**
-   * Get previous included field index
-   * Skips hidden fields in navigation order
-   *
-   * @returns Previous field index or null if on first field
-   */
-  public getPrevIncludedFieldIndex(): number | null {
-    const currentIndex = this.form.getState('currentFieldIndex');
-    if (!currentIndex) return null;
-    const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
-
-    if (currentNavPosition <= 0) {
-      return null;
-    }
-
-    return this.navigationOrder[currentNavPosition - 1];
-  }
-
-  /**
-   * Check if on first field
-   */
-  public isFirstField(): boolean {
-    const currentIndex = this.form.getState('currentFieldIndex');
-    return this.navigationOrder[0] === currentIndex;
-  }
-
-  /**
-   * Check if on last field
-   */
-  public isLastField(): boolean {
-    const currentIndex = this.form.getState('currentFieldIndex');
-    return this.navigationOrder[this.navigationOrder.length - 1] === currentIndex;
-  }
-
-  // ============================================
-  // Internal Access (for other managers)
-  // ============================================
-
-  /**
-   * Get all field metadata
-   * Used by other managers for hierarchy traversal
-   *
-   * @returns Array of field elements
-   */
-  public getFields(): FieldElement[] {
-    return [...this.fields];
-  }
-
-  /**
-   * Get field metadata by ID
-   * Used by other managers for hierarchy traversal
-   *
-   * @param id - Field ID
-   * @returns Field element or undefined
-   */
-  public getFieldMetadataById(id: string): FieldElement | undefined {
-    return this.fieldMap.get(id);
-  }
-
-  /**
-   * Get field metadata by index
-   * Used by other managers for hierarchy traversal
-   *
-   * @param index - Field index
-   * @returns Field element or undefined
-   */
-  public getFieldMetadataByIndex(index: number): FieldElement | undefined {
-    return this.fields[index];
-  }
-
-  /**
-   * Get all fields within a specific set
-   *
-   * @param setId - Set ID
-   * @returns Array of fields in the set
-   */
-  public getFieldsBySetId(setId: string): FieldElement[] {
-    return this.fields.filter((field) => field.parentHierarchy.setId === setId);
-  }
-
-  /**
-   * Get all fields within a specific group
-   *
-   * @param groupId - Group ID
-   * @returns Array of fields in the group
-   */
-  public getFieldsByGroupId(groupId: string): FieldElement[] {
-    return this.fields.filter((field) => field.parentHierarchy.groupId === groupId);
-  }
-
-  /**
-   * Update field inclusion and rebuild navigation order
-   * Also syncs with InputManager to update input required state
-   *
-   * @param fieldId - Field ID
-   * @param isIncluded - Whether to include the field in the navigation order
-   */
-  public handleFieldInclusion(payload: FieldInclusionChangedEvent): void {
-    const { fieldId, isIncluded } = payload;
-    const field = this.fieldMap.get(fieldId);
-    if (!field) return;
-
-    // Update field inclusion state
-    field.isIncluded = isIncluded;
-
-    // Sync with InputManager to update required attributes
-    this.form.inputManager.syncInputInclusionWithField(fieldId, isIncluded);
-
-    // Rebuild navigation order (excludes fields with isIncluded: false)
-    this.buildNavigationOrder();
-
-    this.logDebug(`Field "${fieldId}" inclusion updated: ${isIncluded}`);
-  }
-
-  // ============================================
-  // Private Helpers
-  // ============================================
-
-  /**
-   * Find the parent group element for a field
-   *
-   * @param fieldElement - The field element
-   * @returns Parent group metadata or null
-   */
-  private findParentGroup(fieldElement: HTMLElement): GroupElement | null {
-    const parentGroupElement = fieldElement.closest(`[${ATTR}-element^="group"]`);
-    if (!parentGroupElement) return null;
-
-    const { groupManager } = this.form;
-    if (!groupManager) {
-      throw this.createError('Cannot discover fields: group manager is null', 'init', {
-        cause: { manager: 'FieldManager', fieldElement },
-      });
-    }
-
-    const parentGroup = groupManager
-      .getGroups()
-      .find((group) => group.element === parentGroupElement);
-
-    if (!parentGroup) {
-      throw this.createError('Cannot discover fields: no parent group found', 'init', {
-        cause: { manager: 'FieldManager', fieldElement },
-      });
-    }
-
-    return parentGroup;
-  }
-
-  /**
-   * Find the parent set element for a field
-   *
-   * @param fieldElement - The field element
-   * @returns Parent set metadata
-   */
-  private findParentSet(fieldElement: HTMLElement): SetElement {
-    const parentSetElement = fieldElement.closest(`[${ATTR}-element^="set"]`);
-    if (!parentSetElement) {
-      throw this.createError('Cannot discover fields: no parent set element found', 'init', {
-        cause: { manager: 'FieldManager', fieldElement },
-      });
-    }
-
-    const { setManager } = this.form;
-    if (!setManager) {
-      throw this.createError('Cannot discover fields: set manager is null', 'init', {
-        cause: { manager: 'FieldManager', fieldElement },
-      });
-    }
-
-    const parentSet = setManager.getSets().find((set) => set.element === parentSetElement);
-    if (!parentSet) {
-      throw this.createError('Cannot discover fields: no parent set found', 'init', {
-        cause: { manager: 'FieldManager', fieldElement },
-      });
-    }
-
-    return parentSet;
-  }
-
-  /**
-   * Find parent hierarchy for a field
-   * Walks up DOM tree to find parent group, set, and card
-   *
-   * @param fieldElement - The field element
-   * @returns Parent hierarchy metadata or null
-   */
-  private findParentHierarchy(
-    element: HTMLElement | GroupElement | SetElement
-  ): FieldParentHierarchy {
-    let parent: GroupElement | SetElement | null;
-    let hierarchy: FieldParentHierarchy;
-
-    if (element instanceof HTMLElement) {
-      parent = this.findParentGroup(element) ?? this.findParentSet(element);
-    } else {
-      parent = element;
-    }
-
-    if (parent.type === 'group') {
-      hierarchy = {
-        groupId: parent.id,
-        groupIndex: parent.index,
-        ...parent.parentHierarchy,
-      };
-    } else {
-      hierarchy = {
-        groupId: null,
-        groupIndex: null,
-        setId: parent.id,
-        setIndex: parent.index,
-        ...parent.parentHierarchy,
-      };
-    }
-
-    return hierarchy;
-  }
-
-  // /**
-  //  * Update hierarchy context in form state
-  //  * Sets current card/set titles and IDs based on field location
-  //  *
-  //  * @param field - The field element
-  //  */
-  // private updateHierarchyContext(field: FieldElement): void {
-  //   // Update card context
-  //   if (field.parentHierarchy.cardId) {
-  //     const { cardManager } = this.form;
-  //     if (cardManager) {
-  //       const card = cardManager.getCardMetadataById(field.parentHierarchy.cardId);
-  //       if (card) {
-  //         this.form.setState('currentCardId', card.id);
-  //         this.form.setState('currentCardTitle', card.title);
-  //         this.form.setState('currentCardIndex', card.index);
-  //       }
-  //     }
-  //   }
-
-  //   // Update set context
-  //   if (field.parentHierarchy.setId) {
-  //     const { setManager } = this.form;
-  //     if (setManager) {
-  //       const set = setManager.getSetMetadataById(field.parentHierarchy.setId);
-  //       if (set) {
-  //         this.form.setState('currentSetId', set.id);
-  //         this.form.setState('currentSetTitle', set.title);
-  //         this.form.setState('currentSetIndex', set.index);
-  //       }
-  //     }
-  //   }
-
-  //   // Update group context (if field is in a group)
-  //   if (field.parentHierarchy.groupId) {
-  //     const { groupManager } = this.form;
-  //     if (groupManager) {
-  //       const group = groupManager.getGroupMetadataById(field.parentHierarchy.groupId);
-  //       if (group) {
-  //         this.form.setState('currentGroupId', group.id);
-  //         this.form.setState('currentGroupIndex', group.index);
-  //       }
-  //     }
-  //   }
-  // }
-
-  /**
-   * Get current field metadata
-   *
-   * @returns Current field element or undefined
-   */
-  public getCurrentFieldMetadata(): FieldElement | null {
-    const currentIndex = this.form.getState('currentFieldIndex');
-    if (!currentIndex) return null;
-    return this.fields[currentIndex];
-  }
-
-  /**
-   * Get field context (determines boundary type)
-   * Returns the appropriate context for boundary events
-   *
-   * @param field - The field element
-   * @returns Context type ('field', 'group', 'set', or 'card')
-   */
-  private getFieldContext(field: FieldElement): 'field' | 'group' | 'set' | 'card' {
-    // If in a group, check if this is the last field in the group
-    if (field.parentHierarchy.groupId) {
-      const groupFields = this.getFieldsByGroupId(field.parentHierarchy.groupId).filter(
-        (field) => field.isIncluded
-      );
-      const isLastInGroup = groupFields[groupFields.length - 1]?.id === field.id;
-      if (isLastInGroup) {
-        return 'group';
-      }
-    }
-
-    // Check if last field in set
-    const setFields = this.getFieldsBySetId(field.parentHierarchy.setId).filter(
-      (field) => field.isIncluded
+  protected findParentElement(element: HTMLElement): GroupElement | SetElement | null {
+    const parentGroup = this.findParentBySelector(element, 'group', () =>
+      this.form.groupManager.getAll()
     );
-    const isLastInSet = setFields[setFields.length - 1]?.id === field.id;
-    if (isLastInSet) {
-      return 'set';
-    }
 
-    // Check if last field in card (if cards exist)
-    if (field.parentHierarchy.cardId) {
-      const cardFields = this.fields.filter(
-        (field) => field.parentHierarchy.cardId === field.parentHierarchy.cardId && field.isIncluded
-      );
-      const isLastInCard = cardFields[cardFields.length - 1]?.id === field.id;
-      if (isLastInCard) {
-        return 'card';
-      }
-    }
+    const parentSet = this.findParentBySelector(element, 'set', () =>
+      this.form.setManager.getAll()
+    );
 
-    // Default to field context
-    return 'field';
+    return parentGroup ?? parentSet;
   }
 }

@@ -6,9 +6,9 @@
  */
 
 import { ATTR } from '../constants';
-import type { CardElement, FormCardState, ICardManager } from '../types';
+import type { CardElement, FormCardState, UpdatableElementData } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
-import { BaseManager } from './base-manager';
+import { ElementManager } from './element-manager';
 
 /**
  * CardManager Implementation
@@ -16,136 +16,81 @@ import { BaseManager } from './base-manager';
  * Discovers and manages card elements in the form hierarchy.
  * Provides access to cards by index or ID.
  */
-export class CardManager extends BaseManager implements ICardManager {
-  // ============================================
-  // Properties
-  // ============================================
-
-  /** Array of discovered card elements with metadata */
-  private cards: CardElement[] = [];
-
-  /** Map for O(1) lookup by card ID */
-  private cardMap: Map<string, CardElement> = new Map();
-
-  // ============================================
-  // Lifecycle
-  // ============================================
+export class CardManager extends ElementManager<CardElement> {
+  protected elements: CardElement[] = [];
+  protected elementMap: Map<string, CardElement> = new Map();
+  protected readonly elementType = 'card';
 
   /**
-   * Initialize the manager
-   * Called during form initialization
-   */
-  public init(): void {
-    this.discoverCards();
-    this.setStates();
-
-    this.logDebug('CardManager initialized', {
-      totalCards: this.cards.length,
-      cards: this.cards,
-    });
-  }
-
-  /**
-   * Cleanup and remove references
-   * Called during form destruction
-   */
-  public destroy(): void {
-    this.cards = [];
-    this.cardMap.clear();
-
-    this.logDebug('CardManager destroyed');
-  }
-
-  // ============================================
-  // Discovery
-  // ============================================
-
-  /**
-   * Discover all cards in the form
+   * Create element data object
+   * Parses the element attribute and creates a CardElement object
    *
-   * Finds all elements with [data-form-element="card"] or [data-form-element="card:id"]
-   * Parses titles/IDs according to priority rules
+   * @param element - HTMLElement
+   * @param index - Index of the element within the list of cards
+   * @returns CardElement | undefined
    */
-  public discoverCards(): void {
-    const rootElement = this.form.getRootElement();
-    if (!rootElement) {
-      throw this.createError('Cannot discover cards: root element is null', 'init', {
-        cause: { manager: 'CardManager', rootElement },
-      });
-    }
+  protected createElementData(element: HTMLElement, index: number): CardElement | undefined {
+    if (!(element instanceof HTMLElement)) return;
 
-    // Query all card elements
-    const cardElements = this.form.queryAll(`[${ATTR}-element^="card"]`);
+    const attrValue = element.getAttribute(`${ATTR}-element`);
+    if (!attrValue) return;
 
-    this.cards = [];
-    this.cardMap.clear();
+    const parsed = parseElementAttribute(attrValue);
 
-    cardElements.forEach((element, index) => {
-      if (!(element instanceof HTMLElement)) return;
+    // Skip if not a card
+    if (parsed.type !== this.elementType) return;
 
-      const attrValue = element.getAttribute(`${ATTR}-element`);
-      if (!attrValue) return;
+    // Extract title with priority resolution
+    const titleData = extractTitle(element, this.elementType, parsed.id, index);
 
-      const parsed = parseElementAttribute(attrValue);
+    // Check if the card has any sets
+    const hasSets = !!element.querySelector(`[${ATTR}-element^="set"]`);
 
-      // Skip if not a card
-      if (parsed.type !== 'card') return;
-
-      // Extract title with priority resolution
-      const titleData = extractTitle(element, 'card', parsed.id, index);
-
-      // Check if the card has any sets
-      const hasSets = !!element.querySelector(`[${ATTR}-element^="set"]`);
-
-      // Create card element object
-      const card: CardElement = {
-        element,
-        type: 'card',
-        id: titleData.id,
-        title: titleData.title,
-        index,
-        visited: index === 0,
-        completed: !hasSets,
-        active: index === 0,
-        progress: hasSets ? 0 : 100,
-        isValid: !hasSets,
-      };
-
-      // Store in array and map
-      this.cards.push(card);
-      this.cardMap.set(card.id, card);
-    });
+    // Create card element object
+    return {
+      element,
+      type: this.elementType,
+      id: titleData.id,
+      title: titleData.title,
+      index,
+      visited: index === 0,
+      completed: !hasSets,
+      active: index === 0,
+      progress: hasSets ? 0 : 100,
+      isIncluded: true,
+      isValid: !hasSets,
+    };
   }
 
-  // ============================================
-  // State Management
-  // ============================================
-
   /**
-   * Set the form states for cards
-   * Subscribers only notified if the states have changed
+   * Calculate card-specific states
+   * Aggregates data from all cards and their child sets
+   *
+   * @returns FormCardState - Complete card state object
    */
-  public setStates(): void {
-    const currentCardIndex = this.cards.findIndex((card) => card.active);
-    const currentCardId = currentCardIndex >= 0 ? this.cards[currentCardIndex].id : null;
-    const currentCardTitle = currentCardIndex >= 0 ? this.cards[currentCardIndex].title : null;
+  public calculateStates(): FormCardState {
+    const currentCardIndex = this.elements.findIndex((element) => element.active);
+    const currentCardId = currentCardIndex >= 0 ? this.elements[currentCardIndex].id : null;
+    const currentCardTitle = currentCardIndex >= 0 ? this.elements[currentCardIndex].title : null;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
-    const nextCardIndex = currentCardIndex < this.cards.length - 1 ? currentCardIndex + 1 : null;
+    const nextCardIndex = currentCardIndex < this.elements.length - 1 ? currentCardIndex + 1 : null;
     const completedCards = new Set(
-      this.cards.filter((card) => card.completed).map((card) => card.id)
+      this.elements.filter((element) => element.completed).map((element) => element.id)
     );
-    const visitedCards = new Set(this.cards.filter((card) => card.visited).map((card) => card.id));
-    const totalCards = this.cards.length;
+    const visitedCards = new Set(
+      this.elements.filter((element) => element.visited).map((element) => element.id)
+    );
+    const totalCards = this.elements.length;
     const cardsComplete = completedCards.size;
-    const cardValidity = this.cards.reduce(
-      (acc, card) => {
-        acc[card.id] = card.isValid;
+    const cardValidity = this.elements.reduce(
+      (acc, element) => {
+        acc[element.id] = element.isValid;
         return acc;
       },
       {} as Record<string, boolean>
     );
 
-    const cardState: FormCardState = {
+    return {
       currentCardIndex,
       currentCardId,
       currentCardTitle,
@@ -157,119 +102,41 @@ export class CardManager extends BaseManager implements ICardManager {
       cardsComplete,
       cardValidity,
     };
-
-    this.form.setStates({ ...cardState });
   }
 
   /**
-   * Update metadata values
-   * @param selector - Card ID or index
-   * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
+   * Update data values
+   * @param element - Card Element
+   * @param data - Data to merge
    */
-  public setMetadata(
-    selector: string | number,
-    metadata: Pick<Partial<CardElement>, 'active'> = {}
-  ): void {
-    const card =
-      typeof selector === 'string' ? this.getCardById(selector) : this.getCardByIndex(selector);
-    if (!card) return;
-
-    const sets = this.form.setManager.getSetsByCardId(card.id);
+  protected mergeElementData(
+    element: CardElement,
+    data: UpdatableElementData<CardElement> = {}
+  ): CardElement {
+    const sets = this.form.setManager.getSetsByCardId(element.id);
     const completed = sets.length > 0 ? sets.every((set) => set.completed) : true;
     const isValid = sets.length > 0 ? sets.every((set) => set.isValid) : true;
     const progress =
       sets.length > 0 ? sets.reduce((acc, set) => acc + set.progress, 0) / sets.length : 100;
 
-    const newData = {
-      ...card,
+    return {
+      ...element,
       visited: true,
       completed,
       isValid,
       progress,
-      ...metadata,
+      ...data,
     };
-
-    this.cardMap.set(card.id, newData);
-    this.cards[card.index] = newData;
-  }
-
-  // ============================================
-  // Access Methods
-  // ============================================
-
-  /**
-   * Get total number of cards
-   */
-  public getTotalCards(): number {
-    return this.cards.length;
   }
 
   /**
-   * Get card by index
+   * Find the parent element for a card
    *
-   * @param index - Zero-based card index
-   * @returns Card element or null if not found
+   * @param element - The card element
+   * @returns null (cards have no parent)
    */
-  public getCardByIndex(index: number): CardElement | null {
-    const card = this.cards[index];
-    return card || null;
-  }
-
-  /**
-   * Get card by ID
-   *
-   * @param id - Card ID
-   * @returns Card element or null if not found
-   */
-  public getCardById(id: string): CardElement | null {
-    const card = this.cardMap.get(id);
-    return card || null;
-  }
-
-  /**
-   * Get current card based on form state
-   *
-   * @returns Current card element or null
-   */
-  public getCurrentCard(): CardElement | null {
-    const currentCardIndex = this.form.getState('currentCardIndex');
-    if (!currentCardIndex) return null;
-    return this.getCardByIndex(currentCardIndex);
-  }
-
-  // ============================================
-  // Internal Access (for other managers)
-  // ============================================
-
-  /**
-   * Get all card metadata
-   * Used by other managers for hierarchy traversal
-   *
-   * @returns Array of card elements
-   */
-  public getCards(): CardElement[] {
-    return [...this.cards];
-  }
-
-  /**
-   * Get card metadata by ID
-   * Used by other managers for hierarchy traversal
-   *
-   * @param id - Card ID
-   * @returns Card element or undefined
-   */
-  public getCardMetadataById(id: string): CardElement | undefined {
-    return this.cardMap.get(id);
-  }
-
-  /**
-   * Get card metadata by index
-   * Used by other managers for hierarchy traversal
-   *
-   * @param index - Card index
-   * @returns Card element or undefined
-   */
-  public getCardMetadataByIndex(index: number): CardElement | undefined {
-    return this.cards[index];
+  protected findParentElement(element: HTMLElement): null {
+    this.logWarn('findParentElement should not be called on CardManager', 'runtime', { element });
+    return null;
   }
 }

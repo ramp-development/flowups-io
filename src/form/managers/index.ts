@@ -5,12 +5,12 @@
  */
 
 export { CardManager } from './card-manager';
-export { SetManager } from './set-manager';
-export { GroupManager } from './group-manager';
+export { DisplayManager } from './display-manager';
 export { FieldManager } from './field-manager';
+export { GroupManager } from './group-manager';
 export { InputManager } from './input-manager';
 export { NavigationManager } from './navigation-manager';
-export { DisplayManager } from './display-manager';
+export { SetManager } from './set-manager';
 // export { ValidationManager } from './validation-manager';
 // export { ErrorManager } from './error-manager';
 // export { ConditionManager } from './condition-manager';

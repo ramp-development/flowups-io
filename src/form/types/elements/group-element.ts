@@ -20,6 +20,9 @@ export interface GroupElement extends BaseElement {
   /** Parent hierarchy */
   parentHierarchy: GroupParentHierarchy;
 
+  /** Whether this group is included in the navigation order (conditional visibility) */
+  isIncluded: boolean;
+
   /** Validity of the group */
   isValid: boolean;
 }

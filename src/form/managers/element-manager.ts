@@ -1,6 +1,14 @@
 // src/form/managers/element-manager.ts
 
-import type { ElementData, IElementManager, StateForElement, UpdatableElementData } from '../types';
+import { ATTR } from '../constants';
+import type {
+  ElementData,
+  FormBehavior,
+  IElementManager,
+  SetParentHierarchy,
+  StateForElement,
+  UpdatableElementData,
+} from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -18,17 +26,66 @@ export abstract class ElementManager<TElement extends ElementData>
   protected abstract elements: TElement[];
   protected abstract elementMap: Map<string, TElement>;
   protected abstract readonly elementType: string;
+  protected navigationOrder: number[] = [];
 
   // ============================================
   // Abstract Methods
   // ============================================
 
-  public abstract discoverElements(): void;
-  public abstract calculateStates(): Partial<StateForElement<TElement>>;
+  protected abstract createElementData(element: HTMLElement, index: number): TElement | undefined;
+  public abstract calculateStates(): StateForElement<TElement>;
+  protected abstract findParentElement(element: HTMLElement): ElementData | null;
+
+  // ============================================
+  // Lifecycle Methods
+  // ============================================
+
+  public init(): void {
+    this.discoverElements();
+    this.setStates();
+
+    this.logDebug(`${this.constructor.name} initialized`, {
+      totalElements: this.elements.length,
+      elements: this.elements,
+    });
+  }
+
+  public destroy(): void {
+    this.elements = [];
+    this.elementMap.clear();
+
+    this.logDebug(`${this.constructor.name} destroyed`);
+  }
 
   // ============================================
   // Implemented Methods
   // ============================================
+
+  /**
+   * Discover all elements of this type in the form
+   * Finds all elements with [${ATTR}-element^="${this.elementType}"]
+   */
+  protected discoverElements(): void {
+    const rootElement = this.form.getRootElement();
+    if (!rootElement) {
+      throw this.createError(`Cannot discover ${this.elementType}s: root element is null`, 'init', {
+        cause: { manager: this.constructor.name, rootElement },
+      });
+    }
+
+    // Query all elements of this type
+    const elements = this.form.queryAll(`[${ATTR}-element^="${this.elementType}"]`);
+
+    this.elements = [];
+    this.elementMap.clear();
+
+    elements.forEach((element, index) => {
+      const elementData = this.createElementData(element, index);
+      if (!elementData) return;
+
+      this.updateStorage(elementData);
+    });
+  }
 
   /**
    * Update element data
@@ -69,6 +126,48 @@ export abstract class ElementManager<TElement extends ElementData>
       visited: true, // Always mark as visited when updated
       ...data,
     } as TElement;
+  }
+
+  /**
+   * Determine if element should be active based on parent and behavior
+   * Default implementation - can be overridden if needed
+   *
+   * @param element - HTMLElement to check
+   * @param index - Element index
+   * @returns Whether element should be active
+   * @virtual
+   */
+  protected determineActive(element: HTMLElement, index: number): boolean {
+    const behavior = this.form.getBehavior();
+
+    // Get parent based on element type
+    const parent = this.findParentElement(element);
+
+    if (!parent) {
+      // No parent - first element is active
+      return index === 0;
+    }
+
+    // Behavior determines if only first child is active
+    const behaviorRequiresFirstOnly = this.behaviorRequiresFirstChild(behavior);
+
+    return behaviorRequiresFirstOnly ? parent.active && index === 0 : parent.active;
+  }
+
+  /**
+   * Check if current behavior requires only first child to be active
+   * Can be overridden for element-specific behavior
+   * @virtual
+   */
+  protected behaviorRequiresFirstChild(behavior: FormBehavior): boolean {
+    const firstChildBehaviors: Record<FormBehavior, string[]> = {
+      byField: ['field', 'group', 'set', 'card'],
+      byGroup: ['group', 'set', 'card'],
+      bySet: ['set', 'card'],
+      byCard: ['card'],
+    };
+
+    return firstChildBehaviors[behavior]?.includes(this.elementType) ?? false;
   }
 
   /**
@@ -136,6 +235,124 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /**
+   * Generic helper to find parent element by selector
+   * @param childElement - The child element
+   * @param parentType - The parent type
+   * @param getParentElements - The function to get the parent elements
+   * @returns The parent element or null
+   */
+  protected findParentBySelector<T extends ElementData>(
+    childElement: HTMLElement,
+    parentType: string,
+    getParentElements: () => T[]
+  ): T | null {
+    const parentElement = childElement.closest(`[${ATTR}-element^="${parentType}"]`);
+    if (!parentElement) return null;
+
+    const parents = getParentElements();
+    const parent = parents.find((p) => p.element === parentElement);
+
+    if (!parent) {
+      throw this.createError(`Cannot find parent ${parentType}: no parent found`, 'init', {
+        cause: { childElement, parentElement },
+      });
+    }
+
+    return parent;
+  }
+
+  /**
+   * Find parent hierarchy for an element
+   * Builds hierarchy object by calling findParentElement recursively
+   *
+   * @param element - HTMLElement or parent element
+   * @returns Parent hierarchy object
+   * @throws If called on CardManager (cards have no parent hierarchy)
+   * @protected
+   */
+  protected findParentHierarchy<THierarchy extends SetParentHierarchy>(
+    element: HTMLElement | ElementData
+  ): THierarchy {
+    if (this.elementType === 'card') {
+      throw this.createError('findParentHierarchy should not be called on CardManager', 'runtime');
+    }
+
+    let parentElement: ElementData | null;
+
+    if (element instanceof HTMLElement) {
+      parentElement = this.findParentElement(element);
+    } else {
+      parentElement = element;
+    }
+
+    // Build hierarchy based on what parent exists
+    return this.buildHierarchyFromParent(parentElement) as THierarchy;
+  }
+
+  /**
+   * Build hierarchy object from parent element
+   * Recursively walks up parent chain
+   * @virtual - can be overridden for custom hierarchy building
+   */
+  protected buildHierarchyFromParent(parent: ElementData | null): Record<string, unknown> {
+    if (!parent) return {};
+
+    const hierarchy: Record<string, unknown> = {
+      [`${parent.type}Id`]: parent.id,
+      [`${parent.type}Index`]: parent.index,
+    };
+
+    // If parent has hierarchy, merge it
+    if ('parentHierarchy' in parent && parent.parentHierarchy) {
+      Object.assign(hierarchy, parent.parentHierarchy);
+    }
+
+    return hierarchy;
+  }
+
+  /**
+   * Build navigation order
+   *
+   * Creates array of element indexes in display order, skipping excluded
+   * To be called after discovery and whenever element visibility changes
+   */
+  public buildNavigationOrder(): void {
+    this.navigationOrder = this.elements
+      .filter((element) => element.isIncluded)
+      .map((element) => element.index);
+
+    this.logDebug(`${this.elementType} element navigation order built`, {
+      total: this.navigationOrder.length,
+      order: this.navigationOrder,
+    });
+  }
+
+  /**
+   * Update element inclusion and rebuild navigation order
+   *
+   * @param elementId - Element ID
+   * @param isIncluded - Whether to include the element in the navigation order
+   */
+  public handleInclusion(id: string, isIncluded: boolean): void {
+    const element = this.getById(id);
+    if (!element) return;
+
+    this.updateElementData(id, { isIncluded });
+
+    // Rebuild navigation order (excludes fields with isIncluded: false)
+    this.buildNavigationOrder();
+
+    this.logDebug(`Element "${id}" inclusion updated: ${isIncluded}`);
+  }
+
+  /**
+   * Get the total number of elements
+   */
+  public getTotal(): number {
+    return this.elements.length;
+  }
+
+  /**
    * Get element by id
    */
   public getById(id: string): TElement | null {
@@ -154,6 +371,78 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public getAll(): TElement[] {
     return [...this.elements];
+  }
+
+  /**
+   * Get the current element
+   */
+  public getCurrent(): TElement | null {
+    const element = this.elements.find((element) => element.active);
+    return element || null;
+  }
+
+  /**
+   * Get the current element
+   */
+  public getCurrentIndex(): number | null {
+    const current = this.getCurrent();
+    if (!current) return null;
+
+    return current.index;
+  }
+
+  /** Check if first */
+  public isFirst(): boolean {
+    const currentIndex = this.getCurrentIndex();
+    return currentIndex === 0;
+  }
+
+  /** Check if last */
+  public isLast(): boolean {
+    const currentIndex = this.getCurrentIndex();
+    return currentIndex === this.elements.length - 1;
+  }
+
+  /**
+   * Get navigation order
+   * @returns Array of element indexes in display order
+   */
+  public getNavigationOrder(): number[] {
+    return this.navigationOrder;
+  }
+
+  /**
+   * Get next position
+   * @returns Next position or null if on last position
+   */
+  public getNextPosition(): number | null {
+    const currentIndex = this.getCurrentIndex();
+    if (!currentIndex) return null;
+
+    const currentPosition = this.navigationOrder.indexOf(currentIndex);
+
+    if (currentPosition >= this.navigationOrder.length - 1) {
+      return null;
+    }
+
+    return this.navigationOrder[currentPosition + 1];
+  }
+
+  /**
+   * Get previous position
+   * @returns Previous position or null if on first position
+   */
+  public getPrevPosition(): number | null {
+    const currentIndex = this.getCurrentIndex();
+    if (!currentIndex) return null;
+
+    const currentPosition = this.navigationOrder.indexOf(currentIndex);
+
+    if (currentPosition <= 0) {
+      return null;
+    }
+
+    return this.navigationOrder[currentPosition - 1];
   }
 
   /**

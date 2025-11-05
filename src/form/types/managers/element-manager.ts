@@ -50,9 +50,6 @@ export interface IElementManager<TElement extends ElementData> extends IBaseMana
   /** Reference to parent form */
   form: FlowupsForm;
 
-  /** Discover elements within the Form */
-  discoverElements(): void;
-
   /** Calculate element-specific state */
   calculateStates(): Partial<StateForElement<TElement>>;
 
@@ -73,6 +70,9 @@ export interface IElementManager<TElement extends ElementData> extends IBaseMana
    */
   setActiveByParent(parentId: string, parentType: 'group' | 'set' | 'card'): void;
 
+  /** Get the total number of elements */
+  getTotal(): number;
+
   /** Get element by index */
   getByIndex(index: number): TElement | null;
 
@@ -81,6 +81,9 @@ export interface IElementManager<TElement extends ElementData> extends IBaseMana
 
   /** Get all elements */
   getAll(): TElement[];
+
+  /** Get the current element */
+  getCurrent(): TElement | null;
 
   /** Write states to form */
   setStates(): void;
