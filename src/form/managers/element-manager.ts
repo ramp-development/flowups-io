@@ -97,15 +97,13 @@ export abstract class ElementManager<TElement extends ElementData>
     selector: string | number,
     data: UpdatableElementData<TElement> = {} as UpdatableElementData<TElement>
   ): void {
-    const element =
-      typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
-
     if (
       (typeof selector === 'number' && selector < 0) ||
       (typeof selector === 'number' && selector >= this.elements.length)
     )
       return;
 
+    const element = this.getBySelector(selector);
     if (!element) {
       this.logWarn(`Update ${this.elementType} data: Element not found`, { selector });
       return;
@@ -128,7 +126,7 @@ export abstract class ElementManager<TElement extends ElementData>
    * Merge element data - can be overridden
    * @virtual
    */
-  protected mergeElementData(element: TElement, data: UpdatableElementData<TElement>): TElement {
+  public mergeElementData(element: TElement, data: UpdatableElementData<TElement>): TElement {
     return {
       ...element,
       visited: true, // Always mark as visited when updated
@@ -198,9 +196,7 @@ export abstract class ElementManager<TElement extends ElementData>
    * @throws Warning if element is not active
    */
   public setCurrent(selector: string | number): void {
-    const element =
-      typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
-
+    const element = this.getBySelector(selector);
     if (!element) {
       this.logWarn(`Set current: ${this.elementType} not found`, { selector });
       return;
@@ -242,31 +238,58 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /**
-   * Clear all active flags
+   * Clear all active and current flags
+   * Updates storage not states
    */
-  public clearActive(): void {
+  public clearActiveAndCurrent(): void {
     this.elements.forEach((element) => {
-      const updated = { ...element, active: false } as TElement;
+      const updated = { ...element, active: false, current: false } as TElement;
       this.updateStorage(updated);
     });
 
-    this.logDebug(`Cleared active flags for all ${this.elementType} elements`, {
+    this.logDebug(`Cleared active and current flags for all ${this.elementType} elements`, {
       count: this.elements.length,
     });
   }
 
   /**
+   * Set active flag
+   * Updates storage not states
+   */
+  public setActive(selector: string | number): void {
+    const element = this.getBySelector(selector);
+    if (!element) {
+      this.logWarn(`Set active: ${this.elementType} not found`, { selector });
+      return;
+    }
+
+    const updated = { ...element, active: true } as TElement;
+    this.updateStorage(updated);
+
+    this.logDebug(`Set active flag for ${this.elementType} element`, {
+      id: element.id,
+      index: element.index,
+    });
+  }
+
+  /**
    * Set active by parent
+   * Updates storage not states
+   * @param parentId - The parent element ID
+   * @param parentType - The parent element type
+   * @param options - Active (boolean, defaults to true) and firstIsCurrent (boolean, defaults to false)
    */
   public setActiveByParent(
     parentId: string,
     parentType: 'card' | 'set' | 'group',
-    active: boolean = true
+    options: { active: boolean; firstIsCurrent: boolean } = { active: true, firstIsCurrent: false }
   ): void {
-    const children = this.getElementsByParentId(parentId, parentType);
+    const { active, firstIsCurrent } = options;
 
-    children.forEach((element) => {
-      this.updateElementData(element.index, { active } as UpdatableElementData<TElement>);
+    const children = this.getElementsByParentId(parentId, parentType);
+    children.forEach((element, index) => {
+      const updated = { ...element, active, current: index === 0 && firstIsCurrent } as TElement;
+      this.updateStorage(updated);
     });
 
     this.logDebug(`${this.elementType}: Set active by parent`, {
@@ -425,6 +448,15 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public getTotal(): number {
     return this.elements.length;
+  }
+
+  /**
+   * Get element by selector
+   */
+  public getBySelector(selector: string | number): TElement | null {
+    const element =
+      typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
+    return element || null;
   }
 
   /**
