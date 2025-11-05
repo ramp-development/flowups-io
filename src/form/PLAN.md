@@ -79,9 +79,46 @@ DOM updated (elements shown/hidden based on active flags)
 
 ## Implementation Phases
 
-### Phase 1: Add Core Manager Methods
+### Phase 1: Add Core Manager Methods ✅ **COMPLETED**
 
-**Current Status:** Managers already have `setMetadata()` and `setStates()`. Need to add `clearActive()`, `setActiveByParent()`, and refactor `setStates()` → `calculateStates()`.
+**Status:** Phase 1 is complete! All core manager methods have been implemented via a new abstract `ElementManager<TElement>` base class that all managers now extend.
+
+**Major Achievement:** Instead of implementing these methods individually in each manager, we created a generic base class that provides ~80% of common functionality. This eliminated massive code duplication (reduced each manager from ~275 lines to ~100 lines).
+
+**Completed Work:**
+
+1. ✅ Created abstract `ElementManager<TElement extends ElementData>` base class
+2. ✅ All managers (Card, Set, Group, Field) now extend `ElementManager`
+3. ✅ Implemented all required methods in base class:
+   - `clearActive()` - clears all active flags
+   - `setActiveByParent()` - sets multiple children active
+   - `calculateStates()` - abstract method (each manager implements its own state calculation)
+   - `setStates()` - calls `calculateStates()` and writes to form state
+   - Navigation helpers: `getNextPosition()`, `getPrevPosition()`, `isFirst()`, `isLast()`
+   - Element access: `getById()`, `getByIndex()`, `getAll()`, `getCurrent()`, `getCurrentIndex()`
+   - Navigation order: `buildNavigationOrder()`, `handleInclusion()`
+   - Hierarchy helpers: `findParentBySelector()`, `findParentHierarchy()`, `buildHierarchyFromParent()`
+   - Storage: `updateStorage()`, `updateElementData()`, `mergeElementData()`
+   - Lifecycle: `init()`, `destroy()`, `discoverElements()`
+
+4. ✅ Type-safe implementation using TypeScript generics:
+   - `UpdatableElementData<T>` - Only updatable properties
+   - `StateForElement<T>` - Mapped type for state returns
+   - Type guards for runtime safety (`'property' in object`)
+
+5. ✅ All managers refactored to minimal implementation:
+   - Only need to implement: `createElementData()`, `calculateStates()`, `mergeElementData()`, `findParentElement()`
+   - All common logic inherited from base class
+
+**Files Modified:**
+- [src/form/types/managers/element-manager.ts](src/form/types/managers/element-manager.ts) - Type definitions
+- [src/form/managers/element-manager.ts](src/form/managers/element-manager.ts) - Base class implementation
+- [src/form/managers/card-manager.ts](src/form/managers/card-manager.ts) - Refactored to extend ElementManager
+- [src/form/managers/set-manager.ts](src/form/managers/set-manager.ts) - Refactored to extend ElementManager
+- [src/form/managers/group-manager.ts](src/form/managers/group-manager.ts) - Refactored to extend ElementManager
+- [src/form/managers/field-manager.ts](src/form/managers/field-manager.ts) - Refactored to extend ElementManager
+
+**Original Phase 1 Goals (kept for reference):**
 
 All managers (Card, Set, Group, Field) need these methods:
 
@@ -1409,14 +1446,17 @@ interface FormSetChangedEventPayload {
 
 ## Implementation Checklist
 
-### Phase 1: Manager Methods
+### Phase 1: Manager Methods ✅ **COMPLETED**
 
-- [ ] **Add** `clearActive()` to all managers (Card, Set, Group, Field) - does not exist
-- [ ] **Add** `setActiveByParent()` to Set, Group, Field managers - does not exist
-- [ ] **Add** `calculateStates()` to all managers - refactor from existing `setStates()`
-- [ ] **Refactor** `setStates()` to call `calculateStates()` - update existing method
-- [ ] **Add** helper methods: `getNextIncluded*()`, `getPreviousIncluded*()` - some exist as `*Index()`, need element wrappers
-- [ ] **Clean up** `console.log()` in GroupManager:229-231 and FieldManager:241-243
+- [x] **Add** `clearActive()` to all managers (Card, Set, Group, Field) - ✅ Implemented in ElementManager base class
+- [x] **Add** `setActiveByParent()` to Set, Group, Field managers - ✅ Implemented in ElementManager base class
+- [x] **Add** `calculateStates()` to all managers - ✅ Abstract method in base class, implemented in each manager
+- [x] **Refactor** `setStates()` to call `calculateStates()` - ✅ Implemented in ElementManager base class
+- [x] **Add** helper methods: `getNextPosition()`, `getPrevPosition()`, `getById()`, `getByIndex()`, etc. - ✅ All implemented in base class
+- [x] **Add** navigation order management: `buildNavigationOrder()`, `handleInclusion()` - ✅ Implemented in base class
+- [x] **Create** `ElementManager<TElement>` base class - ✅ Complete with full type safety
+- [x] **Refactor** all managers to extend ElementManager - ✅ All four managers refactored
+- [ ] **Clean up** `console.log()` in GroupManager:229-231 and FieldManager:241-243 - ⚠️ Still pending
 
 ### Phase 2: State Shape
 
