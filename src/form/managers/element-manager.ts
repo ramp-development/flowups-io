@@ -100,6 +100,12 @@ export abstract class ElementManager<TElement extends ElementData>
     const element =
       typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
 
+    if (
+      (typeof selector === 'number' && selector < 0) ||
+      (typeof selector === 'number' && selector >= this.elements.length)
+    )
+      return;
+
     if (!element) {
       this.logWarn(`Update ${this.elementType} data: Element not found`, { selector });
       return;

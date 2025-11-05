@@ -314,8 +314,8 @@ export class NavigationManager extends BaseManager implements INavigationManager
    */
   private handleByField(fromIndex: number, toIndex: number): void {
     // get the to field
-    const fromField = this.form.fieldManager.getFieldByIndex(fromIndex);
-    const toField = this.form.fieldManager.getFieldByIndex(toIndex);
+    const fromField = this.form.fieldManager.getByIndex(fromIndex);
+    const toField = this.form.fieldManager.getByIndex(toIndex);
 
     if (!toField) {
       throw this.form.createError('Cannot handle navigation: to field is null', 'runtime', {
@@ -326,37 +326,43 @@ export class NavigationManager extends BaseManager implements INavigationManager
     console.log('handleByField', { fromIndex, toIndex, toField });
 
     // update the field metadata for from and to
-    this.form.fieldManager.setMetadata(fromIndex, { active: false });
-    this.form.fieldManager.setMetadata(toIndex, { active: true });
+    this.form.fieldManager.updateElementData(fromIndex, { active: false });
+    this.form.fieldManager.updateElementData(toIndex, { active: true });
     this.form.fieldManager.setStates();
 
     // update parent metadata based on the to field
     if (fromField && fromField.parentHierarchy.groupIndex !== null) {
-      this.form.groupManager.setMetadata(fromField.parentHierarchy.groupIndex, { active: false });
+      this.form.groupManager.updateElementData(fromField.parentHierarchy.groupIndex, {
+        active: false,
+      });
     }
     if (toField.parentHierarchy.groupIndex !== null) {
-      this.form.groupManager.setMetadata(toField.parentHierarchy.groupIndex, { active: true });
+      this.form.groupManager.updateElementData(toField.parentHierarchy.groupIndex, {
+        active: true,
+      });
       this.form.groupManager.setStates();
     }
 
     if (fromField) {
-      this.form.setManager.setMetadata(fromField.parentHierarchy.setIndex, { active: false });
+      this.form.setManager.updateElementData(fromField.parentHierarchy.setIndex, { active: false });
     }
-    this.form.setManager.setMetadata(toField.parentHierarchy.setIndex, { active: true });
+    this.form.setManager.updateElementData(toField.parentHierarchy.setIndex, { active: true });
     this.form.setManager.setStates();
 
     if (fromField && fromField.parentHierarchy.cardIndex !== null) {
-      this.form.cardManager.setMetadata(fromField.parentHierarchy.cardIndex, { active: false });
+      this.form.cardManager.updateElementData(fromField.parentHierarchy.cardIndex, {
+        active: false,
+      });
     }
     if (toField.parentHierarchy.cardIndex !== null) {
-      this.form.cardManager.setMetadata(toField.parentHierarchy.cardIndex, { active: true });
+      this.form.cardManager.updateElementData(toField.parentHierarchy.cardIndex, { active: true });
       this.form.cardManager.setStates();
     }
   }
 
   private handleByGroup(fromIndex: number, toIndex: number): void {
     // get the to group
-    const toGroup = this.form.groupManager.getGroupByIndex(toIndex);
+    const toGroup = this.form.groupManager.getByIndex(toIndex);
 
     if (!toGroup) {
       throw this.form.createError('Cannot handle navigation: to group is null', 'runtime', {
@@ -365,19 +371,19 @@ export class NavigationManager extends BaseManager implements INavigationManager
     }
 
     // update the group metadata for from and to
-    this.form.groupManager.setMetadata(fromIndex, { active: false });
-    this.form.groupManager.setMetadata(toIndex, { active: true });
+    this.form.groupManager.updateElementData(fromIndex, { active: false });
+    this.form.groupManager.updateElementData(toIndex, { active: true });
 
     // update parent metadata based on the to group
-    this.form.setManager.setMetadata(toGroup.parentHierarchy.setIndex);
+    this.form.setManager.updateElementData(toGroup.parentHierarchy.setIndex, { active: true });
 
     if (toGroup.parentHierarchy.cardIndex)
-      this.form.cardManager.setMetadata(toGroup.parentHierarchy.cardIndex);
+      this.form.cardManager.updateElementData(toGroup.parentHierarchy.cardIndex, { active: true });
   }
 
   private handleBySet(fromIndex: number, toIndex: number): void {
     // get the to group
-    const toSet = this.form.setManager.getSetByIndex(toIndex);
+    const toSet = this.form.setManager.getByIndex(toIndex);
 
     if (!toSet) {
       throw this.form.createError('Cannot handle navigation: to set is null', 'runtime', {
@@ -386,17 +392,17 @@ export class NavigationManager extends BaseManager implements INavigationManager
     }
 
     // update the group metadata for from and to
-    this.form.setManager.setMetadata(fromIndex, { active: false });
-    this.form.setManager.setMetadata(toIndex, { active: true });
+    this.form.setManager.updateElementData(fromIndex, { active: false });
+    this.form.setManager.updateElementData(toIndex, { active: true });
 
     // update parent metadata based on the to group
     if (toSet.parentHierarchy.cardIndex)
-      this.form.cardManager.setMetadata(toSet.parentHierarchy.cardIndex);
+      this.form.cardManager.updateElementData(toSet.parentHierarchy.cardIndex, { active: true });
   }
 
   private handleByCard(fromIndex: number, toIndex: number): void {
     // get the to group
-    const toCard = this.form.cardManager.getCardByIndex(toIndex);
+    const toCard = this.form.cardManager.getByIndex(toIndex);
 
     if (!toCard) {
       throw this.form.createError('Cannot handle navigation: to card is null', 'runtime', {
@@ -405,8 +411,8 @@ export class NavigationManager extends BaseManager implements INavigationManager
     }
 
     // update the group metadata for from and to
-    this.form.cardManager.setMetadata(fromIndex, { active: false });
-    this.form.cardManager.setMetadata(toIndex, { active: true });
+    this.form.cardManager.updateElementData(fromIndex, { active: false });
+    this.form.cardManager.updateElementData(toIndex, { active: true });
   }
 
   // ============================================
