@@ -126,7 +126,7 @@ export abstract class ElementManager<TElement extends ElementData>
    * Merge element data - can be overridden
    * @virtual
    */
-  public mergeElementData(element: TElement, data: UpdatableElementData<TElement>): TElement {
+  protected mergeElementData(element: TElement, data: UpdatableElementData<TElement>): TElement {
     return {
       ...element,
       visited: true, // Always mark as visited when updated

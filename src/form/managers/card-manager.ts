@@ -112,7 +112,7 @@ export class CardManager extends ElementManager<CardElement> {
    * @param element - Card Element
    * @param data - Data to merge
    */
-  public mergeElementData(
+  protected mergeElementData(
     element: CardElement,
     data: UpdatableElementData<CardElement> = {}
   ): CardElement {

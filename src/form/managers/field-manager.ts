@@ -131,7 +131,7 @@ export class FieldManager extends ElementManager<FieldElement> {
    * @param element - Field Element
    * @param data - Data to merge
    */
-  public mergeElementData(
+  protected mergeElementData(
     element: FieldElement,
     data: UpdatableElementData<FieldElement>
   ): FieldElement {

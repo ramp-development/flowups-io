@@ -121,7 +121,10 @@ export class SetManager extends ElementManager<SetElement> {
    * @param element - Set Element
    * @param data - Data to merge
    */
-  public mergeElementData(element: SetElement, data: UpdatableElementData<SetElement>): SetElement {
+  protected mergeElementData(
+    element: SetElement,
+    data: UpdatableElementData<SetElement>
+  ): SetElement {
     const groups = this.form.groupManager.getAllByParentId(element.id, 'set');
     const fields = this.form.fieldManager
       .getAllByParentId(element.id, 'set')
