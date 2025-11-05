@@ -81,14 +81,19 @@ export interface IElementManager<TElement extends ElementData> extends IBaseMana
   updateElementData(selector: string | number, data?: UpdatableElementData<TElement>): void;
 
   /** Clear active flags for all elements */
-  clearActive(): void;
+  clearActiveAndCurrent(): void;
 
   /**
    * Set the active state on parent
    * @param parentId - ID of parent element
    * @param parentType - Type of parent (group, set, or card)
+   * @param options - Active (boolean, defaults to true) and firstIsCurrent (boolean, defaults to false)
    */
-  setActiveByParent(parentId: string, parentType: 'group' | 'set' | 'card'): void;
+  setActiveByParent(
+    parentId: string,
+    parentType: 'group' | 'set' | 'card',
+    options: { active: boolean; firstIsCurrent: boolean }
+  ): void;
 
   /** Get the total number of elements */
   getTotal(): number;
