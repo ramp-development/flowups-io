@@ -42,10 +42,12 @@ export abstract class ElementManager<TElement extends ElementData>
 
   public init(): void {
     this.discoverElements();
+    this.buildNavigationOrder();
     this.setStates();
 
     this.logDebug(`${this.constructor.name} initialized`, {
       totalElements: this.elements.length,
+      includedElements: this.navigationOrder.length,
       elements: this.elements,
     });
   }
@@ -318,7 +320,10 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public buildNavigationOrder(): void {
     this.navigationOrder = this.elements
-      .filter((element) => element.isIncluded)
+      .filter((element) => {
+        // Check if element has isIncluded property and if it's true
+        return 'isIncluded' in element ? element.isIncluded : true;
+      })
       .map((element) => element.index);
 
     this.logDebug(`${this.elementType} element navigation order built`, {
@@ -337,9 +342,10 @@ export abstract class ElementManager<TElement extends ElementData>
     const element = this.getById(id);
     if (!element) return;
 
-    this.updateElementData(id, { isIncluded });
+    // Type assertion needed because not all TElement types may have isIncluded at compile time
+    this.updateElementData(id, { isIncluded } as UpdatableElementData<TElement>);
 
-    // Rebuild navigation order (excludes fields with isIncluded: false)
+    // Rebuild navigation order (excludes elements with isIncluded: false)
     this.buildNavigationOrder();
 
     this.logDebug(`Element "${id}" inclusion updated: ${isIncluded}`);
@@ -417,7 +423,7 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public getNextPosition(): number | null {
     const currentIndex = this.getCurrentIndex();
-    if (!currentIndex) return null;
+    if (currentIndex === null) return null;
 
     const currentPosition = this.navigationOrder.indexOf(currentIndex);
 
@@ -434,7 +440,7 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public getPrevPosition(): number | null {
     const currentIndex = this.getCurrentIndex();
-    if (!currentIndex) return null;
+    if (currentIndex === null) return null;
 
     const currentPosition = this.navigationOrder.indexOf(currentIndex);
 
