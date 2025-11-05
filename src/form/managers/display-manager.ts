@@ -9,8 +9,20 @@
 
 import type { StateChangePayload } from '$lib/types';
 
-import type { IDisplayManager } from '../types';
+import type {
+  FormCardState,
+  FormFieldState,
+  FormGroupState,
+  FormSetState,
+  IDisplayManager,
+} from '../types';
 import { BaseManager } from './base-manager';
+
+type RelevantKeys =
+  | keyof FormCardState
+  | keyof FormSetState
+  | keyof FormGroupState
+  | keyof FormFieldState;
 
 /**
  * DisplayManager Implementation
@@ -59,145 +71,48 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   // Handle State Changes
   // ============================================
   /**
-   *
+   * Handle state changes and update display if relevant
    */
   private handleStateChange = (payload: StateChangePayload): void => {
     // Only update display if relevant state changed
-    const relevantKeys = [
+    const relevantKeys: readonly RelevantKeys[] = [
       'currentCardIndex',
       'currentSetIndex',
       'currentGroupIndex',
       'currentFieldIndex',
+      // 'activeCardIndices',
+      // 'activeSetIndices',
+      // 'activeGroupIndices',
+      // 'activeFieldIndices',
     ];
 
-    if (relevantKeys.includes(payload.key)) {
-      this.updateDisplay();
+    // payload.key follows pattern `${formName}.${key}`
+    const key = payload.key.includes('.')
+      ? (payload.key.split('.').pop() as RelevantKeys)
+      : (payload.key as RelevantKeys);
+
+    if (key && relevantKeys.includes(key)) {
+      this.updateDisplay(key);
     }
   };
 
-  // ============================================
-  // Event Handlers
-  // ============================================
-
-  // /**
-  //  * Handle card changed event
-  //  * Shows the new active card and hides all others
-  //  */
-  // private handleCardChanged = (payload: CardChangingEvent): void => {
-  //   const { fromId, toId } = payload;
-
-  //   if (this.form.getFormConfig().debug) {
-  //     this.form.logDebug('DisplayManager handling card change', {
-  //       fromId,
-  //       toId,
-  //     });
-  //   }
-
-  //   // Hide old card
-  //   if (fromId) {
-  //     this.hideCard(fromId);
-  //   }
-
-  //   // Show new card
-  //   this.showCard(toId);
-  // };
-
-  // /**
-  //  * Handle set changed event
-  //  * Shows the new active set and hides all others
-  //  */
-  // private handleSetChanged = (payload: SetChangingEvent): void => {
-  //   const { fromId, toId } = payload;
-
-  //   if (this.form.getFormConfig().debug) {
-  //     this.form.logDebug('DisplayManager handling set change', {
-  //       fromId,
-  //       toId,
-  //     });
-  //   }
-
-  //   // Hide old set
-  //   if (fromId) {
-  //     this.hideSet(fromId);
-  //   }
-
-  //   // Show new set
-  //   this.showSet(toId);
-  // };
-
-  // /**
-  //  * Handle group changed event
-  //  * Shows the new active group and hides all others
-  //  */
-  // private handleGroupChanged = (payload: GroupChangingEvent): void => {
-  //   const { fromId, toId } = payload;
-
-  //   if (this.form.getFormConfig().debug) {
-  //     this.form.logDebug('DisplayManager handling group change', {
-  //       fromId,
-  //       toId,
-  //     });
-  //   }
-
-  //   // Hide old group
-  //   if (fromId) {
-  //     this.hideGroup(fromId);
-  //   }
-
-  //   // Show new group
-  //   this.showGroup(toId);
-  // };
-
-  // /**
-  //  * Handle field changed event
-  //  * Shows the new active field and hides all others
-  //  */
-  // private handleFieldChanged = (payload: FieldChangedEvent): void => {
-  //   const { fieldIndex, previousFieldIndex } = payload;
-
-  //   this.logDebug('DisplayManager handling field change', {
-  //     from: previousFieldIndex,
-  //     to: fieldIndex,
-  //   });
-
-  //   // Hide old field
-  //   if (previousFieldIndex) {
-  //     this.hideField(previousFieldIndex);
-  //   }
-
-  //   // Show new field
-  //   this.showField(fieldIndex);
-  // };
-
-  // ============================================
-  // Initialization
-  // ============================================
-
   /**
-   * Initialize visibility based on behavior mode
-   * Shows first item of appropriate level, hides all others
+   * Update display depending on the state changed, no need for behavior
    */
-  private updateDisplay(): void {
-    const behavior = this.form.getBehavior();
-
-    switch (behavior) {
-      case 'byCard':
-        this.handleCardVisibility();
-        break;
-      case 'bySet':
-        this.handleSetVisibility();
-        break;
-      case 'byGroup':
-        this.handleGroupVisibility();
-        break;
-      case 'byField':
-        this.displayByField();
-        break;
-      default:
-        throw this.form.createError('Invalid behavior', 'runtime', {
-          cause: { behavior },
-        });
+  private updateDisplay(key?: RelevantKeys): void {
+    if (!key) {
+      this.handleCardVisibility();
+      this.handleSetVisibility();
+      this.handleGroupVisibility();
+      this.handleFieldVisibility();
+      return;
     }
+
+    const lowercaseKey = key.toLowerCase();
+    if (lowercaseKey.includes('card')) this.handleCardVisibility();
+    if (lowercaseKey.includes('set')) this.handleSetVisibility();
+    if (lowercaseKey.includes('group')) this.handleGroupVisibility();
+    if (lowercaseKey.includes('field')) this.handleFieldVisibility();
   }
 
   /**
@@ -205,9 +120,9 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private handleCardVisibility(): void {
     const cards = this.form.cardManager.getAll();
-    cards.forEach((card) => this.showElement(card.element, card.active));
-
-    // this.logDebug('Updated card visibility', { totalCards: cards.length });
+    cards.forEach((card) => {
+      this.showElement(card.element, card.active);
+    });
   }
 
   /**
@@ -215,9 +130,9 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private handleSetVisibility(): void {
     const sets = this.form.setManager.getAll();
-    sets.forEach((set) => this.showElement(set.element, set.active));
-
-    // this.logDebug('Updated set visibility', { totalSets: sets.length });
+    sets.forEach((set) => {
+      this.showElement(set.element, set.active);
+    });
   }
 
   /**
@@ -225,9 +140,9 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private handleGroupVisibility(): void {
     const groups = this.form.groupManager.getAll();
-    groups.forEach((group) => this.showElement(group.element, group.active));
-
-    // this.logDebug('Updated group visibility', { totalGroups: groups.length });
+    groups.forEach((group) => {
+      this.showElement(group.element, group.active);
+    });
   }
 
   /**
@@ -235,23 +150,10 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private handleFieldVisibility(): void {
     const fields = this.form.fieldManager.getAll();
-    fields.forEach((field) => this.showElement(field.element, field.active));
-
-    // this.logDebug('Updated field visibility', { totalFields: fields.length });
-  }
-
-  private displayByField(): void {
-    const currentFieldIndex = this.form.getState('currentFieldIndex');
-    const fields = this.form.fieldManager.getAll();
-
     fields.forEach((field) => {
-      this.showElement(field.element, field.index === currentFieldIndex);
+      this.showElement(field.element, field.active);
     });
   }
-
-  // ============================================
-  // Base Show Methods
-  // ============================================
 
   /**
    * Show/Hide an element

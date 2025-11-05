@@ -139,7 +139,7 @@ export class GroupManager extends ElementManager<GroupElement> {
       ...element,
       visited: true,
       completed,
-      active: data.active ?? this.determineActive(element.element, element.index),
+      active: data.active ?? element.active,
       isValid,
       progress,
       ...data,

@@ -1585,3 +1585,22 @@ interface FormSetChangedEventPayload {
 - **Debugging:** Use `data-active` attributes to debug visibility issues
 - **Performance:** RAF prevents layout thrashing, batching prevents state races
 - **Future:** Add CSS transitions for smooth show/hide animations
+
+### Important: `determineActive()` Usage
+
+**Fixed Bug:** GroupManager and SetManager were calling `determineActive()` in their `mergeElementData()` methods when `data.active` was undefined. This caused navigation to fail because `determineActive()` recalculates active state based on parent hierarchy, overwriting explicitly set active flags.
+
+**Correct Usage:**
+- ✅ **During discovery** (`createElementData()`) - Determines initial active state based on behavior and parent hierarchy
+- ❌ **During updates** (`mergeElementData()`) - Should preserve existing `element.active` value, not recalculate
+
+**Why:** Navigation explicitly sets active flags from top-down. Recalculating based on parent state during updates creates conflicts and overwrites intentional navigation changes.
+
+**Current Implementation:**
+```typescript
+// GroupManager & SetManager mergeElementData()
+active: data.active ?? element.active  // ✅ Preserves existing value
+// NOT: data.active ?? this.determineActive(...)  // ❌ Overwrites navigation changes
+```
+
+**Future Consideration:** If `determineActive()` needs enhancement, it should only read from parent's current active state, not calculate based on behavior assumptions. However, since navigation now handles all active flag management explicitly, `determineActive()` should remain limited to initial discovery only.

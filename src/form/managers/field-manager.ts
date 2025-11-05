@@ -148,7 +148,7 @@ export class FieldManager extends ElementManager<FieldElement> {
       ...element,
       visited: true,
       completed,
-      active: data.active ?? this.determineActive(element.element, element.index),
+      active: data.active ?? element.active,
       isValid,
       ...data,
     };

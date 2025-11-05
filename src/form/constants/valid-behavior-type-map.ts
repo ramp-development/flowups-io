@@ -6,4 +6,7 @@ import type { FormBehavior } from '../types';
  */
 export const VALID_BEHAVIOR_TYPE_MAP: Record<FormBehavior, true> = {
   byField: true,
+  byGroup: true,
+  bySet: true,
+  byCard: true,
 } as const;

@@ -10,6 +10,7 @@ export const VALID_ELEMENT_TYPE_MAP: Record<FormElementType, true> = {
   set: true,
   group: true,
   field: true,
+  input: true,
   prev: true,
   next: true,
   submit: true,

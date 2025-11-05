@@ -109,16 +109,14 @@ export abstract class ElementManager<TElement extends ElementData>
       return;
     }
 
-    // Merge data (can be overridden for custom logic)
+    // Merge data with existing element data
     const updated = this.mergeElementData(element, data);
-
-    // Update storage using helper method
     this.updateStorage(updated);
 
     this.logDebug(`${this.elementType}: Updated element`, {
       id: element.id,
       index: element.index,
-      data,
+      updated,
     });
   }
 
@@ -204,23 +202,22 @@ export abstract class ElementManager<TElement extends ElementData>
 
     // Validate: current element must be active
     if (!element.active) {
-      this.logWarn(`Set current: ${this.elementType} is not active, setting active first`, {
+      this.logWarn(`Set current: ${this.elementType} is not active, cannot set current`, {
         id: element.id,
         index: element.index,
       });
-      // Automatically set as active
-      this.updateElementData(element.index, { active: true } as UpdatableElementData<TElement>);
+
+      return;
     }
 
     // Clear current flag from all elements
     this.clearCurrent();
     this.updateElementData(element.index, { current: true } as UpdatableElementData<TElement>);
 
-    this.setStates();
-
     this.logDebug(`${this.elementType}: Set current`, {
       id: element.id,
       index: element.index,
+      elements: this.elements,
     });
   }
 
@@ -249,6 +246,7 @@ export abstract class ElementManager<TElement extends ElementData>
 
     this.logDebug(`Cleared active and current flags for all ${this.elementType} elements`, {
       count: this.elements.length,
+      elements: this.elements,
     });
   }
 
@@ -269,6 +267,7 @@ export abstract class ElementManager<TElement extends ElementData>
     this.logDebug(`Set active flag for ${this.elementType} element`, {
       id: element.id,
       index: element.index,
+      elements: this.elements,
     });
   }
 

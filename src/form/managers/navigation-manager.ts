@@ -392,30 +392,32 @@ export class NavigationManager extends BaseManager implements INavigationManager
   private updateHierarchyData(element: SetElement | GroupElement | FieldElement): void {
     // Update group (only if element is a field)
     if (element.type === 'field') {
-      const { groupId } = element.parentHierarchy;
-      if (groupId) {
+      const { groupIndex } = element.parentHierarchy;
+      if (groupIndex !== null && groupIndex >= 0) {
         this.form.groupManager.clearActiveAndCurrent();
-        this.form.groupManager.setActive(groupId);
-        this.form.groupManager.setCurrent(groupId);
+        this.form.groupManager.setActive(groupIndex);
+        this.form.groupManager.setCurrent(groupIndex);
+        // this.form.groupManager.updateElementData(groupIndex, { active: true, current: true });
       }
     }
 
     // Update set (if element is field or group)
     if (element.type === 'field' || element.type === 'group') {
-      const { setId } = element.parentHierarchy;
-      if (setId) {
+      const { setIndex } = element.parentHierarchy;
+      if (setIndex !== null && setIndex >= 0) {
         this.form.setManager.clearActiveAndCurrent();
-        this.form.setManager.setActive(setId);
-        this.form.setManager.setCurrent(setId);
+        this.form.setManager.setActive(setIndex);
+        this.form.setManager.setCurrent(setIndex);
+        // this.form.setManager.updateElementData(setIndex, { active: true, current: true });
       }
     }
 
     // Update card (always, since all elements have a parent card)
-    const { cardId } = element.parentHierarchy;
-    if (cardId) {
+    const { cardIndex } = element.parentHierarchy;
+    if (cardIndex !== null && cardIndex >= 0) {
       this.form.cardManager.clearActiveAndCurrent();
-      this.form.cardManager.setActive(cardId);
-      this.form.cardManager.setCurrent(cardId);
+      this.form.cardManager.setActive(cardIndex);
+      this.form.cardManager.setCurrent(cardIndex);
     }
   }
 
@@ -433,7 +435,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
       ...this.form.inputManager.calculateStates(),
     };
 
-    // Single state write (emits one state:changed event)
+    // Batch update all states
     this.form.setStates(allStates);
   }
 
