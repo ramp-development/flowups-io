@@ -105,6 +105,7 @@ export class GroupManager extends ElementManager<GroupElement> {
       currentGroupIndex,
       currentGroupId,
       currentGroupTitle,
+      activeGroupIndices: [currentGroupIndex],
       previousGroupIndex,
       nextGroupIndex,
       completedGroups,

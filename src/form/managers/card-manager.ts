@@ -94,6 +94,7 @@ export class CardManager extends ElementManager<CardElement> {
       currentCardIndex,
       currentCardId,
       currentCardTitle,
+      activeCardIndices: [currentCardIndex],
       previousCardIndex,
       nextCardIndex,
       completedCards,

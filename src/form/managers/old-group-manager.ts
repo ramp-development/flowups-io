@@ -177,9 +177,9 @@ export class GroupManager extends BaseManager implements IGroupManager {
     );
 
     const groupState: FormGroupState = {
-      currentGroupIndex,
-      currentGroupId,
-      currentGroupTitle,
+      activeGroupIndex: currentGroupIndex,
+      activeGroupId: currentGroupId,
+      activeGroupTitle: currentGroupTitle,
       previousGroupIndex,
       nextGroupIndex,
       completedGroups,

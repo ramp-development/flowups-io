@@ -103,6 +103,7 @@ export class SetManager extends ElementManager<SetElement> {
       currentSetIndex,
       currentSetId,
       currentSetTitle,
+      activeSetIndices: [currentSetIndex],
       previousSetIndex,
       nextSetIndex,
       completedSets,

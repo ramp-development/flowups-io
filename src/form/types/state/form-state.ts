@@ -9,6 +9,8 @@ export interface FormCardState {
   currentCardTitle: string | null;
   /** Previous card index (for navigation history, null if first) */
   previousCardIndex: number | null;
+  /** Array of active card indices */
+  activeCardIndices: number[];
   /** Next card index (for navigation history, null if last) */
   nextCardIndex: number | null;
   /** Set of completed card IDs */
@@ -30,6 +32,8 @@ export interface FormSetState {
   currentSetId: string | null;
   /** Current set title (null if no sets active) */
   currentSetTitle: string | null;
+  /** Array of active set indices */
+  activeSetIndices: number[];
   /** Previous set index (for navigation history, null if first) */
   previousSetIndex: number | null;
   /** Next set index (for navigation history, null if last) */
@@ -53,6 +57,8 @@ export interface FormGroupState {
   currentGroupId: string | null;
   /** Current group title (null if no groups active) */
   currentGroupTitle: string | null;
+  /** Array of active group indices */
+  activeGroupIndices: number[];
   /** Previous group index (for navigation history, null if first) */
   previousGroupIndex: number | null;
   /** Next group index (for navigation history, null if last) */
@@ -74,6 +80,8 @@ export interface FormFieldState {
   currentFieldIndex: number;
   /** Current field ID (string identifier, null if no fields active) */
   currentFieldId: string | null;
+  /** Array of active field indices */
+  activeFieldIndices: number[];
   /** Previous field index (for navigation history, null if first) */
   previousFieldIndex: number | null;
   /** Next field index (for navigation history, null if last) */

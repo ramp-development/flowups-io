@@ -171,9 +171,9 @@ export class SetManager extends BaseManager implements ISetManager {
     );
 
     const setState: FormSetState = {
-      currentSetIndex,
-      currentSetId,
-      currentSetTitle,
+      activeSetIndex: currentSetIndex,
+      activeSetId: currentSetId,
+      activeSetTitle: currentSetTitle,
       previousSetIndex,
       nextSetIndex,
       completedSets,

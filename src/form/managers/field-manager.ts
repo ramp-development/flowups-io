@@ -113,6 +113,7 @@ export class FieldManager extends ElementManager<FieldElement> {
     return {
       currentFieldIndex,
       currentFieldId,
+      activeFieldIndices: [currentFieldIndex],
       previousFieldIndex,
       nextFieldIndex,
       completedFields,

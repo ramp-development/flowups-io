@@ -193,8 +193,8 @@ export class FieldManager extends BaseManager implements IFieldManager {
     );
 
     const fieldState: FormFieldState = {
-      currentFieldIndex,
-      currentFieldId,
+      activeFieldIndex: currentFieldIndex,
+      activeFieldId: currentFieldId,
       previousFieldIndex,
       nextFieldIndex,
       completedFields,
