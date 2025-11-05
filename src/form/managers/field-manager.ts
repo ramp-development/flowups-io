@@ -74,6 +74,7 @@ export class FieldManager extends ElementManager<FieldElement> {
       visited: active,
       completed: false,
       active,
+      current: active && index === 0,
       parentHierarchy,
       isIncluded: true,
       isValid: false,
@@ -88,8 +89,9 @@ export class FieldManager extends ElementManager<FieldElement> {
    * @returns FormFieldState - Complete field state object
    */
   public calculateStates(): FormFieldState {
-    const currentFieldIndex = this.elements.findIndex((element) => element.active);
-    const currentFieldId = currentFieldIndex >= 0 ? this.elements[currentFieldIndex].id : null;
+    const currentField = this.getCurrent();
+    const currentFieldIndex = currentField ? currentField.index : -1;
+    const currentFieldId = currentField ? currentField.id : null;
     const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
     const nextFieldIndex =
       currentFieldIndex < this.elements.length - 1 ? currentFieldIndex + 1 : null;
@@ -113,7 +115,7 @@ export class FieldManager extends ElementManager<FieldElement> {
     return {
       currentFieldIndex,
       currentFieldId,
-      activeFieldIndices: [currentFieldIndex],
+      activeFieldIndices: this.getActiveIndices(),
       previousFieldIndex,
       nextFieldIndex,
       completedFields,

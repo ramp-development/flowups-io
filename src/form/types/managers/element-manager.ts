@@ -18,7 +18,14 @@ export type UpdatableElementData<T extends ElementData> = Partial<
     T,
     Extract<
       keyof T,
-      'active' | 'visited' | 'completed' | 'isValid' | 'progress' | 'errors' | 'isIncluded'
+      | 'active'
+      | 'current'
+      | 'visited'
+      | 'completed'
+      | 'isValid'
+      | 'progress'
+      | 'errors'
+      | 'isIncluded'
     >
   >
 >;

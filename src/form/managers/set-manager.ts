@@ -64,6 +64,7 @@ export class SetManager extends ElementManager<SetElement> {
       visited: active,
       completed: false,
       active,
+      current: active && index === 0, // Only first active element is current
       progress: 0,
       parentHierarchy,
       isIncluded: true,
@@ -78,9 +79,10 @@ export class SetManager extends ElementManager<SetElement> {
    * @returns FormSetState - Complete set state object
    */
   public calculateStates(): FormSetState {
-    const currentSetIndex = this.elements.findIndex((element) => element.active);
-    const currentSetId = currentSetIndex >= 0 ? this.elements[currentSetIndex].id : null;
-    const currentSetTitle = currentSetIndex >= 0 ? this.elements[currentSetIndex].title : null;
+    const currentSet = this.getCurrent();
+    const currentSetIndex = currentSet ? currentSet.index : -1;
+    const currentSetId = currentSet ? currentSet.id : null;
+    const currentSetTitle = currentSet ? currentSet.title : null;
     const previousSetIndex = currentSetIndex > 0 ? currentSetIndex - 1 : null;
     const nextSetIndex = currentSetIndex < this.elements.length - 1 ? currentSetIndex + 1 : null;
     const completedSets = new Set(
@@ -103,7 +105,7 @@ export class SetManager extends ElementManager<SetElement> {
       currentSetIndex,
       currentSetId,
       currentSetTitle,
-      activeSetIndices: [currentSetIndex],
+      activeSetIndices: this.getActiveIndices(),
       previousSetIndex,
       nextSetIndex,
       completedSets,

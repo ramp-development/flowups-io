@@ -64,6 +64,7 @@ export class GroupManager extends ElementManager<GroupElement> {
       visited: active,
       completed: false,
       active,
+      current: active && index === 0, // Only first active element is current
       progress: 0,
       parentHierarchy,
       isIncluded: true,
@@ -78,10 +79,10 @@ export class GroupManager extends ElementManager<GroupElement> {
    * @returns FormGroupState - Complete group state object
    */
   public calculateStates(): FormGroupState {
-    const currentGroupIndex = this.elements.findIndex((element) => element.active);
-    const currentGroupId = currentGroupIndex >= 0 ? this.elements[currentGroupIndex].id : null;
-    const currentGroupTitle =
-      currentGroupIndex >= 0 ? this.elements[currentGroupIndex].title : null;
+    const currentGroup = this.getCurrent();
+    const currentGroupIndex = currentGroup ? currentGroup.index : -1;
+    const currentGroupId = currentGroup ? currentGroup.id : null;
+    const currentGroupTitle = currentGroup ? currentGroup.title : null;
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
     const nextGroupIndex =
       currentGroupIndex < this.elements.length - 1 ? currentGroupIndex + 1 : null;
@@ -105,7 +106,7 @@ export class GroupManager extends ElementManager<GroupElement> {
       currentGroupIndex,
       currentGroupId,
       currentGroupTitle,
-      activeGroupIndices: [currentGroupIndex],
+      activeGroupIndices: this.getActiveIndices(),
       previousGroupIndex,
       nextGroupIndex,
       completedGroups,

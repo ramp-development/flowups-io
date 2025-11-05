@@ -27,4 +27,7 @@ export interface BaseElement {
 
   /** Whether this element is currently active/visible */
   active: boolean;
+
+  /** Whether this element is the current focused/primary element (only one can be current at a time) */
+  current: boolean;
 }

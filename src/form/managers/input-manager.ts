@@ -166,6 +166,7 @@ export class InputManager extends BaseManager implements IInputManager {
           visited: false,
           completed: false,
           active: false,
+          current: false,
           inputs: [inputElement],
           inputType,
           value: this.getInputValue(name),

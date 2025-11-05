@@ -173,6 +173,69 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /**
+   * Get all active element indices
+   * Returns array of indices for all elements marked as active
+   * Used by calculateStates() to populate active*Indices arrays
+   *
+   * @returns Array of active element indices
+   */
+  protected getActiveIndices(): number[] {
+    return this.elements.filter((element) => element.active).map((element) => element.index);
+  }
+
+  /**
+   * Set an element as current (focused/primary)
+   * Automatically clears current flag from all other elements
+   * Validates that the element is active before setting as current
+   *
+   * @param selector - Element ID or index
+   * @throws Warning if element is not active
+   */
+  public setCurrent(selector: string | number): void {
+    const element =
+      typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
+
+    if (!element) {
+      this.logWarn(`Set current: ${this.elementType} not found`, { selector });
+      return;
+    }
+
+    // Validate: current element must be active
+    if (!element.active) {
+      this.logWarn(`Set current: ${this.elementType} is not active, setting active first`, {
+        id: element.id,
+        index: element.index,
+      });
+      // Automatically set as active
+      this.updateElementData(element.index, { active: true } as UpdatableElementData<TElement>);
+    }
+
+    // Clear current flag from all elements
+    this.clearCurrent();
+    this.updateElementData(element.index, { current: true } as UpdatableElementData<TElement>);
+
+    this.setStates();
+
+    this.logDebug(`${this.elementType}: Set current`, {
+      id: element.id,
+      index: element.index,
+    });
+  }
+
+  /**
+   * Clear current flag from all elements
+   */
+  public clearCurrent(): void {
+    this.elements.forEach((element) => {
+      if (element.current) {
+        this.updateElementData(element.index, { current: false } as UpdatableElementData<TElement>);
+      }
+    });
+
+    this.logDebug(`Cleared current flag for all ${this.elementType} elements`);
+  }
+
+  /**
    * Clear all active flags
    */
   public clearActive(): void {
@@ -402,16 +465,16 @@ export abstract class ElementManager<TElement extends ElementData>
    * Get the current element
    */
   public getCurrent(): TElement | null {
-    const element = this.elements.find((element) => element.active);
+    const element = this.elements.find((element) => element.current);
     return element || null;
   }
 
   /**
    * Get the current element
    */
-  public getCurrentIndex(): number | null {
+  public getCurrentIndex(): number {
     const current = this.getCurrent();
-    if (!current) return null;
+    if (!current) return -1;
 
     return current.index;
   }

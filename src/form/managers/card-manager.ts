@@ -56,6 +56,7 @@ export class CardManager extends ElementManager<CardElement> {
       visited: index === 0,
       completed: !hasSets,
       active: index === 0,
+      current: index === 0,
       progress: hasSets ? 0 : 100,
       isIncluded: true,
       isValid: !hasSets,
@@ -69,9 +70,10 @@ export class CardManager extends ElementManager<CardElement> {
    * @returns FormCardState - Complete card state object
    */
   public calculateStates(): FormCardState {
-    const currentCardIndex = this.elements.findIndex((element) => element.active);
-    const currentCardId = currentCardIndex >= 0 ? this.elements[currentCardIndex].id : null;
-    const currentCardTitle = currentCardIndex >= 0 ? this.elements[currentCardIndex].title : null;
+    const currentCard = this.getCurrent();
+    const currentCardIndex = currentCard ? currentCard.index : -1;
+    const currentCardId = currentCard ? currentCard.id : null;
+    const currentCardTitle = currentCard ? currentCard.title : null;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
     const nextCardIndex = currentCardIndex < this.elements.length - 1 ? currentCardIndex + 1 : null;
     const completedCards = new Set(
@@ -94,7 +96,7 @@ export class CardManager extends ElementManager<CardElement> {
       currentCardIndex,
       currentCardId,
       currentCardTitle,
-      activeCardIndices: [currentCardIndex],
+      activeCardIndices: this.getActiveIndices(),
       previousCardIndex,
       nextCardIndex,
       completedCards,
