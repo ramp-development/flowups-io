@@ -178,7 +178,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Shows first item of appropriate level, hides all others
    */
   private updateDisplay(): void {
-    const behavior = this.form.getState('behavior');
+    const behavior = this.form.getBehavior();
 
     switch (behavior) {
       case 'byCard':
@@ -204,7 +204,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Handle card visibility based on form state
    */
   private handleCardVisibility(): void {
-    const cards = this.form.cardManager.getCards();
+    const cards = this.form.cardManager.getAll();
     cards.forEach((card) => this.showElement(card.element, card.active));
 
     // this.logDebug('Updated card visibility', { totalCards: cards.length });
@@ -214,7 +214,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Handle set visibility based on form state
    */
   private handleSetVisibility(): void {
-    const sets = this.form.setManager.getSets();
+    const sets = this.form.setManager.getAll();
     sets.forEach((set) => this.showElement(set.element, set.active));
 
     // this.logDebug('Updated set visibility', { totalSets: sets.length });
@@ -224,7 +224,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Handle group visibility based on form state
    */
   private handleGroupVisibility(): void {
-    const groups = this.form.groupManager.getGroups();
+    const groups = this.form.groupManager.getAll();
     groups.forEach((group) => this.showElement(group.element, group.active));
 
     // this.logDebug('Updated group visibility', { totalGroups: groups.length });
@@ -234,7 +234,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Handle field visibility based on form state
    */
   private handleFieldVisibility(): void {
-    const fields = this.form.fieldManager.getFields();
+    const fields = this.form.fieldManager.getAll();
     fields.forEach((field) => this.showElement(field.element, field.active));
 
     // this.logDebug('Updated field visibility', { totalFields: fields.length });
@@ -242,7 +242,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
 
   private displayByField(): void {
     const currentFieldIndex = this.form.getState('currentFieldIndex');
-    const fields = this.form.fieldManager.getFields();
+    const fields = this.form.fieldManager.getAll();
 
     fields.forEach((field) => {
       this.showElement(field.element, field.index === currentFieldIndex);

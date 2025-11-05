@@ -88,7 +88,7 @@ export class InputManager extends BaseManager implements IInputManager {
     this.inputs = [];
     this.inputMap.clear();
 
-    const fields = this.form.fieldManager.getFields();
+    const fields = this.form.fieldManager.getAll();
 
     // Track which names we've already processed to avoid duplicates
     const processedNames = new Set<string>();
@@ -238,7 +238,7 @@ export class InputManager extends BaseManager implements IInputManager {
    */
   public bindCurrentFieldInput(): void {
     // Get current field from FieldManager
-    const currentField = this.form.fieldManager.getCurrentFieldMetadata();
+    const currentField = this.form.fieldManager.getCurrent();
     if (!currentField) return;
 
     // Get the input for this field
@@ -581,9 +581,7 @@ export class InputManager extends BaseManager implements IInputManager {
       });
     }
 
-    const parentField = fieldManager
-      .getFields()
-      .find((field) => field.element === parentFieldElement);
+    const parentField = fieldManager.getAll().find((field) => field.element === parentFieldElement);
 
     if (!parentField) {
       throw this.createError('Cannot discover inputs: no parent field found', 'init', {

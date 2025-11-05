@@ -288,7 +288,6 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
 
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
-      fields: this.fieldManager.getFields(),
     });
   }
 
@@ -350,34 +349,34 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     toElement: FieldElement | GroupElement | SetElement | CardElement
   ): void {
     if (fromElement.type === 'card') {
-      this.cardManager.setMetadata(fromElement.index);
-      this.cardManager.setMetadata(toElement.index, { active: true });
+      this.cardManager.updateElementData(fromElement.index, { active: false });
+      this.cardManager.updateElementData(toElement.index, { active: true });
       return;
     }
 
     const { cardIndex } = fromElement.parentHierarchy;
     if (cardIndex) {
-      this.cardManager.setMetadata(cardIndex);
+      this.cardManager.updateElementData(cardIndex, { active: false });
     }
 
     if (fromElement.type === 'set') {
-      this.setManager.setMetadata(fromElement.index);
+      this.setManager.updateElementData(fromElement.index, { active: false });
       return;
     }
 
     const { setIndex } = fromElement.parentHierarchy;
-    if (setIndex) this.setManager.setMetadata(setIndex);
+    if (setIndex) this.setManager.updateElementData(setIndex, { active: false });
 
     if (fromElement.type === 'group') {
-      this.groupManager.setMetadata(fromElement.index);
+      this.groupManager.updateElementData(fromElement.index, { active: false });
       return;
     }
 
     const { groupIndex } = fromElement.parentHierarchy;
-    if (groupIndex) this.groupManager.setMetadata(groupIndex);
+    if (groupIndex) this.groupManager.updateElementData(groupIndex, { active: false });
 
     if (fromElement.type === 'field') {
-      this.fieldManager.setMetadata(fromElement.index);
+      this.fieldManager.updateElementData(fromElement.index, { active: false });
       return;
     }
   }
