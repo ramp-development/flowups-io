@@ -179,7 +179,7 @@ export abstract class StatefulComponent<
   /**
    * Get all current state
    */
-  protected getAllState(): Readonly<TState> {
+  public getAllState(): Readonly<TState> {
     return { ...this.state };
   }
 

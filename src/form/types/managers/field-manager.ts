@@ -21,14 +21,14 @@ export interface IFieldManager extends IBaseManager {
   // Internal Navigation API (for NavigationManager)
   // ============================================
 
-  /** Navigate to next field (internal - use NavigationManager.next() instead) */
-  nextField(): Promise<void>;
+  // /** Navigate to next field (internal - use NavigationManager.next() instead) */
+  // nextField(): Promise<void>;
 
-  /** Navigate to previous field (internal - use NavigationManager.prev() instead) */
-  prevField(): Promise<void>;
+  // /** Navigate to previous field (internal - use NavigationManager.prev() instead) */
+  // prevField(): Promise<void>;
 
-  /** Navigate to specific field by index (internal - use NavigationManager.goTo() instead) */
-  goToField(index: number): Promise<void>;
+  // /** Navigate to specific field by index (internal - use NavigationManager.goTo() instead) */
+  // goToField(index: number): Promise<void>;
 
   /** Get total number of fields */
   getTotalFields(): number;

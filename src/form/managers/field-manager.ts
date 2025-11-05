@@ -13,7 +13,7 @@ import type {
   FormFieldState,
   GroupElement,
   IFieldManager,
-  NavigationGoToEvent,
+  // NavigationGoToEvent,
   SetElement,
 } from '../types';
 import { parseElementAttribute } from '../utils';
@@ -52,17 +52,12 @@ export class FieldManager extends BaseManager implements IFieldManager {
     this.discoverFields();
     this.buildNavigationOrder();
     this.setStates();
-    this.setupEventListeners();
+    // this.setupEventListeners();
 
     this.logDebug('FieldManager initialized', {
       totalFields: this.fields.length,
       includedFields: this.navigationOrder.length,
-      fields: this.fields.map((field) => ({
-        id: field.id,
-        title: field.title,
-        index: field.index,
-        isIncluded: field.isIncluded,
-      })),
+      fields: this.fields,
     });
   }
 
@@ -147,11 +142,6 @@ export class FieldManager extends BaseManager implements IFieldManager {
       this.fields.push(field);
       this.fieldMap.set(field.id, field);
     });
-
-    this.logDebug('Fields discovered', {
-      count: this.fields.length,
-      fields: this.fields.map((field) => ({ id: field.id, setId: field.parentHierarchy.setId })),
-    });
   }
 
   /**
@@ -179,7 +169,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * Set the form states for fields
    * Subscribers only notified if the states have changed
    */
-  private setStates(): void {
+  public setStates(): void {
     const currentFieldIndex = this.fields.findIndex((field) => field.active);
     const currentFieldId = currentFieldIndex >= 0 ? this.fields[currentFieldIndex].id : null;
     const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
@@ -192,6 +182,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
       this.fields.filter((field) => field.visited).map((field) => field.id)
     );
     const totalFields = this.fields.length;
+    const totalIncludedFields = this.fields.filter((field) => field.isIncluded).length;
     const fieldsComplete = completedFields.size;
     const fieldValidity = this.fields.reduce(
       (acc, field) => {
@@ -209,6 +200,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
       completedFields,
       visitedFields,
       totalFields,
+      totalIncludedFields,
       fieldsComplete,
       fieldValidity,
     };
@@ -221,9 +213,9 @@ export class FieldManager extends BaseManager implements IFieldManager {
    * @param selector - Field ID or index
    * @param metadata - Metadata to update (visited, completed, active, isIncluded, isValid, errors)
    */
-  private setMetadata(
+  public setMetadata(
     selector: string | number,
-    metadata: Pick<Partial<FieldElement>, 'isIncluded' | 'errors'> = {}
+    metadata: Pick<Partial<FieldElement>, 'active' | 'isIncluded' | 'errors'> = {}
   ): void {
     const field =
       typeof selector === 'string' ? this.getFieldById(selector) : this.getFieldByIndex(selector);
@@ -238,7 +230,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
       ...field,
       visited: true,
       completed,
-      active: this.determineActive(field.element, field.index),
+      active: metadata.active ?? this.determineActive(field.element, field.index),
       isValid,
       ...metadata,
     };
@@ -246,7 +238,9 @@ export class FieldManager extends BaseManager implements IFieldManager {
     this.fieldMap.set(field.id, newData);
     this.fields[field.index] = newData;
 
-    this.setStates();
+    console.log('fieldManager setMetadata', newData);
+    console.log(this.fields);
+    console.log(this.fieldMap);
   }
 
   /**
@@ -265,99 +259,99 @@ export class FieldManager extends BaseManager implements IFieldManager {
   // Event Listeners
   // ============================================
 
-  /**
-   * Setup event listeners
-   * Only subscribes if behavior is byField
-   */
-  private setupEventListeners(): void {
-    // Only subscribe to navigation events if in byField mode
-    if (this.form.getBehavior() === 'byField') {
-      this.form.subscribe('form:navigation:next', this.handleNavigationNext);
-      this.form.subscribe('form:navigation:prev', this.handleNavigationPrev);
-      this.form.subscribe('form:navigation:goTo', this.handleNavigationGoTo);
-      this.form.subscribe('form:field:inclusion-changed', this.handleFieldInclusion);
+  // /**
+  //  * Setup event listeners
+  //  * Only subscribes if behavior is byField
+  //  */
+  // private setupEventListeners(): void {
+  //   // Only subscribe to navigation events if in byField mode
+  //   if (this.form.getBehavior() === 'byField') {
+  //     this.form.subscribe('form:navigation:next', this.handleNavigationNext);
+  //     this.form.subscribe('form:navigation:prev', this.handleNavigationPrev);
+  //     this.form.subscribe('form:navigation:goTo', this.handleNavigationGoTo);
+  //     this.form.subscribe('form:field:inclusion-changed', this.handleFieldInclusion);
 
-      this.logDebug('FieldManager subscribed to navigation events');
-    }
-  }
+  //     this.logDebug('FieldManager subscribed to navigation events');
+  //   }
+  // }
 
-  /**
-   * Handle navigation:next event
-   * Attempts to move to next field, emits boundary event if at end
-   */
-  private handleNavigationNext = async (): Promise<void> => {
-    const nextIndex = this.getNextIncludedFieldIndex();
+  // /**
+  //  * Handle navigation:next event
+  //  * Attempts to move to next field, emits boundary event if at end
+  //  */
+  // private handleNavigationNext = async (): Promise<void> => {
+  //   const nextIndex = this.getNextIncludedFieldIndex();
 
-    if (nextIndex === null) {
-      // At boundary - emit event for NavigationManager to handle
-      const currentField = this.getCurrentFieldMetadata();
-      if (currentField) {
-        const context = this.getFieldContext(currentField);
-        this.form.emit('navigation:boundary', {
-          context,
-          currentId: currentField.id,
-          boundary: 'end',
-          direction: 'forward',
-        });
-      }
-      return;
-    }
+  //   if (nextIndex === null) {
+  //     // At boundary - emit event for NavigationManager to handle
+  //     const currentField = this.getCurrentFieldMetadata();
+  //     if (currentField) {
+  //       const context = this.getFieldContext(currentField);
+  //       this.form.emit('form:navigation:boundary', {
+  //         context,
+  //         currentId: currentField.id,
+  //         boundary: 'end',
+  //         direction: 'forward',
+  //       });
+  //     }
+  //     return;
+  //   }
 
-    await this.goToField(nextIndex);
-  };
+  //   await this.goToField(nextIndex);
+  // };
 
-  /**
-   * Handle navigation:prev event
-   * Attempts to move to previous field, emits boundary event if at start
-   */
-  private handleNavigationPrev = async (): Promise<void> => {
-    const prevIndex = this.getPrevIncludedFieldIndex();
+  // /**
+  //  * Handle navigation:prev event
+  //  * Attempts to move to previous field, emits boundary event if at start
+  //  */
+  // private handleNavigationPrev = async (): Promise<void> => {
+  //   const prevIndex = this.getPrevIncludedFieldIndex();
 
-    if (prevIndex === null) {
-      // At boundary - emit event for NavigationManager to handle
-      const currentField = this.getCurrentFieldMetadata();
-      if (currentField) {
-        const context = this.getFieldContext(currentField);
-        this.form.emit('navigation:boundary', {
-          context,
-          currentId: currentField.id,
-          boundary: 'start',
-          direction: 'backward',
-        });
-      }
-      return;
-    }
+  //   if (prevIndex === null) {
+  //     // At boundary - emit event for NavigationManager to handle
+  //     const currentField = this.getCurrentFieldMetadata();
+  //     if (currentField) {
+  //       const context = this.getFieldContext(currentField);
+  //       this.form.emit('navigation:boundary', {
+  //         context,
+  //         currentId: currentField.id,
+  //         boundary: 'start',
+  //         direction: 'backward',
+  //       });
+  //     }
+  //     return;
+  //   }
 
-    await this.goToField(prevIndex);
-  };
+  //   await this.goToField(prevIndex);
+  // };
 
-  /**
-   * Handle navigation:goTo event
-   * Navigate to specific field by ID or index
-   */
-  private handleNavigationGoTo = async (payload: NavigationGoToEvent): Promise<void> => {
-    const { target } = payload;
+  // /**
+  //  * Handle navigation:goTo event
+  //  * Navigate to specific field by ID or index
+  //  */
+  // private handleNavigationGoTo = async (payload: NavigationGoToEvent): Promise<void> => {
+  //   const { target } = payload;
 
-    // If target is a number, treat as index
-    if (typeof target === 'number') {
-      await this.goToField(target);
-      return;
-    }
+  //   // If target is a number, treat as index
+  //   if (typeof target === 'number') {
+  //     await this.goToField(target);
+  //     return;
+  //   }
 
-    // If target is a string, treat as field ID
-    const field = this.fieldMap.get(target);
-    if (field) {
-      await this.goToField(field.index);
-    } else {
-      throw this.createError(
-        `Cannot navigate to field: field ID "${target}" not found`,
-        'runtime',
-        {
-          cause: { target },
-        }
-      );
-    }
-  };
+  //   // If target is a string, treat as field ID
+  //   const field = this.fieldMap.get(target);
+  //   if (field) {
+  //     await this.goToField(field.index);
+  //   } else {
+  //     throw this.createError(
+  //       `Cannot navigate to field: field ID "${target}" not found`,
+  //       'runtime',
+  //       {
+  //         cause: { target },
+  //       }
+  //     );
+  //   }
+  // };
 
   // ============================================
   // Navigation Methods (Internal API for NavigationManager)
@@ -368,107 +362,107 @@ export class FieldManager extends BaseManager implements IFieldManager {
   // that routes to the appropriate manager based on behavior.
   // ============================================
 
-  /**
-   * Navigate to next field
-   * Updates form state and triggers managers
-   *
-   * @internal Called by NavigationManager - use navigationManager.next() instead
-   */
-  public async nextField(): Promise<void> {
-    const nextIndex = this.getNextIncludedFieldIndex();
+  // /**
+  //  * Navigate to next field
+  //  * Updates form state and triggers managers
+  //  *
+  //  * @internal Called by NavigationManager - use navigationManager.next() instead
+  //  */
+  // public async nextField(): Promise<void> {
+  //   const nextIndex = this.getNextIncludedFieldIndex();
 
-    if (nextIndex === null) {
-      this.logDebug('Cannot navigate to next field: already on last field');
-      return;
-    }
+  //   if (nextIndex === null) {
+  //     this.logDebug('Cannot navigate to next field: already on last field');
+  //     return;
+  //   }
 
-    await this.goToField(nextIndex);
-  }
+  //   await this.goToField(nextIndex);
+  // }
 
-  /**
-   * Navigate to previous field
-   * Updates form state and triggers managers
-   *
-   * @internal Called by NavigationManager - use navigationManager.prev() instead
-   */
-  public async prevField(): Promise<void> {
-    const prevIndex = this.getPrevIncludedFieldIndex();
+  // /**
+  //  * Navigate to previous field
+  //  * Updates form state and triggers managers
+  //  *
+  //  * @internal Called by NavigationManager - use navigationManager.prev() instead
+  //  */
+  // public async prevField(): Promise<void> {
+  //   const prevIndex = this.getPrevIncludedFieldIndex();
 
-    if (prevIndex === null) {
-      this.logDebug('Cannot navigate to previous field: already on first field');
-      return;
-    }
+  //   if (prevIndex === null) {
+  //     this.logDebug('Cannot navigate to previous field: already on first field');
+  //     return;
+  //   }
 
-    await this.goToField(prevIndex);
-  }
+  //   await this.goToField(prevIndex);
+  // }
 
-  /**
-   * Navigate to specific field by index
-   *
-   * @param index - Field index (global, not navigation order index)
-   * @internal Called by NavigationManager - use navigationManager.goTo() instead
-   */
-  public async goToField(index: number): Promise<void> {
-    const field = this.fields[index];
+  // /**
+  //  * Navigate to specific field by index
+  //  *
+  //  * @param index - Field index (global, not navigation order index)
+  //  * @internal Called by NavigationManager - use navigationManager.goTo() instead
+  //  */
+  // public async goToField(index: number): Promise<void> {
+  //   const field = this.fields[index];
 
-    if (!field) {
-      throw this.createError(`Cannot navigate to field: invalid index ${index}`, 'runtime', {
-        cause: { index, totalFields: this.fields.length },
-      });
-    }
+  //   if (!field) {
+  //     throw this.createError(`Cannot navigate to field: invalid index ${index}`, 'runtime', {
+  //       cause: { index, totalFields: this.fields.length },
+  //     });
+  //   }
 
-    if (!field.isIncluded) {
-      throw this.createError(
-        `Cannot navigate to field: field at index ${index} is not included in the navigation order`,
-        'runtime',
-        {
-          cause: { index, fieldId: field.id },
-        }
-      );
-    }
+  //   if (!field.isIncluded) {
+  //     throw this.createError(
+  //       `Cannot navigate to field: field at index ${index} is not included in the navigation order`,
+  //       'runtime',
+  //       {
+  //         cause: { index, fieldId: field.id },
+  //       }
+  //     );
+  //   }
 
-    // Store previous field index
-    const previousFieldIndex = this.form.getState('currentFieldIndex');
+  //   // Store previous field index
+  //   const previousFieldIndex = this.form.getState('currentFieldIndex');
 
-    // Update form state
-    this.form.setState('previousFieldIndex', previousFieldIndex);
-    this.form.setState('currentFieldIndex', index);
-    this.form.setState('currentFieldId', field.id);
+  //   // Update form state
+  //   this.form.setState('previousFieldIndex', previousFieldIndex);
+  //   this.form.setState('currentFieldIndex', index);
+  //   this.form.setState('currentFieldId', field.id);
 
-    // Update hierarchy context
-    this.updateHierarchyContext(field);
+  //   // Update hierarchy context
+  //   this.updateHierarchyContext(field);
 
-    // Mark field as visited
-    const visitedFields = this.form.getState('visitedFields');
-    const updatedVisitedFields = new Set(visitedFields);
-    updatedVisitedFields.add(field.id);
-    this.form.setState('visitedFields', updatedVisitedFields);
+  //   // Mark field as visited
+  //   const visitedFields = this.form.getState('visitedFields');
+  //   const updatedVisitedFields = new Set(visitedFields);
+  //   updatedVisitedFields.add(field.id);
+  //   this.form.setState('visitedFields', updatedVisitedFields);
 
-    // Update field metadata
-    field.visited = true;
-    field.active = true;
+  //   // Update field metadata
+  //   // field.visited = true;
+  //   // field.active = true;
 
-    // Deactivate previous field
-    if (previousFieldIndex !== null && previousFieldIndex !== index) {
-      const prevField = this.fields[previousFieldIndex];
-      if (prevField) {
-        prevField.active = false;
-      }
-    }
+  //   // Deactivate previous field
+  //   if (previousFieldIndex !== null && previousFieldIndex !== index) {
+  //     const prevField = this.fields[previousFieldIndex];
+  //     if (prevField) {
+  //       prevField.active = false;
+  //     }
+  //   }
 
-    this.logDebug('Navigated to field', {
-      index,
-      fieldId: field.id,
-    });
+  //   this.logDebug('Navigated to field', {
+  //     index,
+  //     fieldId: field.id,
+  //   });
 
-    // Emit navigation event
-    this.form.emit('form:navigation:request', {
-      element: 'field',
-      type: 'goTo',
-      fromIndex: previousFieldIndex,
-      toIndex: index,
-    });
-  }
+  //   // Emit navigation event
+  //   this.form.emit('form:navigation:request', {
+  //     element: 'field',
+  //     type: 'goTo',
+  //     fromIndex: previousFieldIndex,
+  //     toIndex: index,
+  //   });
+  // }
 
   // ============================================
   // Access Methods
@@ -533,7 +527,7 @@ export class FieldManager extends BaseManager implements IFieldManager {
     if (!currentIndex) return null;
     const currentNavPosition = this.navigationOrder.indexOf(currentIndex);
 
-    if (currentNavPosition === -1 || currentNavPosition === this.navigationOrder.length - 1) {
+    if (currentNavPosition >= this.navigationOrder.length - 1) {
       return null;
     }
 
@@ -757,51 +751,51 @@ export class FieldManager extends BaseManager implements IFieldManager {
     return hierarchy;
   }
 
-  /**
-   * Update hierarchy context in form state
-   * Sets current card/set titles and IDs based on field location
-   *
-   * @param field - The field element
-   */
-  private updateHierarchyContext(field: FieldElement): void {
-    // Update card context
-    if (field.parentHierarchy.cardId) {
-      const { cardManager } = this.form;
-      if (cardManager) {
-        const card = cardManager.getCardMetadataById(field.parentHierarchy.cardId);
-        if (card) {
-          this.form.setState('currentCardId', card.id);
-          this.form.setState('currentCardTitle', card.title);
-          this.form.setState('currentCardIndex', card.index);
-        }
-      }
-    }
+  // /**
+  //  * Update hierarchy context in form state
+  //  * Sets current card/set titles and IDs based on field location
+  //  *
+  //  * @param field - The field element
+  //  */
+  // private updateHierarchyContext(field: FieldElement): void {
+  //   // Update card context
+  //   if (field.parentHierarchy.cardId) {
+  //     const { cardManager } = this.form;
+  //     if (cardManager) {
+  //       const card = cardManager.getCardMetadataById(field.parentHierarchy.cardId);
+  //       if (card) {
+  //         this.form.setState('currentCardId', card.id);
+  //         this.form.setState('currentCardTitle', card.title);
+  //         this.form.setState('currentCardIndex', card.index);
+  //       }
+  //     }
+  //   }
 
-    // Update set context
-    if (field.parentHierarchy.setId) {
-      const { setManager } = this.form;
-      if (setManager) {
-        const set = setManager.getSetMetadataById(field.parentHierarchy.setId);
-        if (set) {
-          this.form.setState('currentSetId', set.id);
-          this.form.setState('currentSetTitle', set.title);
-          this.form.setState('currentSetIndex', set.index);
-        }
-      }
-    }
+  //   // Update set context
+  //   if (field.parentHierarchy.setId) {
+  //     const { setManager } = this.form;
+  //     if (setManager) {
+  //       const set = setManager.getSetMetadataById(field.parentHierarchy.setId);
+  //       if (set) {
+  //         this.form.setState('currentSetId', set.id);
+  //         this.form.setState('currentSetTitle', set.title);
+  //         this.form.setState('currentSetIndex', set.index);
+  //       }
+  //     }
+  //   }
 
-    // Update group context (if field is in a group)
-    if (field.parentHierarchy.groupId) {
-      const { groupManager } = this.form;
-      if (groupManager) {
-        const group = groupManager.getGroupMetadataById(field.parentHierarchy.groupId);
-        if (group) {
-          this.form.setState('currentGroupId', group.id);
-          this.form.setState('currentGroupIndex', group.index);
-        }
-      }
-    }
-  }
+  //   // Update group context (if field is in a group)
+  //   if (field.parentHierarchy.groupId) {
+  //     const { groupManager } = this.form;
+  //     if (groupManager) {
+  //       const group = groupManager.getGroupMetadataById(field.parentHierarchy.groupId);
+  //       if (group) {
+  //         this.form.setState('currentGroupId', group.id);
+  //         this.form.setState('currentGroupIndex', group.index);
+  //       }
+  //     }
+  //   }
+  // }
 
   /**
    * Get current field metadata

@@ -48,12 +48,7 @@ export class SetManager extends BaseManager implements ISetManager {
 
     this.logDebug('SetManager initialized', {
       totalSets: this.sets.length,
-      sets: this.sets.map((set) => ({
-        id: set.id,
-        title: set.title,
-        index: set.index,
-        hierarchy: set.parentHierarchy,
-      })),
+      sets: this.sets,
     });
   }
 
@@ -129,15 +124,8 @@ export class SetManager extends BaseManager implements ISetManager {
       // Store in array and map
       this.sets.push(set);
       this.setMap.set(set.id, set);
-    });
 
-    this.logDebug('Sets discovered', {
-      count: this.sets.length,
-      sets: this.sets.map((set) => ({
-        id: set.id,
-        title: set.title,
-        hierarchy: set.parentHierarchy,
-      })),
+      this.setStates();
     });
   }
 
@@ -164,7 +152,7 @@ export class SetManager extends BaseManager implements ISetManager {
    * Set the form states for sets
    * Subscribers only notified if the states have changed
    */
-  private setStates(): void {
+  public setStates(): void {
     const currentSetIndex = this.sets.findIndex((set) => set.active);
     const currentSetId = currentSetIndex >= 0 ? this.sets[currentSetIndex].id : null;
     const currentSetTitle = currentSetIndex >= 0 ? this.sets[currentSetIndex].title : null;
@@ -203,7 +191,10 @@ export class SetManager extends BaseManager implements ISetManager {
    * @param selector - Set ID or index
    * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
    */
-  private setMetadata(selector: string | number): void {
+  public setMetadata(
+    selector: string | number,
+    metadata: Pick<Partial<SetElement>, 'active'> = {}
+  ): void {
     const set =
       typeof selector === 'string' ? this.getSetById(selector) : this.getSetByIndex(selector);
     if (!set) return;
@@ -223,19 +214,17 @@ export class SetManager extends BaseManager implements ISetManager {
       ...set,
       visited: true,
       completed,
-      active: this.determineActive(set.element, set.index),
+      active: metadata.active ?? this.determineActive(set.element, set.index),
       isValid,
       progress,
     };
 
     this.setMap.set(set.id, newData);
     this.sets[set.index] = newData;
-
-    this.setStates();
   }
 
   /**
-   * Determine the active state of a group
+   * Determine the active state of a set
    * @param element - Set element
    * @param index - Set index
    * @returns Active state

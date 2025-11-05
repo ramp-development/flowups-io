@@ -7,6 +7,8 @@
  * Will be replaced/enhanced by AnimationManager in future phases.
  */
 
+import type { StateChangePayload } from '$lib/types';
+
 import type { IDisplayManager } from '../types';
 import { BaseManager } from './base-manager';
 
@@ -26,7 +28,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   public init(): void {
     this.setupEventListeners();
-    this.handleVisibility();
+    this.updateDisplay();
 
     this.logDebug('DisplayManager initialized');
   }
@@ -47,12 +49,31 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private setupEventListeners(): void {
     this.form.subscribe('state:changed', (payload) => {
-      this.logDebug('state changed', payload);
-      this.handleVisibility();
+      this.handleStateChange(payload);
     });
 
     this.logDebug('DisplayManager event listeners setup');
   }
+
+  // ============================================
+  // Handle State Changes
+  // ============================================
+  /**
+   *
+   */
+  private handleStateChange = (payload: StateChangePayload): void => {
+    // Only update display if relevant state changed
+    const relevantKeys = [
+      'currentCardIndex',
+      'currentSetIndex',
+      'currentGroupIndex',
+      'currentFieldIndex',
+    ];
+
+    if (relevantKeys.includes(payload.key)) {
+      this.updateDisplay();
+    }
+  };
 
   // ============================================
   // Event Handlers
@@ -156,11 +177,27 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Initialize visibility based on behavior mode
    * Shows first item of appropriate level, hides all others
    */
-  private handleVisibility(): void {
-    this.handleCardVisibility();
-    this.handleSetVisibility();
-    this.handleGroupVisibility();
-    this.handleFieldVisibility();
+  private updateDisplay(): void {
+    const behavior = this.form.getState('behavior');
+
+    switch (behavior) {
+      case 'byCard':
+        this.handleCardVisibility();
+        break;
+      case 'bySet':
+        this.handleSetVisibility();
+        break;
+      case 'byGroup':
+        this.handleGroupVisibility();
+        break;
+      case 'byField':
+        this.displayByField();
+        break;
+      default:
+        throw this.form.createError('Invalid behavior', 'runtime', {
+          cause: { behavior },
+        });
+    }
   }
 
   /**
@@ -170,7 +207,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
     const cards = this.form.cardManager.getCards();
     cards.forEach((card) => this.showElement(card.element, card.active));
 
-    this.logDebug('Initialized card visibility', { totalCards: cards.length });
+    // this.logDebug('Updated card visibility', { totalCards: cards.length });
   }
 
   /**
@@ -180,7 +217,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
     const sets = this.form.setManager.getSets();
     sets.forEach((set) => this.showElement(set.element, set.active));
 
-    this.logDebug('Initialized set visibility', { totalSets: sets.length });
+    // this.logDebug('Updated set visibility', { totalSets: sets.length });
   }
 
   /**
@@ -190,7 +227,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
     const groups = this.form.groupManager.getGroups();
     groups.forEach((group) => this.showElement(group.element, group.active));
 
-    this.logDebug('Initialized group visibility', { totalGroups: groups.length });
+    // this.logDebug('Updated group visibility', { totalGroups: groups.length });
   }
 
   /**
@@ -200,7 +237,16 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
     const fields = this.form.fieldManager.getFields();
     fields.forEach((field) => this.showElement(field.element, field.active));
 
-    this.logDebug('Initialized field visibility', { totalFields: fields.length });
+    // this.logDebug('Updated field visibility', { totalFields: fields.length });
+  }
+
+  private displayByField(): void {
+    const currentFieldIndex = this.form.getState('currentFieldIndex');
+    const fields = this.form.fieldManager.getFields();
+
+    fields.forEach((field) => {
+      this.showElement(field.element, field.index === currentFieldIndex);
+    });
   }
 
   // ============================================

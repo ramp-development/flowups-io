@@ -48,12 +48,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
 
     this.logDebug('GroupManager initialized', {
       totalGroups: this.groups.length,
-      groups: this.groups.map((group) => ({
-        id: group.id,
-        title: group.title,
-        index: group.index,
-        hierarchy: group.parentHierarchy,
-      })),
+      groups: this.groups,
     });
   }
 
@@ -130,15 +125,8 @@ export class GroupManager extends BaseManager implements IGroupManager {
       // Store in array and map
       this.groups.push(group);
       this.groupMap.set(group.id, group);
-    });
 
-    this.logDebug('Groups discovered', {
-      count: this.groups.length,
-      groups: this.groups.map((group) => ({
-        id: group.id,
-        title: group.title,
-        hierarchy: group.parentHierarchy,
-      })),
+      this.setStates();
     });
   }
 
@@ -165,7 +153,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
    * Set the form states for groups
    * Subscribers only notified if the states have changed
    */
-  private setStates(): void {
+  public setStates(): void {
     const currentGroupIndex = this.groups.findIndex((group) => group.active);
     const currentGroupId = currentGroupIndex >= 0 ? this.groups[currentGroupIndex].id : null;
     const currentGroupTitle = currentGroupIndex >= 0 ? this.groups[currentGroupIndex].title : null;
@@ -209,7 +197,10 @@ export class GroupManager extends BaseManager implements IGroupManager {
    * @param selector - Group ID or index
    * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
    */
-  private setMetadata(selector: string | number): void {
+  public setMetadata(
+    selector: string | number,
+    metadata: Pick<Partial<GroupElement>, 'active'> = {}
+  ): void {
     const group =
       typeof selector === 'string' ? this.getGroupById(selector) : this.getGroupByIndex(selector);
     if (!group) return;
@@ -227,7 +218,7 @@ export class GroupManager extends BaseManager implements IGroupManager {
       ...group,
       visited: true,
       completed,
-      active: this.determineActive(group.element, group.index),
+      active: metadata.active ?? this.determineActive(group.element, group.index),
       isValid,
       progress,
     };
@@ -235,7 +226,9 @@ export class GroupManager extends BaseManager implements IGroupManager {
     this.groupMap.set(group.id, newData);
     this.groups[group.index] = newData;
 
-    this.setStates();
+    console.log('groupManager setMetadata', newData);
+    console.log(this.groups);
+    console.log(this.groupMap);
   }
 
   /**

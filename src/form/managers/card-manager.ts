@@ -41,7 +41,7 @@ export class CardManager extends BaseManager implements ICardManager {
 
     this.logDebug('CardManager initialized', {
       totalCards: this.cards.length,
-      cards: this.cards.map((c) => ({ id: c.id, title: c.title, index: c.index })),
+      cards: this.cards,
     });
   }
 
@@ -115,11 +115,6 @@ export class CardManager extends BaseManager implements ICardManager {
       this.cards.push(card);
       this.cardMap.set(card.id, card);
     });
-
-    this.logDebug('Cards discovered', {
-      count: this.cards.length,
-      cards: this.cards,
-    });
   }
 
   // ============================================
@@ -130,7 +125,7 @@ export class CardManager extends BaseManager implements ICardManager {
    * Set the form states for cards
    * Subscribers only notified if the states have changed
    */
-  private setStates(): void {
+  public setStates(): void {
     const currentCardIndex = this.cards.findIndex((card) => card.active);
     const currentCardId = currentCardIndex >= 0 ? this.cards[currentCardIndex].id : null;
     const currentCardTitle = currentCardIndex >= 0 ? this.cards[currentCardIndex].title : null;
@@ -171,7 +166,7 @@ export class CardManager extends BaseManager implements ICardManager {
    * @param selector - Card ID or index
    * @param metadata - Metadata to update (visited, completed, active, progress, isValid)
    */
-  private setMetadata(
+  public setMetadata(
     selector: string | number,
     metadata: Pick<Partial<CardElement>, 'active'> = {}
   ): void {
@@ -196,8 +191,6 @@ export class CardManager extends BaseManager implements ICardManager {
 
     this.cardMap.set(card.id, newData);
     this.cards[card.index] = newData;
-
-    this.setStates();
   }
 
   // ============================================

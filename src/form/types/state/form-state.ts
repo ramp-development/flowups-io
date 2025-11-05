@@ -84,6 +84,8 @@ export interface FormFieldState {
   visitedFields: Set<string>;
   /** Total number of fields in form */
   totalFields: number;
+  /**  Total number of included fields */
+  totalIncludedFields: number;
   /** Number of fields completed */
   fieldsComplete: number;
   /** Validity state per field (key = field ID, value = is valid) */
@@ -103,7 +105,12 @@ export interface FormInputState {
  * Manages the complete state of the multi-step form including navigation,
  * progress tracking, and form data.
  */
-export interface FormState extends FormCardState, FormSetState, FormGroupState, FormFieldState {
+export interface FormState
+  extends FormCardState,
+    FormSetState,
+    FormGroupState,
+    FormFieldState,
+    FormInputState {
   // Index signature required by ComponentState
   [key: string]: StateValue;
 

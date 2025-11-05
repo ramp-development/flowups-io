@@ -502,10 +502,8 @@ export class InputManager extends BaseManager implements IInputManager {
    */
   private handleInputChange(name: string, value: unknown): void {
     // Update formData state
-    this.setStates();
-
-    // // Emit event for ConditionManager (future)
-    // this.form.emit('form:input:changed', { name, value });
+    const formData = this.form.getState('formData');
+    this.form.setState('formData', { ...formData, [name]: value });
 
     this.logDebug(`Input "${name}" changed to:`, value);
   }

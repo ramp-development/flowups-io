@@ -17,12 +17,16 @@ import {
   SetManager,
 } from './managers';
 import type {
+  CardElement,
+  FieldElement,
   FlowupsFormConfig,
   FlowupsFormProps,
   FormAttributeConfig,
   FormBehavior,
   FormEventMap,
   FormState,
+  GroupElement,
+  SetElement,
   StorageType,
 } from './types';
 import {
@@ -282,11 +286,10 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.displayManager.init();
     this.navigationManager.init();
 
-    if (this.config.debug) {
-      this.logDebug(`Form initialized`, {
-        state: this.getAllState(),
-      });
-    }
+    this.logDebug(`Form initialized`, {
+      state: this.getAllState(),
+      fields: this.fieldManager.getFields(),
+    });
   }
 
   /**
@@ -322,15 +325,61 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     oldValue: FormState[K],
     newValue: FormState[K]
   ): void {
-    if (this.config.debug) {
-      this.logDebug(`State changed: ${String(key)}`, {
-        oldValue,
-        newValue,
-      });
-    }
-
+    this.logDebug(`State changed`, {
+      key,
+      oldValue,
+      newValue,
+    });
+    // const previousFieldIndex = this.getState('previousFieldIndex');
+    // const currentFieldIndex = this.getState('currentFieldIndex');
+    // if (previousFieldIndex !== null) this.fieldManager.setMetadata(previousFieldIndex);
+    // if (currentFieldIndex !== null) this.fieldManager.setMetadata(currentFieldIndex);
+    // this.fieldManager.setStates();
     // TODO: Trigger manager updates based on state changes
     // E.g., when currentFieldIndex changes, update RenderManager, AccessibilityManager, etc.
+  }
+
+  /**
+   * Update hierarchy context in form state
+   * Sets current card/set titles and IDs based on field location
+   *
+   * @param field - The field element
+   */
+  public updateHierarchyContext(
+    fromElement: FieldElement | GroupElement | SetElement | CardElement,
+    toElement: FieldElement | GroupElement | SetElement | CardElement
+  ): void {
+    if (fromElement.type === 'card') {
+      this.cardManager.setMetadata(fromElement.index);
+      this.cardManager.setMetadata(toElement.index, { active: true });
+      return;
+    }
+
+    const { cardIndex } = fromElement.parentHierarchy;
+    if (cardIndex) {
+      this.cardManager.setMetadata(cardIndex);
+    }
+
+    if (fromElement.type === 'set') {
+      this.setManager.setMetadata(fromElement.index);
+      return;
+    }
+
+    const { setIndex } = fromElement.parentHierarchy;
+    if (setIndex) this.setManager.setMetadata(setIndex);
+
+    if (fromElement.type === 'group') {
+      this.groupManager.setMetadata(fromElement.index);
+      return;
+    }
+
+    const { groupIndex } = fromElement.parentHierarchy;
+    if (groupIndex) this.groupManager.setMetadata(groupIndex);
+
+    if (fromElement.type === 'field') {
+      this.fieldManager.setMetadata(fromElement.index);
+      return;
+    }
   }
 
   // ============================================
