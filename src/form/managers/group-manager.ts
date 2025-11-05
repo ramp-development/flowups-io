@@ -125,7 +125,7 @@ export class GroupManager extends ElementManager<GroupElement> {
     data: UpdatableElementData<GroupElement>
   ): GroupElement {
     const includedFields = this.form.fieldManager
-      .getFieldsByGroupId(element.id)
+      .getAllByParentId(element.id, 'group')
       .filter((field) => field.isIncluded);
 
     const completed = includedFields.every((field) => field.completed);

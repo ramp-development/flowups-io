@@ -122,9 +122,9 @@ export class SetManager extends ElementManager<SetElement> {
     element: SetElement,
     data: UpdatableElementData<SetElement>
   ): SetElement {
-    const groups = this.form.groupManager.getGroupsBySetId(element.id);
+    const groups = this.form.groupManager.getAllByParentId(element.id, 'set');
     const fields = this.form.fieldManager
-      .getFieldsBySetId(element.id)
+      .getAllByParentId(element.id, 'set')
       .filter((field) => field.isIncluded);
 
     const use = groups.length > 0 ? groups : fields;

@@ -113,7 +113,7 @@ export class CardManager extends ElementManager<CardElement> {
     element: CardElement,
     data: UpdatableElementData<CardElement> = {}
   ): CardElement {
-    const sets = this.form.setManager.getSetsByCardId(element.id);
+    const sets = this.form.setManager.getAllByParentId(element.id, 'card');
     const completed = sets.length > 0 ? sets.every((set) => set.completed) : true;
     const isValid = sets.length > 0 ? sets.every((set) => set.isValid) : true;
     const progress =

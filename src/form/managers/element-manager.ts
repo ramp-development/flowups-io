@@ -379,6 +379,25 @@ export abstract class ElementManager<TElement extends ElementData>
     return [...this.elements];
   }
 
+  /** Get all by parent ID */
+  public getAllByParentId(parentId: string, parentType: 'card' | 'set' | 'group'): TElement[] {
+    return this.elements.filter((element) => {
+      if (!('parentHierarchy' in element)) return false;
+      switch (parentType) {
+        case 'card':
+          return 'cardId' in element.parentHierarchy && element.parentHierarchy.cardId === parentId;
+        case 'set':
+          return 'setId' in element.parentHierarchy && element.parentHierarchy.setId === parentId;
+        case 'group':
+          return (
+            'groupId' in element.parentHierarchy && element.parentHierarchy.groupId === parentId
+          );
+        default:
+          return false;
+      }
+    });
+  }
+
   /**
    * Get the current element
    */
