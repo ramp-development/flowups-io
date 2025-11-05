@@ -268,9 +268,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   protected async onInit(): Promise<void> {
     await super.onInit();
 
-    if (this.config.debug) {
-      this.logDebug(`Initializing form`);
-    }
+    this.logDebug(`Initializing form`);
 
     // TODO Phase 1 Step 3:
     // - Initialize all managers
@@ -296,9 +294,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    * Called by StatefulComponent lifecycle
    */
   protected async onDestroy(): Promise<void> {
-    if (this.config.debug) {
-      this.logDebug(`Destroying form`);
-    }
+    this.logDebug(`Destroying form`);
 
     // TODO Phase 1 Step 3:
     // - Destroy all managers
