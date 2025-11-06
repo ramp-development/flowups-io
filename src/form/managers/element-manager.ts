@@ -2,10 +2,10 @@
 
 import { ATTR } from '../constants';
 import type {
+  CardParentHierarchy,
   ElementData,
   FormBehavior,
   IElementManager,
-  SetParentHierarchy,
   StateForElement,
   UpdatableElementData,
 } from '../types';
@@ -40,16 +40,18 @@ export abstract class ElementManager<TElement extends ElementData>
   // Lifecycle Methods
   // ============================================
 
-  public init(): void {
+  public init(runOnInitalzed: boolean = true): void {
+    this.groupStart(`Initializing ${this.elementType}s`);
     this.discoverElements();
     if (this.elementType !== 'input') this.buildNavigationOrder();
     this.setStates();
 
-    this.logDebug(`${this.constructor.name} initialized`, {
-      totalElements: this.elements.length,
-      includedElements: this.navigationOrder.length,
-      elements: this.elements,
-    });
+    if (runOnInitalzed) this.onInitialized();
+  }
+
+  public onInitialized(): void {
+    this.logDebug(`Initialized`);
+    this.groupEnd();
   }
 
   public destroy(): void {
@@ -86,6 +88,10 @@ export abstract class ElementManager<TElement extends ElementData>
       if (!elementData) return;
 
       this.updateStorage(elementData);
+    });
+
+    this.logDebug(`Discovered ${elements.length} ${this.elementType}s`, {
+      elements,
     });
   }
 
@@ -367,11 +373,11 @@ export abstract class ElementManager<TElement extends ElementData>
    * @throws If called on CardManager (cards have no parent hierarchy)
    * @protected
    */
-  protected findParentHierarchy<THierarchy extends SetParentHierarchy>(
+  protected findParentHierarchy<THierarchy extends CardParentHierarchy>(
     element: HTMLElement | ElementData
   ): THierarchy {
     if (this.elementType === 'card') {
-      throw this.createError('findParentHierarchy should not be called on CardManager', 'runtime');
+      return { formId: this.form.getId() } as THierarchy;
     }
 
     let parentElement: ElementData | null;
@@ -421,10 +427,14 @@ export abstract class ElementManager<TElement extends ElementData>
       })
       .map((element) => element.index);
 
-    this.logDebug(`${this.elementType} element navigation order built`, {
-      total: this.navigationOrder.length,
-      order: this.navigationOrder,
-    });
+    // reduce the navigation order array to say "${index[0].id} --> ${index[1].id} --> ${index[2].id} --> ..."
+    const orderString = this.navigationOrder.reduce((acc, index) => {
+      if (index === 0) return acc;
+      const element = this.elements[index];
+      return `${acc} --> ${element.id}`;
+    }, `${this.elements[0].id}`);
+
+    this.logDebug(`Navigation order built: ${orderString}`);
   }
 
   /**

@@ -54,7 +54,6 @@ export abstract class BaseComponent implements ComponentLifecycle {
       await this.onInit();
 
       this.metadata.initialized = true;
-      this.logDebug('Component initialized');
     } catch (error) {
       throw this.createError(`Failed to initialize: ${error}`, 'init');
     }
@@ -283,16 +282,33 @@ export abstract class BaseComponent implements ComponentLifecycle {
   }
 
   /**
+   * Start console group (only in debug mode)
+   */
+  public groupStart(name: string, collapsed = true): void {
+    if (!this.props.debug) return;
+
+    // eslint-disable-next-line no-console
+    if (collapsed) console.groupCollapsed(name);
+    // eslint-disable-next-line no-console
+    else console.group(name);
+  }
+
+  /**
+   * End console group (only in debug mode)
+   */
+  public groupEnd(): void {
+    // eslint-disable-next-line no-console
+    console.groupEnd();
+  }
+
+  /**
    * Debug logging (only in debug mode)
    */
   public logDebug(...args: unknown[]): void {
-    if (this.props.debug) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[FLOWUPS-DEBUG] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
-        ...args
-      );
-    }
+    if (!this.props.debug) return;
+
+    // eslint-disable-next-line no-console
+    console.log(...args);
   }
 
   /**
@@ -300,19 +316,19 @@ export abstract class BaseComponent implements ComponentLifecycle {
    */
   public logWarn(...args: unknown[]): void {
     // eslint-disable-next-line no-console
-    console.warn(
-      `[FLOWUPS-WARN] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
-      ...args
-    );
+    console.warn(...args);
   }
 
   /**
    * Error logging
    */
   public logError(...args: unknown[]): void {
-    console.error(
-      `[FLOWUPS-ERROR] ${this.group ? `[${this.group}: ${this.id}]` : `[${this.id}]`}`,
-      ...args
-    );
+    console.error(...args);
+  }
+
+  /** Table logging */
+  public logTable(data: unknown[], columns?: string[]): void {
+    // eslint-disable-next-line no-console
+    console.table(data, columns);
   }
 }

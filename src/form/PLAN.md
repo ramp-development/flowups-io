@@ -1539,7 +1539,6 @@ interface FormSetChangedEventPayload {
 
 ### Phase 4: DisplayManager
 
-- [ ] **Add** RAF debouncing to `handleStateChange()` - currently no debouncing
 - [x] **Add** `handleCardVisibility()`, `handleSetVisibility()`, `handleGroupVisibility() handleFieldVisibility()` - do not exist
 - [x] **Update** `showElement()` to add `${attr}-${type}-active` attribute - helper exists, needs update
 - [x] ✅ Already subscribed to `state:changed` event

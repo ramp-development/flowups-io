@@ -1,10 +1,12 @@
+import type { StateValue } from '$lib/types';
+
 /**
  * Data Events
  */
 export interface DataChangedEvent {
   field: string;
-  newValue: unknown;
-  oldValue: unknown;
+  to: StateValue;
+  from: StateValue;
 }
 
 export interface FormDataUpdatedEvent {

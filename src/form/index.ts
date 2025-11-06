@@ -17,16 +17,12 @@ import {
   SetManager,
 } from './managers';
 import type {
-  CardElement,
-  FieldElement,
   FlowupsFormConfig,
   FlowupsFormProps,
   FormAttributeConfig,
   FormBehavior,
   FormEventMap,
   FormState,
-  GroupElement,
-  SetElement,
   StorageType,
 } from './types';
 import {
@@ -52,17 +48,7 @@ import {
  * - Accessibility
  */
 export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
-  // ============================================
-  // Properties
-  // ============================================
-
-  /** Configuration */
   protected readonly config: FlowupsFormConfig;
-
-  // ============================================
-  // Managers (to be initialized in Phase 1 Step 3)
-  // ============================================
-
   public cardManager: CardManager;
   public setManager: SetManager;
   public groupManager: GroupManager;
@@ -70,31 +56,26 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public inputManager: InputManager;
   public navigationManager: NavigationManager;
   public displayManager: DisplayManager;
-  // private validationManager: ValidationManager;
-  // private errorManager: ErrorManager;
-  // private conditionManager: ConditionManager;
-  // private renderManager: RenderManager;
-  // private animationManager: AnimationManager;
   // private accessibilityManager: AccessibilityManager;
-
-  // ============================================
-  // Constructor
-  // ============================================
+  // private animationManager: AnimationManager;
+  // private conditionManager: ConditionManager;
+  // private errorManager: ErrorManager;
+  // private renderManager: RenderManager;
+  // private validationManager: ValidationManager;
 
   /**
    * Create a new MultiStepForm instance
-   *
    * @param props - Props for the MultiStepForm component
    */
   constructor(props: FlowupsFormProps) {
     // Initialize StatefulComponent
     super(props);
 
-    // Set the form element as the root element
+    // Set the form element as the root element and parse configuration
     this.setRootElement(props.selector);
-
-    // Parse configuration from attributes
     this.config = this.parseConfiguration();
+
+    // Initialize managers
     this.cardManager = new CardManager(this);
     this.setManager = new SetManager(this);
     this.groupManager = new GroupManager(this);
@@ -103,14 +84,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.navigationManager = new NavigationManager(this);
     this.displayManager = new DisplayManager(this);
 
-    if (this.config.autoInit && !this.isInitialized()) {
-      this.init();
-    }
+    if (this.config.autoInit && !this.isInitialized()) this.init();
   }
-
-  // ============================================
-  // Configuration
-  // ============================================
 
   /**
    * Parse configuration from ${ATTR}* attributes
@@ -132,11 +107,15 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
 
     // Parse behavior
     if (attrs.behavior && !isValidBehaviorType(attrs.behavior)) {
-      throw this.createError(`Invalid configuration: Behavior must be "byField" for v1.0`, 'init', {
-        cause: {
-          behavior: attrs.behavior,
-        },
-      });
+      throw this.createError(
+        `Invalid configuration: Behavior must be 'byField', 'bySet', 'byGroup', or 'byCard'`,
+        'init',
+        {
+          cause: {
+            behavior: attrs.behavior,
+          },
+        }
+      );
     }
 
     // Parse transition type
@@ -251,15 +230,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    * Required by InteractiveComponent
    */
   protected async setupEventListeners(): Promise<void> {
-    // TODO Phase 1 Step 3:
-    // - Set up form submit listener
-    // - Delegate button clicks to NavigationManager
-    // - Set up conditional visibility triggers
+    // Set up form submit listener
   }
-
-  // ============================================
-  // Lifecycle Hooks
-  // ============================================
 
   /**
    * Initialize the form
@@ -268,13 +240,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   protected async onInit(): Promise<void> {
     await super.onInit();
 
-    this.logDebug(`Initializing form`);
-
-    // TODO Phase 1 Step 3:
-    // - Initialize all managers
-    // - Discover hierarchy
-    // - Set initial state
-    // - Emit form:initialized event
+    this.groupStart(`[FLOWUPS-DEBUG] Form: Initializing "${this.getId()}"`);
 
     this.cardManager.init();
     this.setManager.init();
@@ -287,6 +253,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
     });
+
+    this.groupEnd();
   }
 
   /**
@@ -317,69 +285,15 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    */
   protected handleStateChange<K extends keyof FormState>(
     key: K,
-    oldValue: FormState[K],
-    newValue: FormState[K]
+    from: FormState[K],
+    to: FormState[K]
   ): void {
     this.logDebug(`State changed`, {
       key,
-      oldValue,
-      newValue,
+      from,
+      to,
     });
-    // const previousFieldIndex = this.getState('previousFieldIndex');
-    // const currentFieldIndex = this.getState('currentFieldIndex');
-    // if (previousFieldIndex !== null) this.fieldManager.setMetadata(previousFieldIndex);
-    // if (currentFieldIndex !== null) this.fieldManager.setMetadata(currentFieldIndex);
-    // this.fieldManager.setStates();
-    // TODO: Trigger manager updates based on state changes
-    // E.g., when currentFieldIndex changes, update RenderManager, AccessibilityManager, etc.
   }
-
-  /**
-   * Update hierarchy context in form state
-   * Sets current card/set titles and IDs based on field location
-   *
-   * @param field - The field element
-   */
-  public updateHierarchyContext(
-    fromElement: FieldElement | GroupElement | SetElement | CardElement,
-    toElement: FieldElement | GroupElement | SetElement | CardElement
-  ): void {
-    if (fromElement.type === 'card') {
-      this.cardManager.updateElementData(fromElement.index, { active: false });
-      this.cardManager.updateElementData(toElement.index, { active: true });
-      return;
-    }
-
-    const { cardIndex } = fromElement.parentHierarchy;
-    if (cardIndex) {
-      this.cardManager.updateElementData(cardIndex, { active: false });
-    }
-
-    if (fromElement.type === 'set') {
-      this.setManager.updateElementData(fromElement.index, { active: false });
-      return;
-    }
-
-    const { setIndex } = fromElement.parentHierarchy;
-    if (setIndex) this.setManager.updateElementData(setIndex, { active: false });
-
-    if (fromElement.type === 'group') {
-      this.groupManager.updateElementData(fromElement.index, { active: false });
-      return;
-    }
-
-    const { groupIndex } = fromElement.parentHierarchy;
-    if (groupIndex) this.groupManager.updateElementData(groupIndex, { active: false });
-
-    if (fromElement.type === 'field') {
-      this.fieldManager.updateElementData(fromElement.index, { active: false });
-      return;
-    }
-  }
-
-  // ============================================
-  // Public API (Future)
-  // ============================================
 
   /**
    * Get form name

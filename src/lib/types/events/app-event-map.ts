@@ -2,19 +2,20 @@
  * Application-specific event type map
  */
 
+import type { StateValue } from '../core';
 import type { EventMap } from './event-bus-types';
 
 // State events
 export interface StateChangePayload {
   key: string;
-  oldValue: unknown;
-  newValue: unknown;
+  from: StateValue;
+  to: StateValue;
   timestamp: number;
 }
 
 export interface StateRemovePayload {
   key: string;
-  value: unknown;
+  value: StateValue;
   timestamp: number;
 }
 
@@ -28,7 +29,7 @@ export interface ValidationResultPayload {
 
 export interface ValidationRequestPayload {
   field: string;
-  value: unknown;
+  value: StateValue;
 }
 
 // UI events

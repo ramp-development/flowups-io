@@ -14,31 +14,38 @@ export abstract class BaseManager implements IBaseManager {
 
   abstract destroy(): void;
 
-  /**
-   * Debug logging (only in debug mode)
-   */
-  logDebug(...args: unknown[]): void {
+  /** Start console group (only in debug mode) */
+  protected groupStart(name: string, collapsed = true): void {
+    this.form.groupStart(name, collapsed);
+  }
+
+  /** End console group (only in debug mode) */
+  protected groupEnd(): void {
+    this.form.groupEnd();
+  }
+
+  /** Debug logging (only in debug mode) */
+  protected logDebug(...args: unknown[]): void {
     this.form.logDebug(...args);
   }
 
-  /**
-   * Warning logging
-   */
-  logWarn(...args: unknown[]): void {
+  /** Warning logging */
+  protected logWarn(...args: unknown[]): void {
     this.form.logWarn(...args);
   }
 
-  /**
-   * Error logging
-   */
-  logError(...args: unknown[]): void {
+  /** Error logging */
+  protected logError(...args: unknown[]): void {
     this.form.logError(...args);
   }
 
-  /**
-   * Create error
-   */
-  createError(
+  /** Table logging */
+  protected logTable(data: unknown[], columns?: string[]): void {
+    this.form.logTable(data, columns);
+  }
+
+  /** Create error */
+  protected createError(
     message: string,
     phase: 'init' | 'runtime' | 'destroy' = 'runtime',
     cause?: unknown

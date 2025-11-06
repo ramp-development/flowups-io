@@ -1,6 +1,7 @@
 import type { BaseElement } from './base-element';
+import type { CardParentHierarchy } from './card-element';
 
-export interface SetParentHierarchy {
+export interface SetParentHierarchy extends CardParentHierarchy {
   cardId: string | null;
   cardIndex: number | null;
 }

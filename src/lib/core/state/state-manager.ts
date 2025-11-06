@@ -1,4 +1,4 @@
-import type { StateConfig } from '$lib/types';
+import type { StateConfig, StateValue } from '$lib/types';
 import type { PersistenceConfig, StorageType } from '$lib/types';
 
 import { EventBus } from '../events';
@@ -50,8 +50,8 @@ export class StateManager {
   /**
    * Set a state value with optional persistence
    */
-  set(key: string, value: unknown, options?: { skipPersist?: boolean }): void {
-    const oldValue = this.state.get(key);
+  set(key: string, value: StateValue, options?: { skipPersist?: boolean }): void {
+    const from = this.state.get(key) as StateValue;
     this.state.set(key, value);
 
     // Check if we should persist
@@ -62,8 +62,8 @@ export class StateManager {
 
     this.eventBus.emit('state:changed', {
       key,
-      oldValue,
-      newValue: value,
+      from,
+      to: value,
       timestamp: Date.now(),
     });
   }
@@ -93,7 +93,7 @@ export class StateManager {
    * Remove a state value
    */
   remove(key: string): void {
-    const value = this.state.get(key);
+    const value = this.state.get(key) as StateValue;
     const config = this.stateConfigs.get(key);
 
     this.state.delete(key);
@@ -167,10 +167,10 @@ export class StateManager {
   /**
    * Subscribe to state changes for a specific key
    */
-  watch(key: string, callback: (value: unknown, oldValue: unknown) => void): () => void {
-    const handler = (event: { key: string; newValue: unknown; oldValue: unknown }) => {
+  watch(key: string, callback: (value: StateValue, from: StateValue) => void): () => void {
+    const handler = (event: { key: string; to: StateValue; from: StateValue }) => {
       if (event.key === key) {
-        callback(event.newValue, event.oldValue);
+        callback(event.to, event.from);
       }
     };
 
@@ -193,7 +193,7 @@ export class StateManager {
   /**
    * Batch update multiple state values
    */
-  batch(updates: Record<string, unknown>): void {
+  batch(updates: Record<string, StateValue>): void {
     Object.entries(updates).forEach(([key, value]) => {
       this.set(key, value);
     });
@@ -225,7 +225,7 @@ export class StateManager {
   /**
    * Import state from an export
    */
-  import(data: { state: Record<string, unknown>; configs?: Record<string, StateConfig> }): void {
+  import(data: { state: Record<string, StateValue>; configs?: Record<string, StateConfig> }): void {
     // Import configs first if provided
     if (data.configs) {
       Object.entries(data.configs).forEach(([key, config]) => {
@@ -295,7 +295,7 @@ export class StateManager {
   private restorePersistedState(): void {
     this.stateConfigs.forEach((config, key) => {
       if (config.persistent && !this.state.has(key)) {
-        const value = this.loadPersistedValue(key, config);
+        const value = this.loadPersistedValue(key, config) as StateValue;
         if (value !== null) {
           this.set(key, value, { skipPersist: true });
         }

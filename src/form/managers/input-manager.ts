@@ -34,6 +34,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
   private activeListeners: Array<{
     element: HTMLElement;
     index: number;
+    name: string;
     event: string;
     handler: EventListener;
   }> = [];
@@ -42,9 +43,10 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * Initialize InputManager
    */
   public init(): void {
-    super.init();
+    super.init(false);
     this.bindInputs();
     this.setupEventListeners();
+    this.onInitialized();
   }
 
   /**
@@ -96,6 +98,10 @@ export class InputManager extends ElementManager<InputElement> implements IInput
         this.updateStorage(elementData);
       });
     });
+
+    this.logDebug(`Discovered ${this.elements.length} ${this.elementType}s`, {
+      elements: this.elements,
+    });
   }
 
   /**
@@ -116,13 +122,13 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * Create input element data with additional context
    * Private helper used by discoverElements() to handle input-specific logic
    *
-   * @param element - HTMLElement (input/select/textarea)
+   * @param input - HTMLElement (input/select/textarea)
    * @param index - Index of the element
    * @param props - Additional context for input discovery
    * @returns InputElement | undefined
    */
   private createInputElementData(
-    element: HTMLElement,
+    input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
     index: number,
     props: {
       field: FieldElement;
@@ -131,22 +137,18 @@ export class InputManager extends ElementManager<InputElement> implements IInput
       isGroup: boolean;
     }
   ): InputElement | undefined {
-    if (
-      !(
-        element instanceof HTMLInputElement ||
-        element instanceof HTMLSelectElement ||
-        element instanceof HTMLTextAreaElement
-      )
-    )
-      return;
     const { field, processedNames, parentHierarchy, isGroup } = props;
 
-    const name = element.getAttribute('name');
+    const name = input.getAttribute('name');
     if (!name) {
-      throw this.createError(`Input in field "${field.id}" missing name attribute`, 'init', {
+      throw this.createError('Cannot discover inputs: Input missing name attribute', 'init', {
         cause: {
-          field: field.element,
-          input: element,
+          input,
+          field: parentHierarchy.fieldId,
+          group: parentHierarchy.groupId,
+          set: parentHierarchy.setId,
+          card: parentHierarchy.cardId,
+          form: parentHierarchy.formId,
         },
       });
     }
@@ -156,7 +158,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
       // Find the existing element and add this element to it
       const existingInput = this.elementMap.get(name);
       if (existingInput) {
-        existingInput.inputs.push(element);
+        existingInput.inputs.push(input);
         existingInput.isGroup = existingInput.inputs.length > 1;
       }
       return;
@@ -165,14 +167,14 @@ export class InputManager extends ElementManager<InputElement> implements IInput
     // New input - create InputElement
     processedNames.add(name);
 
-    const inputType = this.getInputType(element);
+    const inputType = this.getInputType(input);
 
-    const isRequired = this.checkIfRequired(element);
-    const isValid = this.checkIfValid(element);
+    const isRequired = this.checkIfRequired(input);
+    const isValid = this.checkIfValid(input);
     const { visited, active, current, isIncluded } = field;
 
     return {
-      element,
+      element: input,
       type: 'input',
       id: name,
       title: name,
@@ -181,7 +183,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
       completed: isValid,
       active,
       current,
-      inputs: [element],
+      inputs: [input],
       inputType,
       value: this.getInputValue(name),
       parentHierarchy,
@@ -246,7 +248,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
       if (!key || !relevantKeys.includes(key)) return;
 
       if (key === 'activeFieldIndices') {
-        this.handleActiveFieldsChanged(payload.newValue as number[]);
+        this.handleActiveFieldsChanged(payload.to as number[]);
       }
     });
   }
@@ -261,6 +263,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * Automatically determines the correct event type based on input type
    */
   public bindInputs(): void {
+    let boundCount = 0;
     const inputs = this.getAllActive();
     inputs.forEach((input) => {
       // If already bound, skip - check if any of this input's elements are already bound
@@ -280,13 +283,20 @@ export class InputManager extends ElementManager<InputElement> implements IInput
         };
 
         element.addEventListener(eventType, handler);
-        this.activeListeners.push({ element, index: input.index, event: eventType, handler });
+        this.activeListeners.push({
+          element,
+          index: input.index,
+          name: input.name,
+          event: eventType,
+          handler,
+        });
       });
 
-      this.form.logDebug(
-        `Bound ${eventType} events to input "${input.name}" (${input.inputs.length} elements)`
-      );
+      this.logDebug(`Bound "${eventType}" events to input "${input.name}"`);
+      boundCount += 1;
     });
+
+    this.logDebug(`Bound listeners to ${boundCount} input${boundCount !== 1 ? 's' : ''}`);
   }
 
   /**
@@ -294,22 +304,20 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * @param activeIndices - Array of active field indices to keep bound
    */
   public unbindInputs(activeIndices: number[]): void {
-    // Remove all listeners not associated with active field indices
-    const removedCount = this.activeListeners.filter(
-      (listener) => !activeIndices.includes(listener.index)
-    ).length;
-
+    let removedCount = 0;
     this.activeListeners = this.activeListeners.filter((listener) => {
       const shouldRemove = !activeIndices.includes(listener.index);
 
       if (shouldRemove) {
         listener.element.removeEventListener(listener.event, listener.handler);
+        this.logDebug(`Unbound "${listener.event}" events from input "${listener.name}"`);
+        removedCount += 1;
       }
 
       return !shouldRemove; // Keep listeners that should NOT be removed
     });
 
-    this.form.logDebug(`Unbound ${removedCount} input listeners`);
+    this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? 's' : ''}`);
   }
 
   /**

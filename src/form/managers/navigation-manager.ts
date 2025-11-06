@@ -36,15 +36,13 @@ export class NavigationManager extends BaseManager implements INavigationManager
    * Initialize the manager
    */
   public init(): void {
+    this.groupStart(`Initializing Navigation`);
     this.discoverButtons();
     this.setupEventListeners();
-    this.updateButtonStates();
+    this.updateButtonStates(true);
 
-    this.form.logDebug('NavigationManager initialized', {
-      prevButtons: this.prevButtons.length,
-      nextButtons: this.nextButtons.length,
-      submitButtons: this.submitButtons.length,
-    });
+    this.form.logDebug('Initialized');
+    this.groupEnd();
   }
 
   /**
@@ -82,11 +80,14 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.discoverButtonsForKey(rootElement, 'next');
     this.discoverButtonsForKey(rootElement, 'submit');
 
-    this.form.logDebug('Navigation buttons discovered', {
-      prev: this.prevButtons.length,
-      next: this.nextButtons.length,
-      submit: this.submitButtons.length,
-    });
+    this.form.logDebug(
+      `Discovered ${[...this.prevButtons, ...this.nextButtons, ...this.submitButtons].length} buttons`,
+      {
+        prev: this.prevButtons,
+        next: this.nextButtons,
+        submit: this.submitButtons,
+      }
+    );
   }
 
   private discoverButtonsForKey(rootElement: HTMLElement, key: 'prev' | 'next' | 'submit'): void {
@@ -129,12 +130,6 @@ export class NavigationManager extends BaseManager implements INavigationManager
       button.button.addEventListener('click', this.handleSubmitClick);
     });
 
-    // this.form.subscribe('form:navigation:changed', (payload) => {
-    this.form.subscribe('form:navigation:changed', () => {
-      // this.handleNavigationChanged(payload);
-      this.handleNavigationChanged();
-    });
-
     this.form.subscribe('state:changed', (payload) => {
       // payload.key follows pattern `${formName}.${key}`
       const key = payload.key.includes('.')
@@ -146,7 +141,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
       }
     });
 
-    this.form.logDebug('NavigationManager event listeners setup');
+    this.form.logDebug('Event listeners setup');
   }
 
   // ============================================
@@ -234,10 +229,7 @@ export class NavigationManager extends BaseManager implements INavigationManager
 
     if (!success) return;
 
-    // Emit navigation command
-    this.form.emit(`form:navigation:changed`, { direction });
-
-    this.logDebug('Navigation next triggered', { behavior });
+    this.handleNavigationChanged();
   }
 
   /**
@@ -624,7 +616,9 @@ export class NavigationManager extends BaseManager implements INavigationManager
    * Update button states based on current navigation position
    * Called after navigation or state changes
    */
-  public updateButtonStates(): void {
+  public updateButtonStates(isInitial: boolean = false): void {
+    this.logDebug(`${isInitial ? 'Initializing' : 'Updating'} button states`);
+
     const {
       totalCards,
       currentCardIndex,

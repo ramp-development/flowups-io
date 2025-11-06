@@ -79,8 +79,8 @@ export interface ComponentState {
 // State change event
 export interface StateChangeEvent {
   key: string;
-  oldValue: StateValue;
-  newValue: StateValue;
+  from: StateValue;
+  to: StateValue;
   component: string; // Component ID
 }
 

@@ -101,10 +101,10 @@ export abstract class StatefulComponent<
     value: TState[K],
     options: { silent?: boolean; persist?: boolean } = {}
   ): boolean {
-    const oldValue = this.state[key];
+    const from = this.state[key];
 
     // Skip if value hasn't changed
-    if (this.isEqual(oldValue, value)) {
+    if (this.isEqual(from, value)) {
       return false;
     }
 
@@ -131,7 +131,7 @@ export abstract class StatefulComponent<
 
     // Emit change event
     if (!options.silent) {
-      this.onStateChange(key, oldValue, transformedValue);
+      this.onStateChange(key, from, transformedValue);
     }
 
     return true;
@@ -144,21 +144,21 @@ export abstract class StatefulComponent<
     updates: Partial<TState>,
     options: { silent?: boolean; persist?: boolean } = {}
   ): void {
-    const changes: Array<{ key: keyof TState; oldValue: unknown; newValue: unknown }> = [];
+    const changes: Array<{ key: keyof TState; from: StateValue; to: StateValue }> = [];
 
     Object.entries(updates).forEach(([key, value]) => {
       const typedKey = key as keyof TState;
-      const oldValue = this.state[typedKey];
+      const from = this.state[typedKey];
 
       if (this.setState(typedKey, value as TState[keyof TState], { ...options, silent: true })) {
-        changes.push({ key: typedKey, oldValue, newValue: value });
+        changes.push({ key: typedKey, from, to: value });
       }
     });
 
     // Emit batch change event
     if (!options.silent && changes.length > 0) {
-      changes.forEach(({ key, oldValue, newValue }) => {
-        this.onStateChange(key, oldValue, newValue);
+      changes.forEach(({ key, from, to }) => {
+        this.onStateChange(key, from, to);
       });
     }
   }
@@ -192,7 +192,7 @@ export abstract class StatefulComponent<
       if (payload.key.startsWith(this.statePrefix)) {
         const localKey = payload.key.replace(`${this.statePrefix}.`, '') as keyof TState;
         if (localKey in this.state) {
-          this.setState(localKey, payload.newValue as TState[keyof TState], {
+          this.setState(localKey, payload.to as TState[keyof TState], {
             silent: false,
             persist: false,
           });
@@ -204,11 +204,11 @@ export abstract class StatefulComponent<
   /**
    * Called when state changes
    */
-  protected onStateChange(key: keyof TState, oldValue: unknown, newValue: unknown): void {
+  protected onStateChange(key: keyof TState, from: StateValue, to: StateValue): void {
     const event: StateChangeEvent = {
       key: String(key),
-      oldValue: oldValue as StateValue,
-      newValue: newValue as StateValue,
+      from,
+      to,
       component: this.id,
     };
 
@@ -218,13 +218,13 @@ export abstract class StatefulComponent<
     // Emit to EventBus
     this.emit('state:changed', {
       key: `${this.statePrefix}.${String(key)}`,
-      oldValue: oldValue as StateValue,
-      newValue: newValue as StateValue,
+      from,
+      to,
       timestamp: Date.now(),
     });
 
     // Call abstract handler
-    this.handleStateChange(key, oldValue as TState[keyof TState], newValue as TState[keyof TState]);
+    this.handleStateChange(key, from as TState[keyof TState], to as TState[keyof TState]);
   }
 
   /**
@@ -232,8 +232,8 @@ export abstract class StatefulComponent<
    */
   protected abstract handleStateChange<K extends keyof TState>(
     key: K,
-    oldValue: TState[K],
-    newValue: TState[K]
+    from: TState[K],
+    to: TState[K]
   ): void;
 
   /**
@@ -329,7 +329,7 @@ export abstract class StatefulComponent<
     const handler = (e: Event) => {
       const { detail } = e as CustomEvent<StateChangeEvent>;
       if (detail.key === String(key)) {
-        callback(detail.newValue as TState[K], detail.oldValue as TState[K]);
+        callback(detail.to as TState[K], detail.from as TState[K]);
       }
     };
 

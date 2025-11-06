@@ -28,10 +28,12 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Initialize the manager
    */
   public init(): void {
+    this.groupStart(`Initializing Display`);
     this.setupEventListeners();
     this.updateDisplay();
 
-    this.logDebug('DisplayManager initialized');
+    this.logDebug('Initialized');
+    this.groupEnd();
   }
 
   /**

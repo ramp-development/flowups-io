@@ -6,7 +6,12 @@
  */
 
 import { ATTR } from '../constants';
-import type { CardElement, FormCardState, UpdatableElementData } from '../types';
+import type {
+  CardElement,
+  CardParentHierarchy,
+  FormCardState,
+  UpdatableElementData,
+} from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { ElementManager } from './element-manager';
 
@@ -58,6 +63,7 @@ export class CardManager extends ElementManager<CardElement> {
       active: index === 0,
       current: index === 0,
       progress: hasSets ? 0 : 100,
+      parentHierarchy: this.findParentHierarchy<CardParentHierarchy>(element),
       isIncluded: true,
       isValid: !hasSets,
     };
