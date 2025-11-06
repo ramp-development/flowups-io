@@ -9,8 +9,7 @@ export interface NavigationRequestEvent {
 }
 
 export interface NavigationChangedEvent {
-  element: 'card' | 'set' | 'group' | 'field';
-  index: number;
+  direction: 'prev' | 'next';
 }
 
 export interface ElementCompleteEvent {

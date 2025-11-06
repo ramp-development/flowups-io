@@ -280,7 +280,7 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   public setActiveByParent(
     parentId: string,
-    parentType: 'card' | 'set' | 'group',
+    parentType: 'card' | 'set' | 'group' | 'field',
     options?: { active?: boolean; firstIsCurrent?: boolean }
   ): void {
     const { active = true, firstIsCurrent = false } = options ?? {};
@@ -308,7 +308,7 @@ export abstract class ElementManager<TElement extends ElementData>
    */
   protected getElementsByParentId(
     parentId: string,
-    parentType: 'card' | 'set' | 'group'
+    parentType: 'card' | 'set' | 'group' | 'field'
   ): TElement[] {
     return this.elements.filter((element) => {
       // Cards have no parent
@@ -319,6 +319,8 @@ export abstract class ElementManager<TElement extends ElementData>
 
       // Only Fields have groupId, Groups and Fields have setId, All elements (except cards) have cardId
       switch (parentType) {
+        case 'field':
+          return 'fieldId' in parentHierarchy && parentHierarchy.fieldId === parentId;
         case 'group':
           return 'groupId' in parentHierarchy && parentHierarchy.groupId === parentId;
         case 'set':
@@ -475,6 +477,13 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /**
+   * Get all active elements
+   */
+  public getAllActive(): TElement[] {
+    return this.elements.filter((element) => element.active);
+  }
+
+  /**
    * Get all elements (returns copy)
    */
   public getAll(): TElement[] {
@@ -516,13 +525,23 @@ export abstract class ElementManager<TElement extends ElementData>
   }
 
   /**
-   * Get the current element
+   * Get the current element index
    */
   public getCurrentIndex(): number {
     const current = this.getCurrent();
     if (!current) return -1;
 
     return current.index;
+  }
+
+  /**
+   * Get the current element id
+   */
+  public getCurrentId(): string | null {
+    const current = this.getCurrent();
+    if (!current) return null;
+
+    return current.id;
   }
 
   /** Check if first */

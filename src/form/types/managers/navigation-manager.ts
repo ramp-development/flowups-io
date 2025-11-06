@@ -9,17 +9,11 @@ export interface INavigationManager extends IBaseManager {
   discoverButtons(): void;
 
   /** Handle next button click */
-  handleNext(): Promise<void>;
-
-  /** Handle previous button click */
-  handlePrev(): Promise<void>;
+  handleMove(direction: 'prev' | 'next'): void;
 
   /** Update button states (enabled/disabled) */
   updateButtonStates(): void;
 
-  /** Enable navigation */
-  enableNavigation(): void;
-
-  /** Disable navigation (during transitions) */
-  disableNavigation(): void;
+  /** Toggle navigation */
+  toggleNavigation(enabled?: boolean): void;
 }
