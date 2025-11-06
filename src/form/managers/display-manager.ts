@@ -9,7 +9,8 @@
 
 import type { StateChangePayload } from '$lib/types';
 
-import type { FormStateKeys, IDisplayManager } from '../types';
+import { ATTR } from '../constants';
+import type { ElementData, FormStateKeys, IDisplayManager } from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -105,7 +106,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   private handleCardVisibility(): void {
     const cards = this.form.cardManager.getAll();
     cards.forEach((card) => {
-      this.showElement(card.element, card.active);
+      this.showElement(card);
     });
   }
 
@@ -115,7 +116,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   private handleSetVisibility(): void {
     const sets = this.form.setManager.getAll();
     sets.forEach((set) => {
-      this.showElement(set.element, set.active);
+      this.showElement(set);
     });
   }
 
@@ -125,7 +126,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   private handleGroupVisibility(): void {
     const groups = this.form.groupManager.getAll();
     groups.forEach((group) => {
-      this.showElement(group.element, group.active);
+      this.showElement(group);
     });
   }
 
@@ -135,7 +136,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   private handleFieldVisibility(): void {
     const fields = this.form.fieldManager.getAll();
     fields.forEach((field) => {
-      this.showElement(field.element, field.active);
+      this.showElement(field);
     });
   }
 
@@ -143,8 +144,10 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Show/Hide an element
    * Sets display: sets or removes display: none based on visibility
    */
-  public showElement(element: HTMLElement, visible: boolean): void {
-    if (visible) element.style.removeProperty('display');
+  public showElement(elementData: ElementData): void {
+    const { element, active, type } = elementData;
+    if (active) element.style.removeProperty('display');
     else element.style.setProperty('display', 'none');
+    element.setAttribute(`${ATTR}-${type}-active`, active.toString());
   }
 }

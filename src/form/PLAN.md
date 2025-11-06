@@ -1476,6 +1476,7 @@ interface FormSetChangedEventPayload {
 **Completed Work:**
 
 1. ✅ **Implemented navigation methods**:
+
    - `nextField()` - Navigate to next field (byField behavior)
    - `nextGroup()` - Navigate to next group (byGroup behavior)
    - `nextSet()` - Navigate to next set (bySet behavior)
@@ -1483,12 +1484,14 @@ interface FormSetChangedEventPayload {
    - All methods are synchronous (no unnecessary async/await)
 
 2. ✅ **Implemented helper methods**:
+
    - `updateHierarchyData(element)` - Updates parent metadata (cascades up: field → group → set → card)
    - `clearHierarchyData(elementType)` - Clears child metadata (cascades down: card → set → group → field)
    - `batchStateUpdates()` - Collects state from all managers and writes once (includes InputManager!)
    - `handleFormComplete()` - Emits form:complete event
 
 3. ✅ **Key architectural decisions**:
+
    - **Natural cascade**: When at end of fields, `nextField()` calls `nextGroup()`, which calls `nextSet()`, etc.
    - **No circular dependencies**: Each level only calls UP the hierarchy
    - **No `handleBoundary()` needed**: The cascade IS the boundary handling
@@ -1496,6 +1499,7 @@ interface FormSetChangedEventPayload {
    - **Batched state updates**: Single state write prevents multiple `state:changed` events
 
 4. ✅ **Enhanced ElementManager with**:
+
    - `clearActiveAndCurrent()` - Clears both active and current flags (maintains invariant)
    - `setActive(selector)` - Sets element active without calling setStates() (for batching)
    - `setCurrent(selector)` - Sets element as current, automatically clears others
@@ -1517,6 +1521,7 @@ interface FormSetChangedEventPayload {
    ```
 
 **Files Modified:**
+
 - [src/form/managers/navigation-manager.ts](src/form/managers/navigation-manager.ts) - Complete refactor
 - [src/form/managers/element-manager.ts](src/form/managers/element-manager.ts) - Added navigation helpers
 
@@ -1535,11 +1540,9 @@ interface FormSetChangedEventPayload {
 ### Phase 4: DisplayManager
 
 - [ ] **Add** RAF debouncing to `handleStateChange()` - currently no debouncing
-- [ ] **Update** `displayByField()` to add `ensureParentVisibility()` - partially exists
-- [ ] **Add** `displayByGroup()`, `displayBySet()`, `displayByCard()` - do not exist
-- [ ] **Add** `ensureParentVisibility()` (generic helper) - does not exist
-- [ ] **Update** `showElement()` to add `data-active` attribute - helper exists, needs update
-- [ ] ✅ Already subscribed to `state:changed` event
+- [x] **Add** `handleCardVisibility()`, `handleSetVisibility()`, `handleGroupVisibility() handleFieldVisibility()` - do not exist
+- [x] **Update** `showElement()` to add `${attr}-${type}-active` attribute - helper exists, needs update
+- [x] ✅ Already subscribed to `state:changed` event
 
 ### Phase 5: Events
 
@@ -1591,15 +1594,17 @@ interface FormSetChangedEventPayload {
 **Fixed Bug:** GroupManager and SetManager were calling `determineActive()` in their `mergeElementData()` methods when `data.active` was undefined. This caused navigation to fail because `determineActive()` recalculates active state based on parent hierarchy, overwriting explicitly set active flags.
 
 **Correct Usage:**
+
 - ✅ **During discovery** (`createElementData()`) - Determines initial active state based on behavior and parent hierarchy
 - ❌ **During updates** (`mergeElementData()`) - Should preserve existing `element.active` value, not recalculate
 
 **Why:** Navigation explicitly sets active flags from top-down. Recalculating based on parent state during updates creates conflicts and overwrites intentional navigation changes.
 
 **Current Implementation:**
+
 ```typescript
 // GroupManager & SetManager mergeElementData()
-active: data.active ?? element.active  // ✅ Preserves existing value
+active: data.active ?? element.active; // ✅ Preserves existing value
 // NOT: data.active ?? this.determineActive(...)  // ❌ Overwrites navigation changes
 ```
 

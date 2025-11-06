@@ -1,4 +1,5 @@
 import type { IBaseManager } from './base-manager';
+import type { ElementData } from './element-manager';
 
 /**
  * Display Manager Interface
@@ -6,5 +7,5 @@ import type { IBaseManager } from './base-manager';
  */
 export interface IDisplayManager extends IBaseManager {
   /** Show an element */
-  showElement(element: HTMLElement, visible: boolean): void;
+  showElement(elementData: ElementData): void;
 }
