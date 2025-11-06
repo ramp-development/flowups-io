@@ -6,10 +6,10 @@ import type { IBaseManager } from './base-manager';
  */
 export interface IInputManager extends IBaseManager {
   /** Bind events to current field's input */
-  bindCurrentFieldInput(): void;
+  bindInputs(): void;
 
   /** Unbind events from input by name */
-  unbindInput(name: string): void;
+  unbindInputs(activeIndices: number[]): void;
 
   /** Get input value by name */
   getInputValue(name: string): unknown;

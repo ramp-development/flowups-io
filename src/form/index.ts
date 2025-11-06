@@ -406,13 +406,6 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    * Get state value
    */
   public getState<K extends keyof FormState>(key: K): FormState[K] {
-    return this.state[key];
+    return super.getState(key);
   }
-
-  // /**
-  //  * Set state value
-  //  */
-  // public setState<K extends keyof FormState>(key: K, value: FormState[K]): void {
-  //   this.state[key] = value;
-  // }
 }

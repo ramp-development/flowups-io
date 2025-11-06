@@ -9,20 +9,8 @@
 
 import type { StateChangePayload } from '$lib/types';
 
-import type {
-  FormCardState,
-  FormFieldState,
-  FormGroupState,
-  FormSetState,
-  IDisplayManager,
-} from '../types';
+import type { FormStateKeys, IDisplayManager } from '../types';
 import { BaseManager } from './base-manager';
-
-type RelevantKeys =
-  | keyof FormCardState
-  | keyof FormSetState
-  | keyof FormGroupState
-  | keyof FormFieldState;
 
 /**
  * DisplayManager Implementation
@@ -75,21 +63,17 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    */
   private handleStateChange = (payload: StateChangePayload): void => {
     // Only update display if relevant state changed
-    const relevantKeys: readonly RelevantKeys[] = [
+    const relevantKeys: readonly FormStateKeys[] = [
       'currentCardIndex',
       'currentSetIndex',
       'currentGroupIndex',
       'currentFieldIndex',
-      // 'activeCardIndices',
-      // 'activeSetIndices',
-      // 'activeGroupIndices',
-      // 'activeFieldIndices',
     ];
 
     // payload.key follows pattern `${formName}.${key}`
     const key = payload.key.includes('.')
-      ? (payload.key.split('.').pop() as RelevantKeys)
-      : (payload.key as RelevantKeys);
+      ? (payload.key.split('.').pop() as FormStateKeys)
+      : (payload.key as FormStateKeys);
 
     if (key && relevantKeys.includes(key)) {
       this.updateDisplay(key);
@@ -99,7 +83,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
   /**
    * Update display depending on the state changed, no need for behavior
    */
-  private updateDisplay(key?: RelevantKeys): void {
+  private updateDisplay(key?: FormStateKeys): void {
     if (!key) {
       this.handleCardVisibility();
       this.handleSetVisibility();

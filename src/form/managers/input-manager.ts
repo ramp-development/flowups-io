@@ -6,12 +6,16 @@
  * Only binds events to the current field's input for optimal performance.
  */
 
+import type { StateChangePayload } from '$lib/types';
+
 import type {
   FieldElement,
   FormInputState,
+  FormStateKeys,
   IInputManager,
   InputElement,
   InputParentHierarchy,
+  UpdatableElementData,
 } from '../types';
 import { ElementManager } from './element-manager';
 
@@ -26,15 +30,22 @@ export class InputManager extends ElementManager<InputElement> implements IInput
   protected elementMap: Map<string, InputElement> = new Map();
   protected readonly elementType = 'input';
 
-  /** Currently bound input name (for cleanup) */
-  private boundInputName: string | null = null;
-
   /** Active event listeners for cleanup */
   private activeListeners: Array<{
     element: HTMLElement;
+    index: number;
     event: string;
     handler: EventListener;
   }> = [];
+
+  /**
+   * Initialize InputManager
+   */
+  public init(): void {
+    super.init();
+    this.bindInputs();
+    this.setupEventListeners();
+  }
 
   /**
    * Destroy InputManager
@@ -156,28 +167,30 @@ export class InputManager extends ElementManager<InputElement> implements IInput
 
     const inputType = this.getInputType(element);
 
-    const isRequiredOriginal = this.checkIfRequired(element);
+    const isRequired = this.checkIfRequired(element);
+    const isValid = this.checkIfValid(element);
+    const { visited, active, current, isIncluded } = field;
 
     return {
-      element: element,
+      element,
       type: 'input',
       id: name,
       title: name,
       index,
-      visited: false,
-      completed: false,
-      active: false,
-      current: false,
+      visited,
+      completed: isValid,
+      active,
+      current,
       inputs: [element],
       inputType,
       value: this.getInputValue(name),
       parentHierarchy,
       name,
       isGroup,
-      isRequiredOriginal,
-      isRequired: isRequiredOriginal,
-      isValid: false,
-      isIncluded: field.isIncluded,
+      isRequiredOriginal: isRequired,
+      isRequired,
+      isValid,
+      isIncluded,
       errors: [],
     };
   }
@@ -195,69 +208,108 @@ export class InputManager extends ElementManager<InputElement> implements IInput
   }
 
   /**
-   * Bind events to the current field's input
-   * Automatically determines the correct event type based on input type
+   * Update data values
+   * @param element - Field Element
+   * @param data - Data to merge
    */
-  public bindCurrentFieldInput(): void {
-    // Get current field from FieldManager
-    const currentField = this.form.fieldManager.getCurrent();
-    if (!currentField) return;
+  protected mergeElementData(
+    element: InputElement,
+    data: UpdatableElementData<InputElement>
+  ): InputElement {
+    const isValid = this.checkIfValid(element.element);
 
-    // Get the input for this field
-    const input = this.getAllByParentId(currentField.id, 'field')[0];
-
-    // Unbind previous input
-    if (this.boundInputName !== null && this.boundInputName !== input.name) {
-      this.unbindInput(this.boundInputName);
-    }
-
-    // Determine event type
-    const eventType = this.getEventTypeForInput(input.element);
-
-    // Bind events to ALL elements in the input (for radio/checkbox groups)
-    input.inputs.forEach((element) => {
-      const handler: EventListener = () => {
-        const value = this.extractInputValue(input);
-        this.handleInputChange(input.name, value);
-      };
-
-      element.addEventListener(eventType, handler);
-      this.activeListeners.push({ element, event: eventType, handler });
-    });
-
-    this.boundInputName = input.name;
-
-    this.form.logDebug(
-      `Bound ${eventType} events to input "${input.name}" (${input.inputs.length} elements)`
-    );
+    return {
+      ...element,
+      visited: true,
+      completed: isValid,
+      value: this.getInputValue(element.name),
+      isRequired: this.checkIfRequired(element.element),
+      isValid,
+      isIncluded: element.isIncluded,
+      ...data,
+    };
   }
 
   /**
-   * Unbind events from a specific input by name
-   * @param name - Input name
+   * Setup event listeners for state changes
    */
-  public unbindInput(name: string): void {
-    const input = this.elementMap.get(name);
-    if (!input) return;
+  private setupEventListeners(): void {
+    this.form.subscribe('state:changed', (payload: StateChangePayload) => {
+      // Only update display if relevant state changed
+      const relevantKeys: readonly FormStateKeys[] = ['activeFieldIndices'];
 
-    // Remove all listeners associated with this input's elements
-    this.activeListeners = this.activeListeners.filter((listener) => {
-      const shouldRemove = input.inputs.includes(
-        listener.element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      // payload.key follows pattern `${formName}.${key}`
+      const key = payload.key.includes('.')
+        ? (payload.key.split('.').pop() as FormStateKeys)
+        : (payload.key as FormStateKeys);
+
+      if (!key || !relevantKeys.includes(key)) return;
+
+      if (key === 'activeFieldIndices') {
+        this.handleActiveFieldsChanged(payload.newValue as number[]);
+      }
+    });
+  }
+
+  private handleActiveFieldsChanged(activeFieldIndices: number[]): void {
+    this.bindInputs();
+    this.unbindInputs(activeFieldIndices);
+  }
+
+  /**
+   * Bind events to the current field's input
+   * Automatically determines the correct event type based on input type
+   */
+  public bindInputs(): void {
+    const inputs = this.getAllActive();
+    inputs.forEach((input) => {
+      // If already bound, skip - check if any of this input's elements are already bound
+      const alreadyBound = input.inputs.some((inputElement) =>
+        this.activeListeners.some((listener) => listener.element === inputElement)
       );
+      if (alreadyBound) return;
+
+      // Determine event type
+      const eventType = this.getEventTypeForInput(input.element);
+
+      // Bind events to ALL elements in the input (for radio/checkbox groups)
+      input.inputs.forEach((element) => {
+        const handler: EventListener = () => {
+          const value = this.extractInputValue(input);
+          this.handleInputChange(input.name, value);
+        };
+
+        element.addEventListener(eventType, handler);
+        this.activeListeners.push({ element, index: input.index, event: eventType, handler });
+      });
+
+      this.form.logDebug(
+        `Bound ${eventType} events to input "${input.name}" (${input.inputs.length} elements)`
+      );
+    });
+  }
+
+  /**
+   * Unbind events from inputs not associated with active field indices
+   * @param activeIndices - Array of active field indices to keep bound
+   */
+  public unbindInputs(activeIndices: number[]): void {
+    // Remove all listeners not associated with active field indices
+    const removedCount = this.activeListeners.filter(
+      (listener) => !activeIndices.includes(listener.index)
+    ).length;
+
+    this.activeListeners = this.activeListeners.filter((listener) => {
+      const shouldRemove = !activeIndices.includes(listener.index);
 
       if (shouldRemove) {
         listener.element.removeEventListener(listener.event, listener.handler);
       }
 
-      return !shouldRemove;
+      return !shouldRemove; // Keep listeners that should NOT be removed
     });
 
-    if (this.boundInputName === name) {
-      this.boundInputName = null;
-    }
-
-    this.form.logDebug(`Unbound events from input "${name}"`);
+    this.form.logDebug(`Unbound ${removedCount} input listeners`);
   }
 
   /**
@@ -269,7 +321,6 @@ export class InputManager extends ElementManager<InputElement> implements IInput
       listener.element.removeEventListener(listener.event, listener.handler);
     });
     this.activeListeners = [];
-    this.boundInputName = null;
   }
 
   // ============================================
@@ -291,7 +342,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
 
     // Handle textarea
     if (input instanceof HTMLTextAreaElement) {
-      return 'blur';
+      return 'input';
     }
 
     // Handle input elements by type
@@ -309,7 +360,7 @@ export class InputManager extends ElementManager<InputElement> implements IInput
 
     // Text-based inputs use blur
     // (text, email, password, tel, url, search, etc.)
-    return 'blur';
+    return 'input';
   }
 
   // ============================================
@@ -462,6 +513,8 @@ export class InputManager extends ElementManager<InputElement> implements IInput
    * @internal Called by event handlers
    */
   private handleInputChange(name: string, value: unknown): void {
+    console.log('handleInputChange', name, value);
+    this.updateElementData(name);
     // Update formData state
     const formData = this.form.getState('formData');
     this.form.setState('formData', { ...formData, [name]: value });
@@ -473,25 +526,25 @@ export class InputManager extends ElementManager<InputElement> implements IInput
   // Field Inclusion Sync
   // ============================================
 
-  /**
-   * Update input required state based on parent field inclusion
-   * Called by FieldManager when field.isIncluded changes
-   *
-   * @param fieldId - ID of the field whose inclusion changed
-   * @param isIncluded - New inclusion state
-   */
-  public syncInputInclusionWithField(fieldId: string, isIncluded: boolean): void {
-    const input = this.getAllByParentId(fieldId, 'field')[0];
+  // /**
+  //  * Update input required state based on parent field inclusion
+  //  * Called by FieldManager when field.isIncluded changes
+  //  *
+  //  * @param fieldId - ID of the field whose inclusion changed
+  //  * @param isIncluded - New inclusion state
+  //  */
+  // public syncInputInclusionWithField(fieldId: string, isIncluded: boolean): void {
+  //   const input = this.getAllByParentId(fieldId, 'field')[0];
 
-    input.isIncluded = isIncluded;
-    this.setInputRequired(input, isIncluded && input.isRequiredOriginal);
+  //   input.isIncluded = isIncluded;
+  //   this.setInputRequired(input, isIncluded && input.isRequiredOriginal);
 
-    this.form.logDebug(`Synced input with field "${fieldId}"`, {
-      input: input.name,
-      inclusion: isIncluded,
-      required: input.isRequired,
-    });
-  }
+  //   this.form.logDebug(`Synced input with field "${fieldId}"`, {
+  //     input: input.name,
+  //     inclusion: isIncluded,
+  //     required: input.isRequired,
+  //   });
+  // }
 
   /**
    * Set required state for an input
@@ -558,5 +611,14 @@ export class InputManager extends ElementManager<InputElement> implements IInput
     element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
   ): boolean {
     return element.hasAttribute('required');
+  }
+
+  /**
+   * Check if an input is valid
+   */
+  private checkIfValid(
+    element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  ): boolean {
+    return element.checkValidity();
   }
 }

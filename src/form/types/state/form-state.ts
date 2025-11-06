@@ -1,5 +1,12 @@
 import type { StateValue } from '$lib/types';
 
+export type FormStateKeys =
+  | keyof FormCardState
+  | keyof FormSetState
+  | keyof FormGroupState
+  | keyof FormFieldState
+  | keyof FormInputState;
+
 export interface FormCardState {
   /** Current card index (0-based for internal use, -1 if no cards active) */
   currentCardIndex: number;

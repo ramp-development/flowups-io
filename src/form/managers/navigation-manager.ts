@@ -10,6 +10,7 @@ import type {
   ButtonElement,
   CardElement,
   FieldElement,
+  FormStateKeys,
   GroupElement,
   INavigationManager,
   SetElement,
@@ -132,6 +133,17 @@ export class NavigationManager extends BaseManager implements INavigationManager
     this.form.subscribe('form:navigation:changed', () => {
       // this.handleNavigationChanged(payload);
       this.handleNavigationChanged();
+    });
+
+    this.form.subscribe('state:changed', (payload) => {
+      // payload.key follows pattern `${formName}.${key}`
+      const key = payload.key.includes('.')
+        ? (payload.key.split('.').pop() as FormStateKeys)
+        : (payload.key as FormStateKeys);
+
+      if (key && key === 'formData') {
+        this.handleNavigationChanged();
+      }
     });
 
     this.form.logDebug('NavigationManager event listeners setup');
@@ -429,14 +441,17 @@ export class NavigationManager extends BaseManager implements INavigationManager
       this.form.fieldManager.setActiveByParent(element.id, element.type, { firstIsCurrent: true });
     }
 
-    const currentFieldId = this.form.fieldManager.getCurrentId();
-    if (!currentFieldId) {
+    // Set inputs active for ALL active fields (not just current)
+    const activeFields = this.form.fieldManager.getAllActive();
+    if (activeFields.length === 0) {
       this.form.inputManager.clearActiveAndCurrent();
       return;
     }
 
-    this.form.inputManager.setActiveByParent(currentFieldId, 'field', {
-      firstIsCurrent: true,
+    activeFields.forEach((field, index) => {
+      this.form.inputManager.setActiveByParent(field.id, 'field', {
+        firstIsCurrent: index === 0, // First active field's inputs get first current
+      });
     });
   }
 
@@ -610,10 +625,43 @@ export class NavigationManager extends BaseManager implements INavigationManager
    * Called after navigation or state changes
    */
   public updateButtonStates(): void {
-    // this.handleNavigationButtonStates();
-    this.handlePrevButtonStates();
-    this.handleNextButtonStates();
-    this.handleSubmitButtonStates();
+    const {
+      totalCards,
+      currentCardIndex,
+      totalSets,
+      currentSetIndex,
+      totalGroups,
+      currentGroupIndex,
+      totalFields,
+      currentFieldIndex,
+    } = this.form.getAllState();
+
+    let total: number;
+    let current: number;
+
+    if (totalCards > 0) {
+      total = totalCards;
+      current = currentCardIndex;
+    } else if (totalSets > 0) {
+      total = totalSets;
+      current = currentSetIndex;
+    } else if (totalGroups > 0) {
+      total = totalGroups;
+      current = currentGroupIndex;
+    } else if (totalFields > 0) {
+      total = totalFields;
+      current = currentFieldIndex;
+    } else {
+      total = 0;
+      current = 0;
+    }
+
+    const inputs = this.form.inputManager.getAllActive();
+    const valid = inputs.every((input) => input.isValid);
+
+    this.enableButtons(this.prevButtons, current > 0, current === 0);
+    this.enableButtons(this.nextButtons, valid && current < total - 1, current === total - 1);
+    this.enableButtons(this.submitButtons, current === total - 1, current !== total - 1);
 
     // const currentFieldIndex = this.form.getState('currentFieldIndex');
     // const navigationOrder = this.form.fieldManager.getNavigationOrder();
@@ -640,133 +688,133 @@ export class NavigationManager extends BaseManager implements INavigationManager
     // }
   }
 
-  private handleNavigationButtonStates(): void {
-    const inputs = this.form.inputManager.getAllActive();
-    const valid = inputs.every((input) => input.isValid);
+  // private handleNavigationButtonStates(): void {
+  //   const inputs = this.form.inputManager.getAllActive();
+  //   const valid = inputs.every((input) => input.isValid);
 
-    this.enableButtons(this.nextButtons, valid);
-  }
+  //   this.enableButtons(this.nextButtons, valid);
+  // }
 
-  private handlePrevButtonStates(): void {
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = this.form.getAllState();
+  // private handlePrevButtonStates(): void {
+  //   const {
+  //     totalCards,
+  //     currentCardIndex,
+  //     totalSets,
+  //     currentSetIndex,
+  //     totalGroups,
+  //     currentGroupIndex,
+  //     totalFields,
+  //     currentFieldIndex,
+  //   } = this.form.getAllState();
 
-    if (totalCards > 0) {
-      this.enableButtons(this.prevButtons, currentCardIndex > 0, currentCardIndex === 0);
-    } else if (totalSets > 0) {
-      this.enableButtons(this.prevButtons, currentSetIndex > 0, currentSetIndex === 0);
-    } else if (totalGroups > 0) {
-      this.enableButtons(this.prevButtons, currentGroupIndex > 0, currentGroupIndex === 0);
-    } else if (totalFields > 0) {
-      this.enableButtons(this.prevButtons, currentFieldIndex > 0, currentFieldIndex === 0);
-    } else {
-      this.enableButtons(this.prevButtons, true);
-    }
-  }
+  //   if (totalCards > 0) {
+  //     this.enableButtons(this.prevButtons, currentCardIndex > 0, currentCardIndex === 0);
+  //   } else if (totalSets > 0) {
+  //     this.enableButtons(this.prevButtons, currentSetIndex > 0, currentSetIndex === 0);
+  //   } else if (totalGroups > 0) {
+  //     this.enableButtons(this.prevButtons, currentGroupIndex > 0, currentGroupIndex === 0);
+  //   } else if (totalFields > 0) {
+  //     this.enableButtons(this.prevButtons, currentFieldIndex > 0, currentFieldIndex === 0);
+  //   } else {
+  //     this.enableButtons(this.prevButtons, true);
+  //   }
+  // }
 
-  private handleNextButtonStates(): void {
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = this.form.getAllState();
+  // private handleNextButtonStates(): void {
+  //   const {
+  //     totalCards,
+  //     currentCardIndex,
+  //     totalSets,
+  //     currentSetIndex,
+  //     totalGroups,
+  //     currentGroupIndex,
+  //     totalFields,
+  //     currentFieldIndex,
+  //   } = this.form.getAllState();
 
-    const behavior = this.form.getBehavior();
+  //   const behavior = this.form.getBehavior();
 
-    switch (behavior) {
-      case 'byField':
-        this.enableButtons(
-          this.nextButtons,
-          currentFieldIndex < totalFields - 1,
-          currentFieldIndex === totalFields - 1
-        );
-        break;
-      case 'byGroup':
-        this.enableButtons(
-          this.nextButtons,
-          currentGroupIndex < totalGroups - 1,
-          currentGroupIndex === totalGroups - 1
-        );
-        break;
-      case 'bySet':
-        this.enableButtons(
-          this.nextButtons,
-          currentSetIndex < totalSets - 1,
-          currentSetIndex === totalSets - 1
-        );
-        break;
-      case 'byCard':
-        this.enableButtons(
-          this.nextButtons,
-          currentCardIndex < totalCards - 1,
-          currentCardIndex === totalCards - 1
-        );
-        break;
-      default:
-        throw this.form.createError('Invalid behavior', 'runtime', { cause: { behavior } });
-    }
-  }
+  //   switch (behavior) {
+  //     case 'byField':
+  //       this.enableButtons(
+  //         this.nextButtons,
+  //         currentFieldIndex < totalFields - 1,
+  //         currentFieldIndex === totalFields - 1
+  //       );
+  //       break;
+  //     case 'byGroup':
+  //       this.enableButtons(
+  //         this.nextButtons,
+  //         currentGroupIndex < totalGroups - 1,
+  //         currentGroupIndex === totalGroups - 1
+  //       );
+  //       break;
+  //     case 'bySet':
+  //       this.enableButtons(
+  //         this.nextButtons,
+  //         currentSetIndex < totalSets - 1,
+  //         currentSetIndex === totalSets - 1
+  //       );
+  //       break;
+  //     case 'byCard':
+  //       this.enableButtons(
+  //         this.nextButtons,
+  //         currentCardIndex < totalCards - 1,
+  //         currentCardIndex === totalCards - 1
+  //       );
+  //       break;
+  //     default:
+  //       throw this.form.createError('Invalid behavior', 'runtime', { cause: { behavior } });
+  //   }
+  // }
 
-  private handleSubmitButtonStates(): void {
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = this.form.getAllState();
+  // private handleSubmitButtonStates(): void {
+  //   const {
+  //     totalCards,
+  //     currentCardIndex,
+  //     totalSets,
+  //     currentSetIndex,
+  //     totalGroups,
+  //     currentGroupIndex,
+  //     totalFields,
+  //     currentFieldIndex,
+  //   } = this.form.getAllState();
 
-    const behavior = this.form.getBehavior();
+  //   const behavior = this.form.getBehavior();
 
-    switch (behavior) {
-      case 'byField':
-        this.enableButtons(
-          this.submitButtons,
-          currentFieldIndex === totalFields - 1,
-          currentFieldIndex !== totalFields - 1
-        );
-        break;
-      case 'byGroup':
-        this.enableButtons(
-          this.submitButtons,
-          currentGroupIndex === totalGroups - 1,
-          currentGroupIndex !== totalGroups - 1
-        );
-        break;
-      case 'bySet':
-        this.enableButtons(
-          this.submitButtons,
-          currentSetIndex === totalSets - 1,
-          currentSetIndex !== totalSets - 1
-        );
-        break;
-      case 'byCard':
-        this.enableButtons(
-          this.submitButtons,
-          currentCardIndex === totalCards - 1,
-          currentCardIndex !== totalCards - 1
-        );
-        break;
-      default:
-        throw this.form.createError('Invalid behavior', 'runtime', { cause: { behavior } });
-    }
-  }
+  //   switch (behavior) {
+  //     case 'byField':
+  //       this.enableButtons(
+  //         this.submitButtons,
+  //         currentFieldIndex === totalFields - 1,
+  //         currentFieldIndex !== totalFields - 1
+  //       );
+  //       break;
+  //     case 'byGroup':
+  //       this.enableButtons(
+  //         this.submitButtons,
+  //         currentGroupIndex === totalGroups - 1,
+  //         currentGroupIndex !== totalGroups - 1
+  //       );
+  //       break;
+  //     case 'bySet':
+  //       this.enableButtons(
+  //         this.submitButtons,
+  //         currentSetIndex === totalSets - 1,
+  //         currentSetIndex !== totalSets - 1
+  //       );
+  //       break;
+  //     case 'byCard':
+  //       this.enableButtons(
+  //         this.submitButtons,
+  //         currentCardIndex === totalCards - 1,
+  //         currentCardIndex !== totalCards - 1
+  //       );
+  //       break;
+  //     default:
+  //       throw this.form.createError('Invalid behavior', 'runtime', { cause: { behavior } });
+  //   }
+  // }
 
   /**
    * Toggle navigation
