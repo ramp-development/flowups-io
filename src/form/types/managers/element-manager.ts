@@ -1,12 +1,4 @@
-import type { FlowupsForm } from 'src/form';
-
-import type {
-  CardElement,
-  FieldElement,
-  GroupElement,
-  InputElement,
-  SetElement,
-} from '../elements';
+import type { CardItem, FieldItem, GroupItem, InputItem, SetItem } from '../items';
 import type {
   FormCardState,
   FormFieldState,
@@ -14,18 +6,17 @@ import type {
   FormInputState,
   FormSetState,
 } from '../state';
-import type { IBaseManager } from './base-manager';
 
 /**
- * Union of all element types
+ * Union of all item types
  */
-export type ElementData = CardElement | SetElement | GroupElement | FieldElement | InputElement;
+export type ItemData = CardItem | SetItem | GroupItem | FieldItem | InputItem;
 
 /**
- * Updatable element data
+ * Updatable item data
  * Only includes properties that can be updated at runtime
  */
-export type UpdatableElementData<T extends ElementData> = Partial<
+export type UpdatableItemData<T extends ItemData> = Partial<
   Pick<
     T,
     Extract<
@@ -43,9 +34,9 @@ export type UpdatableElementData<T extends ElementData> = Partial<
 >;
 
 /**
- * Map element types to their corresponding state types
+ * Map items types to their corresponding state types
  */
-export type ElementStateMap = {
+export type ItemStateMap = {
   card: FormCardState;
   set: FormSetState;
   group: FormGroupState;
@@ -54,68 +45,10 @@ export type ElementStateMap = {
 };
 
 /**
- * Get the state type for a given element
+ * Get the state type for a given item
  */
-export type StateForElement<T extends ElementData> = T extends { type: infer TType }
-  ? TType extends keyof ElementStateMap
-    ? ElementStateMap[TType]
+export type StateForItem<T extends ItemData> = T extends { type: infer TType }
+  ? TType extends keyof ItemStateMap
+    ? ItemStateMap[TType]
     : never
   : never;
-
-/**
- * Element Manager Interface
- * All element managers (Card, Set, Group, Field) implement this
- */
-export interface IElementManager<TElement extends ElementData> extends IBaseManager {
-  /** Reference to parent form */
-  form: FlowupsForm;
-
-  /** Calculate element-specific state */
-  calculateStates(): Partial<StateForElement<TElement>>;
-
-  /**
-   * Update data for an element
-   * @param selector - Element ID or index
-   * @param data - Partial element data to update
-   */
-  updateElementData(selector: string | number, data?: UpdatableElementData<TElement>): void;
-
-  /** Clear active flags for all elements */
-  clearActiveAndCurrent(): void;
-
-  /**
-   * Set the active state on parent
-   * @param parentId - ID of parent element
-   * @param parentType - Type of parent (group, set, or card)
-   * @param options - Active (boolean, defaults to true) and firstIsCurrent (boolean, defaults to false)
-   */
-  setActiveByParent(
-    parentId: string,
-    parentType: 'group' | 'set' | 'card',
-    options: { active: boolean; firstIsCurrent: boolean }
-  ): void;
-
-  /** Get the total number of elements */
-  getTotal(): number;
-
-  /** Get element by index */
-  getByIndex(index: number): TElement | null;
-
-  /** Get element by ID */
-  getById(id: string): TElement | null;
-
-  /** Get all elements */
-  getAll(): TElement[];
-
-  /** Get the current element */
-  getCurrent(): TElement | null;
-
-  /** Write states to form */
-  setStates(): void;
-
-  /**
-   * Update storage with the complete element
-   * Used internally after merging data
-   */
-  updateStorage(element: TElement): void;
-}

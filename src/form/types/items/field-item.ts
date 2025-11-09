@@ -1,5 +1,5 @@
-import type { BaseElement } from './base-element';
-import type { GroupParentHierarchy } from './group-element';
+import type { BaseItem } from './base-item';
+import type { GroupParentHierarchy } from './group-item';
 
 export interface FieldParentHierarchy extends GroupParentHierarchy {
   groupId: string | null;
@@ -7,10 +7,11 @@ export interface FieldParentHierarchy extends GroupParentHierarchy {
 }
 
 /**
- * Field Element
+ * Field Item
  * Wrapper for label, input, error, hint
+ * @extends BaseItem
  */
-export interface FieldElement extends BaseElement {
+export interface FieldItem extends BaseItem {
   /** Type identifier */
   type: 'field';
 
@@ -22,7 +23,4 @@ export interface FieldElement extends BaseElement {
 
   /** Whether this field is valid */
   isValid: boolean;
-
-  /** Validation error messages */
-  errors: string[];
 }

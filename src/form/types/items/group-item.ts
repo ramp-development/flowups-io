@@ -1,5 +1,5 @@
-import type { BaseElement } from './base-element';
-import type { SetParentHierarchy } from './set-element';
+import type { BaseItem } from './base-item';
+import type { SetParentHierarchy } from './set-item';
 
 export interface GroupParentHierarchy extends SetParentHierarchy {
   setId: string;
@@ -7,18 +7,22 @@ export interface GroupParentHierarchy extends SetParentHierarchy {
 }
 
 /**
- * Group Element
+ * Group Item
  * Logical subgroup within a set (optional, uses <fieldset>)
+ * @extends BaseItem
  */
-export interface GroupElement extends BaseElement {
+export interface GroupItem extends BaseItem {
   /** Type identifier */
   type: 'group';
 
-  /** Progress of the group (0-100) */
-  progress: number;
-
   /** Parent hierarchy */
   parentHierarchy: GroupParentHierarchy;
+
+  /** Display title (from attribute or <legend>) */
+  title: string;
+
+  /** Progress of the group (0-100) */
+  progress: number;
 
   /** Whether this group is included in the navigation order (conditional visibility) */
   isIncluded: boolean;

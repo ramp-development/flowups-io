@@ -1,5 +1,5 @@
-import type { BaseElement } from './base-element';
-import type { CardParentHierarchy } from './card-element';
+import type { BaseItem } from './base-item';
+import type { CardParentHierarchy } from './card-item';
 
 export interface SetParentHierarchy extends CardParentHierarchy {
   cardId: string | null;
@@ -7,18 +7,22 @@ export interface SetParentHierarchy extends CardParentHierarchy {
 }
 
 /**
- * Set Element
+ * Set Item
  * Semantic grouping of related fields (uses <fieldset>)
+ * @extends BaseItem
  */
-export interface SetElement extends BaseElement {
+export interface SetItem extends BaseItem {
   /** Type identifier */
   type: 'set';
 
-  /** Progress of the set (0-100) */
-  progress: number;
-
   /** Parent hierarchy */
   parentHierarchy: SetParentHierarchy;
+
+  /** Display title (from attribute or <legend>) */
+  title: string;
+
+  /** Progress of the set (0-100) */
+  progress: number;
 
   /** Whether this set is included in the navigation order (conditional visibility) */
   isIncluded: boolean;

@@ -7,14 +7,14 @@
 
 import { ATTR } from '../constants/attr';
 import type {
-  CardElement,
+  CardItem,
   FormSetState,
-  SetElement,
+  SetItem,
   SetParentHierarchy,
-  UpdatableElementData,
+  UpdatableItemData,
 } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
-import { ElementManager } from './element-manager';
+import { ItemManager } from './item-manager';
 
 /**
  * SetManager Implementation
@@ -23,20 +23,20 @@ import { ElementManager } from './element-manager';
  * Provides access to sets by index or ID.
  * Associates sets with their parent cards.
  */
-export class SetManager extends ElementManager<SetElement> {
-  protected elements: SetElement[] = [];
-  protected elementMap: Map<string, SetElement> = new Map();
-  protected readonly elementType = 'set';
+export class SetManager extends ItemManager<SetItem> {
+  protected items: SetItem[] = [];
+  protected itemMap: Map<string, SetItem> = new Map();
+  protected readonly itemType = 'set';
 
   /**
-   * Create element data object
-   * Parses the element attribute and creates a SetElement object
+   * Create data object
+   * Parses the element attribute and creates a SetItem object
    *
    * @param element - HTMLElement
    * @param index - Index of the element within the list of sets
-   * @returns SetElement | undefined
+   * @returns SetItem | undefined
    */
-  protected createElementData(element: HTMLElement, index: number): SetElement | undefined {
+  protected createItemData(element: HTMLElement, index: number): SetItem | undefined {
     if (!(element instanceof HTMLElement)) return;
 
     const attrValue = element.getAttribute(`${ATTR}-element`);
@@ -45,26 +45,26 @@ export class SetManager extends ElementManager<SetElement> {
     const parsed = parseElementAttribute(attrValue);
 
     // Skip if not a set
-    if (parsed.type !== this.elementType) return;
+    if (parsed.type !== this.itemType) return;
 
     // Extract title with priority resolution
-    const titleData = extractTitle(element, this.elementType, parsed.id, index);
+    const titleData = extractTitle(element, this.itemType, parsed.id, index);
 
     // Find parent card (if cards exist)
     const parentHierarchy = this.findParentHierarchy<SetParentHierarchy>(element);
     const active = this.determineActive(element, index);
 
-    // Create set element object
+    // Create set item object
     return {
       element,
-      type: this.elementType,
+      type: this.itemType,
       id: titleData.id,
       title: titleData.title,
       index,
       visited: active,
       completed: false,
       active,
-      current: active && index === 0, // Only first active element is current
+      current: active && index === 0,
       progress: 0,
       parentHierarchy,
       isIncluded: true,
@@ -84,18 +84,16 @@ export class SetManager extends ElementManager<SetElement> {
     const currentSetId = currentSet ? currentSet.id : null;
     const currentSetTitle = currentSet ? currentSet.title : null;
     const previousSetIndex = currentSetIndex > 0 ? currentSetIndex - 1 : null;
-    const nextSetIndex = currentSetIndex < this.elements.length - 1 ? currentSetIndex + 1 : null;
+    const nextSetIndex = currentSetIndex < this.items.length - 1 ? currentSetIndex + 1 : null;
     const completedSets = new Set(
-      this.elements.filter((element) => element.completed).map((element) => element.id)
+      this.items.filter((item) => item.completed).map((item) => item.id)
     );
-    const visitedSets = new Set(
-      this.elements.filter((element) => element.visited).map((element) => element.id)
-    );
-    const totalSets = this.elements.length;
+    const visitedSets = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
+    const totalSets = this.items.length;
     const setsComplete = completedSets.size;
-    const setValidity = this.elements.reduce(
-      (acc, element) => {
-        acc[element.id] = element.isValid;
+    const setValidity = this.items.reduce(
+      (acc, item) => {
+        acc[item.id] = item.isValid;
         return acc;
       },
       {} as Record<string, boolean>
@@ -118,16 +116,13 @@ export class SetManager extends ElementManager<SetElement> {
 
   /**
    * Update data values
-   * @param element - Set Element
+   * @param item - Set Item
    * @param data - Data to merge
    */
-  protected mergeElementData(
-    element: SetElement,
-    data: UpdatableElementData<SetElement>
-  ): SetElement {
-    const groups = this.form.groupManager.getAllByParentId(element.id, 'set');
+  protected mergeItemData(item: SetItem, data: UpdatableItemData<SetItem>): SetItem {
+    const groups = this.form.groupManager.getAllByParentId(item.id, 'set');
     const fields = this.form.fieldManager
-      .getAllByParentId(element.id, 'set')
+      .getAllByParentId(item.id, 'set')
       .filter((field) => field.isIncluded);
 
     const use = groups.length > 0 ? groups : fields;
@@ -137,10 +132,10 @@ export class SetManager extends ElementManager<SetElement> {
     const progress = use.filter((item) => item.completed).length / use.length;
 
     return {
-      ...element,
+      ...item,
       visited: true,
       completed,
-      active: data.active ?? element.active,
+      active: data.active ?? item.active,
       isValid,
       progress,
       ...data,
@@ -148,12 +143,12 @@ export class SetManager extends ElementManager<SetElement> {
   }
 
   /**
-   * Find the parent element for a set
+   * Find the parent item for a set
    *
    * @param element - The set element
    * @returns Parent data or null
    */
-  protected findParentElement(element: HTMLElement): CardElement | null {
-    return this.findParentBySelector(element, 'card', () => this.form.cardManager.getAll());
+  protected findParentItem(element: HTMLElement): CardItem | null {
+    return this.findParentByElement(element, 'card', () => this.form.cardManager.getAll());
   }
 }

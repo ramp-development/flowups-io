@@ -10,7 +10,7 @@
 import type { StateChangePayload } from '$lib/types';
 
 import { ATTR } from '../constants';
-import type { ElementData, FormStateKeys, IDisplayManager } from '../types';
+import type { FormStateKeys, ItemData } from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -19,7 +19,7 @@ import { BaseManager } from './base-manager';
  * Subscribes to navigation change events and updates element visibility.
  * Uses display: none/block for instant showing/hiding.
  */
-export class DisplayManager extends BaseManager implements IDisplayManager {
+export class DisplayManager extends BaseManager {
   // ============================================
   // Lifecycle
   // ============================================
@@ -146,7 +146,7 @@ export class DisplayManager extends BaseManager implements IDisplayManager {
    * Show/Hide an element
    * Sets display: sets or removes display: none based on visibility
    */
-  public showElement(elementData: ElementData): void {
+  public showElement(elementData: ItemData): void {
     const { element, active, type } = elementData;
     if (active) element.style.removeProperty('display');
     else element.style.setProperty('display', 'none');

@@ -8,13 +8,13 @@
 import { ATTR } from '../constants/attr';
 import type {
   FormGroupState,
-  GroupElement,
+  GroupItem,
   GroupParentHierarchy,
-  SetElement,
-  UpdatableElementData,
+  SetItem,
+  UpdatableItemData,
 } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
-import { ElementManager } from './element-manager';
+import { ItemManager } from './item-manager';
 
 /**
  * GroupManager Implementation
@@ -23,20 +23,20 @@ import { ElementManager } from './element-manager';
  * Provides access to groups by index or ID.
  * Associates groups with their parent sets and cards.
  */
-export class GroupManager extends ElementManager<GroupElement> {
-  protected elements: GroupElement[] = [];
-  protected elementMap: Map<string, GroupElement> = new Map();
-  protected readonly elementType = 'group';
+export class GroupManager extends ItemManager<GroupItem> {
+  protected items: GroupItem[] = [];
+  protected itemMap: Map<string, GroupItem> = new Map();
+  protected readonly itemType = 'group';
 
   /**
-   * Create element data object
-   * Parses the element attribute and creates a GroupElement object
+   * Create data object
+   * Parses the element attribute and creates a GroupItem object
    *
    * @param element - HTMLElement
    * @param index - Index of the element within the list of groups
-   * @returns GroupElement | undefined
+   * @returns GroupItem | undefined
    */
-  protected createElementData(element: HTMLElement, index: number): GroupElement | undefined {
+  protected createItemData(element: HTMLElement, index: number): GroupItem | undefined {
     if (!(element instanceof HTMLElement)) return;
 
     const attrValue = element.getAttribute(`${ATTR}-element`);
@@ -45,26 +45,26 @@ export class GroupManager extends ElementManager<GroupElement> {
     const parsed = parseElementAttribute(attrValue);
 
     // Skip if not a group
-    if (parsed.type !== this.elementType) return;
+    if (parsed.type !== this.itemType) return;
 
     // Extract title with priority resolution
-    const titleData = extractTitle(element, this.elementType, parsed.id, index);
+    const titleData = extractTitle(element, this.itemType, parsed.id, index);
 
     // Find parent hierarchy
     const parentHierarchy = this.findParentHierarchy<GroupParentHierarchy>(element);
     const active = this.determineActive(element, index);
 
-    // Create group element object
+    // Create group item object
     return {
       element,
-      type: this.elementType,
+      type: this.itemType,
       id: titleData.id,
       title: titleData.title,
       index,
       visited: active,
       completed: false,
       active,
-      current: active && index === 0, // Only first active element is current
+      current: active && index === 0,
       progress: 0,
       parentHierarchy,
       isIncluded: true,
@@ -84,19 +84,16 @@ export class GroupManager extends ElementManager<GroupElement> {
     const currentGroupId = currentGroup ? currentGroup.id : null;
     const currentGroupTitle = currentGroup ? currentGroup.title : null;
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
-    const nextGroupIndex =
-      currentGroupIndex < this.elements.length - 1 ? currentGroupIndex + 1 : null;
+    const nextGroupIndex = currentGroupIndex < this.items.length - 1 ? currentGroupIndex + 1 : null;
     const completedGroups = new Set(
-      this.elements.filter((element) => element.completed).map((element) => element.id)
+      this.items.filter((item) => item.completed).map((item) => item.id)
     );
-    const visitedGroups = new Set(
-      this.elements.filter((element) => element.visited).map((element) => element.id)
-    );
-    const totalGroups = this.elements.length;
+    const visitedGroups = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
+    const totalGroups = this.items.length;
     const groupsComplete = completedGroups.size;
-    const groupValidity = this.elements.reduce(
-      (acc, element) => {
-        acc[element.id] = element.isValid;
+    const groupValidity = this.items.reduce(
+      (acc, item) => {
+        acc[item.id] = item.isValid;
         return acc;
       },
       {} as Record<string, boolean>
@@ -119,15 +116,12 @@ export class GroupManager extends ElementManager<GroupElement> {
 
   /**
    * Update data values
-   * @param element - Group Element
+   * @param item - Group Item
    * @param data - Data to merge
    */
-  protected mergeElementData(
-    element: GroupElement,
-    data: UpdatableElementData<GroupElement>
-  ): GroupElement {
+  protected mergeItemData(item: GroupItem, data: UpdatableItemData<GroupItem>): GroupItem {
     const includedFields = this.form.fieldManager
-      .getAllByParentId(element.id, 'group')
+      .getAllByParentId(item.id, 'group')
       .filter((field) => field.isIncluded);
 
     const completed = includedFields.every((field) => field.completed);
@@ -136,10 +130,10 @@ export class GroupManager extends ElementManager<GroupElement> {
       includedFields.filter((field) => field.completed).length / includedFields.length;
 
     return {
-      ...element,
+      ...item,
       visited: true,
       completed,
-      active: data.active ?? element.active,
+      active: data.active ?? item.active,
       isValid,
       progress,
       ...data,
@@ -147,12 +141,12 @@ export class GroupManager extends ElementManager<GroupElement> {
   }
 
   /**
-   * Find the parent element for a group
+   * Find the parent item for a group
    *
-   * @param element - The set element
+   * @param element - The group element
    * @returns Parent data or null
    */
-  protected findParentElement(element: HTMLElement): SetElement | null {
-    return this.findParentBySelector(element, 'set', () => this.form.setManager.getAll());
+  protected findParentItem(element: HTMLElement): SetItem | null {
+    return this.findParentByElement(element, 'set', () => this.form.setManager.getAll());
   }
 }

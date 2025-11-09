@@ -1,4 +1,4 @@
-import type { FormElementType } from '../elements';
+import type { FormElementType } from '../items';
 
 /**
  * Parsed Element Data

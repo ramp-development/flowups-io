@@ -8,7 +8,7 @@
 export type * from './config';
 
 // Element Types
-export type * from './elements';
+export type * from './items';
 
 // Event Types
 export type * from './events';

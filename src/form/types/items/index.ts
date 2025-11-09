@@ -18,15 +18,12 @@ export type FormElementType =
   | 'input'
   | 'prev'
   | 'next'
-  | 'submit'
-  | 'error';
+  | 'submit';
 
-export * from './base-element';
-export * from './button-element';
-export * from './card-element';
-export * from './error-element';
-export * from './field-element';
-export * from './form-hierarchy';
-export * from './group-element';
-export * from './input-element';
-export * from './set-element';
+export * from './base-item';
+export * from './button-item';
+export * from './card-item';
+export * from './field-item';
+export * from './group-item';
+export * from './input-item';
+export * from './set-item';

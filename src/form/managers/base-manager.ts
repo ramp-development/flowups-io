@@ -1,9 +1,8 @@
 import type { ComponentError } from '$lib/types';
 
 import type { FlowupsForm } from '..';
-import type { IBaseManager } from '../types';
 
-export abstract class BaseManager implements IBaseManager {
+export abstract class BaseManager {
   public readonly form: FlowupsForm;
 
   constructor(form: FlowupsForm) {

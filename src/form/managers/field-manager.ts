@@ -6,15 +6,15 @@
 
 import { ATTR } from '../constants/attr';
 import type {
-  FieldElement,
+  FieldItem,
   FieldParentHierarchy,
   FormFieldState,
-  GroupElement,
-  SetElement,
-  UpdatableElementData,
+  GroupItem,
+  SetItem,
+  UpdatableItemData,
 } from '../types';
 import { parseElementAttribute } from '../utils';
-import { ElementManager } from './element-manager';
+import { ItemManager } from './item-manager';
 
 /**
  * FieldManager Implementation
@@ -22,20 +22,20 @@ import { ElementManager } from './element-manager';
  * Discovers and manages field elements in the form hierarchy.
  * Builds navigation order.
  */
-export class FieldManager extends ElementManager<FieldElement> {
-  protected elements: FieldElement[] = [];
-  protected elementMap: Map<string, FieldElement> = new Map();
-  protected readonly elementType = 'field';
+export class FieldManager extends ItemManager<FieldItem> {
+  protected items: FieldItem[] = [];
+  protected itemMap: Map<string, FieldItem> = new Map();
+  protected readonly itemType = 'field';
 
   /**
-   * Create element data object
-   * Parses the element attribute and creates a FieldElement object
+   * Create data object
+   * Parses the element attribute and creates a FieldItem object
    *
    * @param element - HTMLElement
    * @param index - Index of the element within the list of fields
-   * @returns FieldElement | undefined
+   * @returns FieldItem | undefined
    */
-  protected createElementData(element: HTMLElement, index: number): FieldElement | undefined {
+  protected createItemData(element: HTMLElement, index: number): FieldItem | undefined {
     if (!(element instanceof HTMLElement)) return;
 
     const attrValue = element.getAttribute(`${ATTR}-element`);
@@ -44,31 +44,27 @@ export class FieldManager extends ElementManager<FieldElement> {
     const parsed = parseElementAttribute(attrValue);
 
     // Skip if not a field
-    if (parsed.type !== this.elementType) return;
+    if (parsed.type !== this.itemType) return;
 
     // Generate id (use parsed id if available, otherwise generate from index)
-    const id = parsed.id || `${this.elementType}-${index}`;
-
-    // Generate title (use id)
-    const title = id;
+    const id = parsed.id || `${this.itemType}-${index}`;
 
     // Find parent hierarchy
-    const parent = this.findParentElement(element);
+    const parent = this.findParentItem(element);
     if (!parent) {
       throw this.createError('Cannot discover fields: no parent element found', 'init', {
         cause: { manager: 'FieldManager', element },
       });
     }
-    // const parent = this.findParentGroup(element) ?? this.findParentSet(element);
+
     const parentHierarchy = this.findParentHierarchy<FieldParentHierarchy>(parent);
     const active = this.determineActive(element, index);
 
-    // Create field element object
+    // Create field item object
     return {
       element,
-      type: this.elementType,
+      type: this.itemType,
       id,
-      title,
       index,
       visited: active,
       completed: false,
@@ -77,7 +73,6 @@ export class FieldManager extends ElementManager<FieldElement> {
       parentHierarchy,
       isIncluded: true,
       isValid: false,
-      errors: [],
     };
   }
 
@@ -92,20 +87,17 @@ export class FieldManager extends ElementManager<FieldElement> {
     const currentFieldIndex = currentField ? currentField.index : -1;
     const currentFieldId = currentField ? currentField.id : null;
     const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
-    const nextFieldIndex =
-      currentFieldIndex < this.elements.length - 1 ? currentFieldIndex + 1 : null;
+    const nextFieldIndex = currentFieldIndex < this.items.length - 1 ? currentFieldIndex + 1 : null;
     const completedFields = new Set(
-      this.elements.filter((element) => element.completed).map((element) => element.id)
+      this.items.filter((item) => item.completed).map((item) => item.id)
     );
-    const visitedFields = new Set(
-      this.elements.filter((element) => element.visited).map((element) => element.id)
-    );
-    const totalFields = this.elements.length;
-    const totalIncludedFields = this.elements.filter((element) => element.isIncluded).length;
+    const visitedFields = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
+    const totalFields = this.items.length;
+    const totalIncludedFields = this.items.filter((item) => item.isIncluded).length;
     const fieldsComplete = completedFields.size;
-    const fieldValidity = this.elements.reduce(
-      (acc, element) => {
-        acc[element.id] = element.isValid;
+    const fieldValidity = this.items.reduce(
+      (acc, item) => {
+        acc[item.id] = item.isValid;
         return acc;
       },
       {} as Record<string, boolean>
@@ -128,46 +120,41 @@ export class FieldManager extends ElementManager<FieldElement> {
 
   /**
    * Update data values
-   * @param element - Field Element
+   * @param item - Field Item
    * @param data - Data to merge
    */
-  protected mergeElementData(
-    element: FieldElement,
-    data: UpdatableElementData<FieldElement>
-  ): FieldElement {
-    const input = this.form.inputManager.getAllByParentId(element.id, 'field')[0];
+  protected mergeItemData(item: FieldItem, data: UpdatableItemData<FieldItem>): FieldItem {
+    const input = this.form.inputManager.getAllByParentId(item.id, 'field')[0];
     if (!input) {
       throw this.createError('Cannot merge field data: input not found', 'runtime', {
-        cause: { manager: 'FieldManager', element, input },
+        cause: { manager: 'FieldManager', element: item, input },
       });
     }
 
     const { completed, isValid } = input;
 
     return {
-      ...element,
+      ...item,
       visited: true,
       completed,
-      active: data.active ?? element.active,
+      active: data.active ?? item.active,
       isValid,
       ...data,
     };
   }
 
   /**
-   * Find the parent element for a field
+   * Find the parent item for a field
    *
    * @param element - The field element
    * @returns Parent data or null
    */
-  protected findParentElement(element: HTMLElement): GroupElement | SetElement | null {
-    const parentGroup = this.findParentBySelector(element, 'group', () =>
+  protected findParentItem(element: HTMLElement): GroupItem | SetItem | null {
+    const parentGroup = this.findParentByElement(element, 'group', () =>
       this.form.groupManager.getAll()
     );
 
-    const parentSet = this.findParentBySelector(element, 'set', () =>
-      this.form.setManager.getAll()
-    );
+    const parentSet = this.findParentByElement(element, 'set', () => this.form.setManager.getAll());
 
     return parentGroup ?? parentSet;
   }

@@ -1,0 +1,613 @@
+import { ATTR } from '../constants';
+import type {
+  CardParentHierarchy,
+  FormBehavior,
+  ItemData,
+  StateForItem,
+  UpdatableItemData,
+} from '../types';
+import { BaseManager } from './base-manager';
+
+/**
+ * Abstract ItemManager class
+ * Provides common functionality for all item managers
+ */
+export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
+  // ============================================
+  // Abstract Properties
+  // ============================================
+
+  protected abstract items: TItem[];
+  protected abstract itemMap: Map<string, TItem>;
+  protected abstract readonly itemType: string;
+  protected navigationOrder: number[] = [];
+
+  // ============================================
+  // Abstract Methods
+  // ============================================
+
+  protected abstract createItemData(element: HTMLElement, index: number): TItem | undefined;
+  public abstract calculateStates(): StateForItem<TItem>;
+  protected abstract findParentItem(element: HTMLElement): ItemData | null;
+
+  // ============================================
+  // Lifecycle Methods
+  // ============================================
+
+  public init(runOnInitalzed: boolean = true): void {
+    this.groupStart(`Initializing ${this.itemType}s`);
+    this.discoverItems();
+    if (this.itemType !== 'input') this.buildNavigationOrder();
+    this.setStates();
+
+    if (runOnInitalzed) this.onInitialized();
+  }
+
+  public onInitialized(): void {
+    this.logDebug(`Initialized`);
+    this.groupEnd();
+  }
+
+  public destroy(): void {
+    this.items = [];
+    this.itemMap.clear();
+
+    this.logDebug(`${this.constructor.name} destroyed`);
+  }
+
+  // ============================================
+  // Implemented Methods
+  // ============================================
+
+  /**
+   * Discover all items of this type in the form
+   * Finds all items with [${ATTR}-item^="${this.itemType}"]
+   */
+  protected discoverItems(): void {
+    const rootElement = this.form.getRootElement();
+    if (!rootElement) {
+      throw this.createError(`Cannot discover ${this.itemType}s: root element is null`, 'init', {
+        cause: { manager: this.constructor.name, rootElement },
+      });
+    }
+
+    // Query all items of this type
+    const items = this.form.queryAll(`[${ATTR}-element^="${this.itemType}"]`);
+
+    this.items = [];
+    this.itemMap.clear();
+
+    items.forEach((item, index) => {
+      const itemData = this.createItemData(item, index);
+      if (!itemData) return;
+
+      this.updateStorage(itemData);
+    });
+
+    this.logDebug(`Discovered ${items.length} ${this.itemType}s`, {
+      items,
+    });
+  }
+
+  /**
+   * Update item data
+   * TypeScript ensures only valid properties for this item type
+   */
+  public updateItemData(
+    selector: string | number,
+    data: UpdatableItemData<TItem> = {} as UpdatableItemData<TItem>
+  ): void {
+    if (
+      (typeof selector === 'number' && selector < 0) ||
+      (typeof selector === 'number' && selector >= this.items.length)
+    )
+      return;
+
+    const item = this.getBySelector(selector);
+    if (!item) {
+      this.logWarn(`Cannot update ${this.itemType} data: ${selector} not found`);
+      return;
+    }
+
+    // Merge data with existing item data
+    const updated = this.mergeItemData(item, data);
+    this.updateStorage(updated);
+
+    this.logDebug(`Updated ${this.itemType} "${item.id}" data`, { updated });
+  }
+
+  /**
+   * Merge item data - can be overridden
+   * @virtual
+   */
+  protected mergeItemData(item: TItem, data: UpdatableItemData<TItem>): TItem {
+    return {
+      ...item,
+      visited: true, // Always mark as visited when updated
+      ...data,
+    } as TItem;
+  }
+
+  /**
+   * Determine if item should be active based on parent and behavior
+   * Default implementation - can be overridden if needed
+   *
+   * @param element - HTMLElement to check
+   * @param index - Element index
+   * @returns Whether element should be active
+   * @virtual
+   */
+  protected determineActive(element: HTMLElement, index: number): boolean {
+    const behavior = this.form.getBehavior();
+
+    // Get parent based on element type
+    const parent = this.findParentItem(element);
+
+    // No parent - first element is active
+    if (!parent) return index === 0;
+
+    // Behavior determines if only first child is active
+    const behaviorRequiresFirstOnly = this.behaviorRequiresFirstChild(behavior);
+
+    return behaviorRequiresFirstOnly ? parent.active && index === 0 : parent.active;
+  }
+
+  /**
+   * Check if current behavior requires only first child to be active
+   * Can be overwritten for item-specific behavior
+   * @virtual
+   */
+  protected behaviorRequiresFirstChild(behavior: FormBehavior): boolean {
+    const firstChildBehaviors: Record<FormBehavior, string[]> = {
+      byField: ['field', 'group', 'set', 'card'],
+      byGroup: ['group', 'set', 'card'],
+      bySet: ['set', 'card'],
+      byCard: ['card'],
+    };
+
+    return firstChildBehaviors[behavior]?.includes(this.itemType) ?? false;
+  }
+
+  /**
+   * Get all active item indices
+   * Returns array of indices for all items marked as active
+   * Used by calculateStates() to populate active*Indices arrays
+   *
+   * @returns Array of active item indices
+   */
+  protected getActiveIndices(): number[] {
+    return this.items.filter((item) => item.active).map((item) => item.index);
+  }
+
+  /**
+   * Set an item as current (focused/primary)
+   * Automatically clears current flag from all other items
+   * Validates that the item is active before setting as current
+   *
+   * @param selector - Item ID or index
+   * @throws Warning if item is not active
+   */
+  public setCurrent(selector: string | number): void {
+    const item = this.getBySelector(selector);
+    if (!item) {
+      this.logWarn(`Set current: ${this.itemType} not found`, { selector });
+      return;
+    }
+
+    // Validate: current item must be active
+    if (!item.active) {
+      this.logWarn(`Set current: ${this.itemType} is not active, cannot set current`, {
+        id: item.id,
+        index: item.index,
+      });
+
+      return;
+    }
+
+    // Clear current flag from all items
+    this.clearCurrent();
+    this.updateItemData(item.index, { current: true } as UpdatableItemData<TItem>);
+
+    this.logDebug(`${this.itemType}: Set current`, {
+      id: item.id,
+      index: item.index,
+      items: this.items,
+    });
+  }
+
+  /**
+   * Clear current flag from all items
+   */
+  public clearCurrent(): void {
+    this.items.forEach((item) => {
+      if (item.current) {
+        this.updateItemData(item.index, { current: false } as UpdatableItemData<TItem>);
+      }
+    });
+
+    this.logDebug(`Cleared current flag for all ${this.itemType}s`);
+  }
+
+  /**
+   * Clear all active and current flags
+   * Updates storage not states
+   */
+  public clearActiveAndCurrent(): void {
+    this.items.forEach((item) => {
+      const updated = { ...item, active: false, current: false } as TItem;
+      this.updateStorage(updated);
+    });
+
+    this.logDebug(`Cleared active and current flags for all ${this.itemType}s`, {
+      count: this.items.length,
+      items: this.items,
+    });
+  }
+
+  /**
+   * Set active flag
+   * Updates storage not states
+   */
+  public setActive(selector: string | number): void {
+    const item = this.getBySelector(selector);
+    if (!item) {
+      this.logWarn(`Set active: ${this.itemType} not found`, { selector });
+      return;
+    }
+
+    const updated = { ...item, active: true } as TItem;
+    this.updateStorage(updated);
+
+    this.logDebug(`Set active flag for ${this.itemType}: ${item.id}`, {
+      id: item.id,
+      index: item.index,
+      items: this.items,
+    });
+  }
+
+  /**
+   * Set active by parent
+   * Updates storage not states
+   * @param parentId - The parent item ID
+   * @param parentType - The parent item type
+   * @param options - Active (boolean, defaults to true) and firstIsCurrent (boolean, defaults to false)
+   */
+  public setActiveByParent(
+    parentId: string,
+    parentType: 'card' | 'set' | 'group' | 'field',
+    options?: { active?: boolean; firstIsCurrent?: boolean }
+  ): void {
+    const { active = true, firstIsCurrent = false } = options ?? {};
+
+    const children = this.getItemsByParentId(parentId, parentType);
+    children.forEach((item, index) => {
+      const updated = { ...item, active, current: index === 0 && firstIsCurrent } as TItem;
+      this.updateStorage(updated);
+    });
+
+    this.logDebug(`${this.itemType}: Set active: ${active} by parent ${parentType}: ${parentId}`, {
+      count: children.length,
+      children,
+    });
+  }
+
+  /**
+   * Get items by parent ID
+   * Uses type guards to safely access hierarchy properties
+   * @virtual
+   */
+  protected getItemsByParentId(
+    parentId: string,
+    parentType: 'card' | 'set' | 'group' | 'field'
+  ): TItem[] {
+    return this.items.filter((item) => {
+      // Cards have no parent
+      if (item.type === 'card') return false;
+
+      const { parentHierarchy } = item;
+      if (!parentHierarchy) return false;
+
+      // Only Fields have groupId, Groups and Fields have setId, All items (except cards) have cardId
+      switch (parentType) {
+        case 'field':
+          return 'fieldId' in parentHierarchy && parentHierarchy.fieldId === parentId;
+        case 'group':
+          return 'groupId' in parentHierarchy && parentHierarchy.groupId === parentId;
+        case 'set':
+          return 'setId' in parentHierarchy && parentHierarchy.setId === parentId;
+        case 'card':
+          return 'cardId' in parentHierarchy && parentHierarchy.cardId === parentId;
+        default:
+          return false;
+      }
+    });
+  }
+
+  /**
+   * Generic helper to find parent item by selector
+   * @param child - The child element
+   * @param parentType - The parent type
+   * @param getParentItems - The function to get the parent items
+   * @returns The parent item or null
+   */
+  protected findParentByElement<T extends ItemData>(
+    child: HTMLElement,
+    parentType: string,
+    getParentItems: () => T[]
+  ): T | null {
+    const parentElement = child.closest(`[${ATTR}-element^="${parentType}"]`);
+    if (!parentElement) return null;
+
+    const parents = getParentItems();
+    const parent = parents.find((parent) => parent.element === parentElement);
+
+    if (!parent) {
+      throw this.createError(`Cannot find parent ${parentType}: no parent item found`, 'init', {
+        cause: { child, parentElement },
+      });
+    }
+
+    return parent;
+  }
+
+  /**
+   * Find parent hierarchy for an item
+   * Builds hierarchy object by calling findParentItem recursively
+   *
+   * @param child - HTMLElement or parent item
+   * @returns Parent hierarchy object
+   * @throws If called on CardManager (cards have no parent hierarchy)
+   * @protected
+   */
+  protected findParentHierarchy<THierarchy extends CardParentHierarchy>(
+    child: HTMLElement | ItemData
+  ): THierarchy {
+    if (this.itemType === 'card') {
+      return { formId: this.form.getId() } as THierarchy;
+    }
+
+    let parentItem: ItemData | null;
+
+    if (child instanceof HTMLElement) {
+      parentItem = this.findParentItem(child);
+    } else {
+      parentItem = child;
+    }
+
+    // Build hierarchy based on what parent exists
+    return this.buildHierarchyFromParent(parentItem) as THierarchy;
+  }
+
+  /**
+   * Build hierarchy object from parent item
+   * Recursively walks up parent chain
+   * @virtual - can be overridden for custom hierarchy building
+   */
+  protected buildHierarchyFromParent(parent: ItemData | null): Record<string, unknown> {
+    if (!parent) return {};
+
+    const hierarchy: Record<string, unknown> = {
+      [`${parent.type}Id`]: parent.id,
+      [`${parent.type}Index`]: parent.index,
+    };
+
+    // If parent has hierarchy, merge it
+    if ('parentHierarchy' in parent && parent.parentHierarchy) {
+      Object.assign(hierarchy, parent.parentHierarchy);
+    }
+
+    return hierarchy;
+  }
+
+  /**
+   * Build navigation order
+   *
+   * Creates array of item indexes in display order, skipping excluded
+   * To be called after discovery and whenever item visibility changes
+   */
+  public buildNavigationOrder(): void {
+    this.navigationOrder = this.items
+      .filter((item) => ('isIncluded' in item ? item.isIncluded : true))
+      .map((item) => item.index);
+
+    // reduce the navigation order array to say "${index[0].id} --> ${index[1].id} --> ${index[2].id} --> ..."
+    const orderString = this.navigationOrder.reduce((acc, index) => {
+      if (index === 0) return acc;
+      const item = this.items[index];
+      return `${acc} --> ${item.id}`;
+    }, `${this.items[0].id}`);
+
+    this.logDebug(`Navigation order built: ${orderString}`);
+  }
+
+  /**
+   * Update item inclusion and rebuild navigation order
+   *
+   * @param itemId - Item ID
+   * @param isIncluded - Whether to include the item in the navigation order
+   */
+  public handleInclusion(id: string, isIncluded: boolean): void {
+    const item = this.getById(id);
+    if (!item) return;
+
+    // Type assertion needed because not all TItem types may have isIncluded at compile time
+    this.updateItemData(id, { isIncluded } as UpdatableItemData<TItem>);
+
+    // Rebuild navigation order (excludes items with isIncluded: false)
+    this.buildNavigationOrder();
+
+    this.logDebug(`Inclusion updated for ${item.type} "${id}" to ${isIncluded}`);
+  }
+
+  /**
+   * Get the total number of items
+   */
+  public getTotal(): number {
+    return this.items.length;
+  }
+
+  /**
+   * Get item by DOM
+   */
+  public getByDOM(dom: HTMLElement): TItem | null {
+    const item = this.items.find((item) => item.element === dom);
+    return item || null;
+  }
+
+  /**
+   * Get item by selector
+   */
+  public getBySelector(selector: string | number): TItem | null {
+    const item = typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
+    return item || null;
+  }
+
+  /**
+   * Get item by id
+   */
+  public getById(id: string): TItem | null {
+    return this.itemMap.get(id) || null;
+  }
+
+  /**
+   * Get item by index
+   */
+  public getByIndex(index: number): TItem | null {
+    return this.items[index] || null;
+  }
+
+  /**
+   * Get all active items
+   */
+  public getAllActive(): TItem[] {
+    return this.items.filter((item) => item.active);
+  }
+
+  /**
+   * Get all items (returns copy)
+   */
+  public getAll(): TItem[] {
+    return [...this.items];
+  }
+
+  /** Get all items by parent ID */
+  public getAllByParentId(
+    parentId: string,
+    parentType: 'card' | 'set' | 'group' | 'field'
+  ): TItem[] {
+    return this.items.filter((item) => {
+      if (!('parentHierarchy' in item)) return false;
+      switch (parentType) {
+        case 'card':
+          return 'cardId' in item.parentHierarchy && item.parentHierarchy.cardId === parentId;
+        case 'set':
+          return 'setId' in item.parentHierarchy && item.parentHierarchy.setId === parentId;
+        case 'group':
+          return 'groupId' in item.parentHierarchy && item.parentHierarchy.groupId === parentId;
+        case 'field':
+          return 'fieldId' in item.parentHierarchy && item.parentHierarchy.fieldId === parentId;
+        default:
+          return false;
+      }
+    });
+  }
+
+  /**
+   * Get the current item
+   */
+  public getCurrent(): TItem | null {
+    const item = this.items.find((item) => item.current);
+    return item || null;
+  }
+
+  /**
+   * Get the current item index
+   */
+  public getCurrentIndex(): number {
+    const current = this.getCurrent();
+    if (!current) return -1;
+
+    return current.index;
+  }
+
+  /**
+   * Get the current item id
+   */
+  public getCurrentId(): string | null {
+    const current = this.getCurrent();
+    if (!current) return null;
+
+    return current.id;
+  }
+
+  /** Check if first */
+  public isFirst(): boolean {
+    const currentIndex = this.getCurrentIndex();
+    return currentIndex === 0;
+  }
+
+  /** Check if last */
+  public isLast(): boolean {
+    const currentIndex = this.getCurrentIndex();
+    return currentIndex === this.items.length - 1;
+  }
+
+  /**
+   * Get navigation order
+   * @returns Array of item indexes in display order
+   */
+  public getNavigationOrder(): number[] {
+    return this.navigationOrder;
+  }
+
+  /**
+   * Get next position
+   * @returns Next position or null if on last position
+   */
+  public getNextPosition(): number | null {
+    const currentIndex = this.getCurrentIndex();
+    if (currentIndex === null) return null;
+
+    const currentPosition = this.navigationOrder.indexOf(currentIndex);
+
+    if (currentPosition >= this.navigationOrder.length - 1) {
+      return null;
+    }
+
+    return this.navigationOrder[currentPosition + 1];
+  }
+
+  /**
+   * Get previous position
+   * @returns Previous position or null if on first position
+   */
+  public getPrevPosition(): number | null {
+    const currentIndex = this.getCurrentIndex();
+    if (currentIndex === null) return null;
+
+    const currentPosition = this.navigationOrder.indexOf(currentIndex);
+
+    if (currentPosition <= 0) {
+      return null;
+    }
+
+    return this.navigationOrder[currentPosition - 1];
+  }
+
+  /**
+   * Write states to form
+   */
+  public setStates(): void {
+    const states = this.calculateStates();
+    this.form.setStates(states as StateForItem<TItem>);
+  }
+
+  /**
+   * Update storage with the complete item
+   * Updates both the array and map
+   */
+  public updateStorage(item: TItem): void {
+    this.itemMap.set(item.id, item);
+    this.items[item.index] = item;
+  }
+}
