@@ -9,9 +9,7 @@
  */
 export interface SubmitRequestedEvent {}
 
-export interface SubmitStartedEvent {
-  formData: Record<string, unknown>;
-}
+export interface SubmitStartedEvent {}
 
 export interface SubmitSuccessEvent {
   response: unknown;

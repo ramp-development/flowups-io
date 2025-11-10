@@ -8,8 +8,3 @@ export interface NavigationRequestEvent {
 export interface NavigationChangedEvent {
   to: 'card' | 'set' | 'group' | 'field';
 }
-
-export interface ElementCompleteEvent {
-  element: 'card' | 'set' | 'group' | 'field';
-  index: number;
-}

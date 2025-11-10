@@ -6,8 +6,3 @@ export interface ConditionEvaluatedEvent {
   visible: boolean;
   condition: string;
 }
-
-export interface FieldInclusionChangedEvent {
-  fieldId: string;
-  isIncluded: boolean;
-}
