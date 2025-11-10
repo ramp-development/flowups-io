@@ -25,7 +25,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
   protected abstract createItemData(element: HTMLElement, index: number): TItem | undefined;
   public abstract calculateStates(): StateForItem<TItem>;
-  protected abstract findParentItem(element: HTMLElement): ItemData | null;
+  protected abstract findParentItem(element: HTMLElement): ItemData | undefined;
 
   // ============================================
   // Lifecycle Methods
@@ -62,9 +62,13 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   protected discoverItems(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.createError(`Cannot discover ${this.itemType}s: root element is null`, 'init', {
-        cause: { manager: this.constructor.name, rootElement },
-      });
+      throw this.createError(
+        `Cannot discover ${this.itemType}s: root element is undefined`,
+        'init',
+        {
+          cause: { manager: this.constructor.name, rootElement },
+        }
+      );
     }
 
     // Query all items of this type
@@ -323,15 +327,15 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * @param child - The child element
    * @param parentType - The parent type
    * @param getParentItems - The function to get the parent items
-   * @returns The parent item or null
+   * @returns The parent item or undefined
    */
   protected findParentByElement<T extends ItemData>(
     child: HTMLElement,
     parentType: string,
     getParentItems: () => T[]
-  ): T | null {
+  ): T | undefined {
     const parentElement = child.closest(`[${ATTR}-element^="${parentType}"]`);
-    if (!parentElement) return null;
+    if (!parentElement) return undefined;
 
     const parents = getParentItems();
     const parent = parents.find((parent) => parent.element === parentElement);
@@ -506,9 +510,8 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   /**
    * Get the current item
    */
-  public getCurrent(): TItem | null {
-    const item = this.getByFind((item) => item.current);
-    return item || null;
+  public getCurrent(): TItem | undefined {
+    return this.getByFind((item) => item.current);
   }
 
   /**
@@ -524,11 +527,8 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   /**
    * Get the current item id
    */
-  public getCurrentId(): string | null {
-    const current = this.getCurrent();
-    if (!current) return null;
-
-    return current.id;
+  public getCurrentId(): string | undefined {
+    return this.getCurrent()?.id;
   }
 
   /** Check if first */
@@ -553,16 +553,16 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
   /**
    * Get next position
-   * @returns Next position or null if on last position
+   * @returns Next position or undefined if on last position
    */
-  public getNextPosition(): number | null {
+  public getNextPosition(): number | undefined {
     const currentIndex = this.getCurrentIndex();
-    if (currentIndex === null) return null;
+    if (currentIndex === undefined) return undefined;
 
     const currentPosition = this.navigationOrder.indexOf(currentIndex);
 
     if (currentPosition >= this.navigationOrder.length - 1) {
-      return null;
+      return undefined;
     }
 
     return this.navigationOrder[currentPosition + 1];
@@ -570,16 +570,16 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
   /**
    * Get previous position
-   * @returns Previous position or null if on first position
+   * @returns Previous position or undefined if on first position
    */
-  public getPrevPosition(): number | null {
+  public getPrevPosition(): number | undefined {
     const currentIndex = this.getCurrentIndex();
-    if (currentIndex === null) return null;
+    if (currentIndex === undefined) return undefined;
 
     const currentPosition = this.navigationOrder.indexOf(currentIndex);
 
     if (currentPosition <= 0) {
-      return null;
+      return undefined;
     }
 
     return this.navigationOrder[currentPosition - 1];
