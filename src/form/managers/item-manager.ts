@@ -481,7 +481,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   /**
    * Get all active items
    */
-  public getAllActive(): TItem[] {
+  public getActive(): TItem[] {
     return this.getByFilter((item) => item.active);
   }
 

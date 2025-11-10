@@ -287,7 +287,7 @@ export class NavigationManager extends BaseManager {
     }
 
     // Set inputs active for ALL active fields (not just current)
-    const activeFields = this.form.fieldManager.getAllActive();
+    const activeFields = this.form.fieldManager.getActive();
     if (activeFields.length === 0) {
       this.form.inputManager.clearActiveAndCurrent();
       return;
