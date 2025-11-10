@@ -1,4 +1,4 @@
-import type { BaseItem } from './base-item';
+import type { StatefulItem } from './stateful-item';
 
 export interface CardParentHierarchy {
   formId: string;
@@ -9,7 +9,7 @@ export interface CardParentHierarchy {
  * Large UI sections (intro, form, success, etc.)
  * @extends BaseItem
  */
-export interface CardItem extends BaseItem {
+export interface CardItem extends StatefulItem {
   /** Type identifier */
   type: 'card';
 

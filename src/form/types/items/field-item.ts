@@ -1,5 +1,5 @@
-import type { BaseItem } from './base-item';
 import type { GroupParentHierarchy } from './group-item';
+import type { StatefulItem } from './stateful-item';
 
 export interface FieldParentHierarchy extends GroupParentHierarchy {
   groupId: string | null;
@@ -11,7 +11,7 @@ export interface FieldParentHierarchy extends GroupParentHierarchy {
  * Wrapper for label, input, error, hint
  * @extends BaseItem
  */
-export interface FieldItem extends BaseItem {
+export interface FieldItem extends StatefulItem {
   /** Type identifier */
   type: 'field';
 

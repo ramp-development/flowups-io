@@ -1,5 +1,5 @@
-import type { BaseItem } from './base-item';
 import type { CardParentHierarchy } from './card-item';
+import type { StatefulItem } from './stateful-item';
 
 export interface SetParentHierarchy extends CardParentHierarchy {
   cardId: string | null;
@@ -11,7 +11,7 @@ export interface SetParentHierarchy extends CardParentHierarchy {
  * Semantic grouping of related fields (uses <fieldset>)
  * @extends BaseItem
  */
-export interface SetItem extends BaseItem {
+export interface SetItem extends StatefulItem {
   /** Type identifier */
   type: 'set';
 

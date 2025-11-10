@@ -16,15 +16,6 @@ export interface BaseItem {
   /** Whether this element is currently active/visible */
   active: boolean;
 
-  /** Whether this element is the current focused/primary element (only one can be current at a time) */
-  current: boolean;
-
-  /** Whether this element has been visited */
-  visited: boolean;
-
-  /** Whether this element is completed */
-  completed: boolean;
-
   /** Element type @override */
   type: FormElementType;
 

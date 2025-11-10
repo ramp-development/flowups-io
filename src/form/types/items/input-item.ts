@@ -1,5 +1,5 @@
-import type { BaseItem } from './base-item';
 import type { FieldParentHierarchy } from './field-item';
+import type { StatefulItem } from './stateful-item';
 
 export interface InputParentHierarchy extends FieldParentHierarchy {
   fieldId: string;
@@ -17,7 +17,7 @@ export type InputElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaEl
  * The `element` property (from BaseItem) points to the first input.
  * @extends BaseItem
  */
-export interface InputItem extends BaseItem {
+export interface InputItem extends StatefulItem {
   /** The primary input element */
   element: InputElement;
 
