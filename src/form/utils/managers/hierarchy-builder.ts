@@ -1,3 +1,5 @@
+import { ATTR } from 'src/form/constants';
+
 import type { FlowupsForm } from '../..';
 import type { ItemData } from '../../types';
 
@@ -34,7 +36,7 @@ export class HierarchyBuilder {
    * const hierarchy = HierarchyBuilder.buildFromParent(groupItem, 'form');
    * // Returns: { formId: 'form', cardId: 'card-1', cardIndex: 0, setId: 'set-1', setIndex: 0, groupId: 'group-1', groupIndex: 0 }
    */
-  static buildFromParent(parent: ItemData | null, formId: string): Record<string, unknown> {
+  static buildFromParent(parent: ItemData | undefined, formId: string): Record<string, unknown> {
     const hierarchy: Record<string, unknown> = {
       formId,
     };
@@ -79,9 +81,9 @@ export class HierarchyBuilder {
   static findParentHierarchy<THierarchy>(
     child: HTMLElement | ItemData,
     form: FlowupsForm,
-    findParentItem: (element: HTMLElement) => ItemData | null
+    findParentItem: (element: HTMLElement) => ItemData | undefined
   ): THierarchy {
-    let parentItem: ItemData | null;
+    let parentItem: ItemData | undefined;
 
     // If already an ItemData object, use it directly
     if (child instanceof HTMLElement) {
@@ -93,5 +95,26 @@ export class HierarchyBuilder {
 
     // Build complete hierarchy by walking up parent chain
     return HierarchyBuilder.buildFromParent(parentItem, form.getId()) as THierarchy;
+  }
+
+  /**
+   * Generic helper to find parent item by selector
+   * @param child - The child element
+   * @param parentType - The parent type
+   * @param getParentItems - The function to get the parent items
+   * @returns The parent item or null
+   */
+  static findParentByElement<T extends ItemData>(
+    child: HTMLElement,
+    parentType: 'card' | 'set' | 'group' | 'field',
+    getParentItems: () => T[]
+  ): T | undefined {
+    const parentElement = child.closest(`[${ATTR}-element^="${parentType}"]`);
+    if (!parentElement) return undefined;
+
+    const parents = getParentItems();
+    const parent = parents.find((parent) => parent.element === parentElement);
+
+    return parent;
   }
 }
