@@ -302,6 +302,23 @@ export abstract class BaseComponent implements ComponentLifecycle {
   }
 
   /**
+   * Debug timer
+   */
+  public timeDebug(name: string, end: boolean = false): void {
+    if (!this.props.debug) return;
+
+    if (end) {
+      // eslint-disable-next-line no-console
+      console.timeEnd(name);
+    }
+
+    if (!end) {
+      // eslint-disable-next-line no-console
+      console.time(name);
+    }
+  }
+
+  /**
    * Debug logging (only in debug mode)
    */
   public logDebug(...args: unknown[]): void {

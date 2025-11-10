@@ -241,7 +241,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     await super.onInit();
 
     this.groupStart(`[FLOWUPS-DEBUG] Form: Initializing "${this.getId()}"`);
-    this.logDebug(`Started at ${new Date()}`);
+    this.logDebug(`Started at ${new Date().toISOString()}`);
+    this.timeDebug('form:init');
 
     this.cardManager.init();
     this.setManager.init();
@@ -253,8 +254,10 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
 
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     });
+
+    this.timeDebug('form:init', true);
 
     this.groupEnd();
   }
