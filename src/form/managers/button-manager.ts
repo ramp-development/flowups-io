@@ -1,8 +1,6 @@
 import { ATTR } from '../constants';
 import type {
-  ButtonContext,
   ButtonItem,
-  ButtonParentElement,
   ButtonParentHierarchy,
   ButtonType,
   CardItem,
@@ -237,11 +235,11 @@ export class ButtonManager extends BaseManager {
 
     this.form.subscribe('form:navigation:changed', (payload) => {
       if (payload.to === 'field' || payload.to === 'group') return;
-      this.handleContextChange(payload.to);
+      this.handleContextChange();
     });
 
-    this.form.subscribe('form:input:changed', (payload) => {
-      this.handleInputChanged(payload);
+    this.form.subscribe('form:input:changed', () => {
+      this.handleInputChanged();
     });
 
     this.form.logDebug('Event listeners setup');
@@ -359,16 +357,9 @@ export class ButtonManager extends BaseManager {
   /**
    * Handle context change
    */
-  private handleContextChange(context: ButtonContext): void {
-    let parent: ButtonParentElement;
-    if (context === 'set') [parent] = this.form.setManager.getActive();
-    if (context === 'card') [parent] = this.form.cardManager.getActive();
-    else return;
-
-    const buttonsInContext = this.getAllByParent(parent.parentHierarchy);
-
-    this.unbindAllButtons();
-    this.bindActiveButtons(buttonsInContext);
+  private handleContextChange(): void {
+    this.bindActiveButtons();
+    this.unbindInactiveButtons();
   }
 
   /**
@@ -417,18 +408,18 @@ export class ButtonManager extends BaseManager {
     this.enableButtons(this.getByType('submit'), current === total - 1, current !== total - 1);
   }
 
-  /**
-   * Toggle navigation
-   * @param enabled - Whether to enable navigation (default: toggle current state)
-   *
-   * @todo call this when button is clicked and again when we want to be interactive again
-   */
-  public toggleNavigation(enabled?: boolean): void {
-    this.navigationEnabled = enabled ?? !this.navigationEnabled;
-    this.updateButtonStates();
+  // /**
+  //  * Toggle navigation
+  //  * @param enabled - Whether to enable navigation (default: toggle current state)
+  //  *
+  //  * @todo call this when button is clicked and again when we want to be interactive again
+  //  */
+  // public toggleNavigation(enabled?: boolean): void {
+  //   this.navigationEnabled = enabled ?? !this.navigationEnabled;
+  //   this.updateButtonStates();
 
-    this.form.logDebug(`Navigation ${this.navigationEnabled ? 'enabled' : 'disabled'}`);
-  }
+  //   this.form.logDebug(`Navigation ${this.navigationEnabled ? 'enabled' : 'disabled'}`);
+  // }
 
   /**
    * Enable buttons
