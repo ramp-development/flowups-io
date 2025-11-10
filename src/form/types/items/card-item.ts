@@ -1,4 +1,4 @@
-import type { StatefulItem } from './stateful-item';
+import type { RollupItem } from './rollup-item';
 
 export interface CardParentHierarchy {
   formId: string;
@@ -9,7 +9,7 @@ export interface CardParentHierarchy {
  * Large UI sections (intro, form, success, etc.)
  * @extends BaseItem
  */
-export interface CardItem extends StatefulItem {
+export interface CardItem extends RollupItem {
   /** Type identifier */
   type: 'card';
 

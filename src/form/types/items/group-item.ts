@@ -1,5 +1,5 @@
 import type { SetParentHierarchy } from './set-item';
-import type { StatefulItem } from './stateful-item';
+import type { RollupItem } from './rollup-item';
 
 export interface GroupParentHierarchy extends SetParentHierarchy {
   setId: string;
@@ -11,7 +11,7 @@ export interface GroupParentHierarchy extends SetParentHierarchy {
  * Logical subgroup within a set (optional, uses <fieldset>)
  * @extends BaseItem
  */
-export interface GroupItem extends StatefulItem {
+export interface GroupItem extends RollupItem {
   /** Type identifier */
   type: 'group';
 
