@@ -2,14 +2,11 @@
  * Navigation Events
  */
 export interface NavigationRequestEvent {
-  element: 'card' | 'set' | 'group' | 'field';
-  type: 'prev' | 'next' | 'goTo';
-  fromIndex: number | null;
-  toIndex: number;
+  type: 'prev' | 'next';
 }
 
 export interface NavigationChangedEvent {
-  direction: 'prev' | 'next';
+  to: 'card' | 'set' | 'group' | 'field';
 }
 
 export interface ElementCompleteEvent {
