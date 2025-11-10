@@ -134,8 +134,8 @@ export class CardManager extends ItemManager<CardItem> {
    * @param element - The card element
    * @returns null (cards have no parent)
    */
-  protected findParentItem(element: HTMLElement): null {
+  protected findParentItem(element: HTMLElement): undefined {
     this.logWarn('findParentElement should not be called on CardManager', 'runtime', { element });
-    return null;
+    return undefined;
   }
 }
