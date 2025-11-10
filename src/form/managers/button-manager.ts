@@ -5,9 +5,14 @@ import type {
   ButtonParentElement,
   ButtonParentHierarchy,
   ButtonType,
+  CardItem,
+  SetItem,
   SubmitRequestedEvent,
 } from '../types';
 import type { NavigationRequestEvent } from '../types/events/navigation-events';
+import { parseElementAttribute } from '../utils';
+import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
+import { ItemStore } from '../utils/managers/item-store';
 import { BaseManager } from './base-manager';
 
 /**
@@ -17,11 +22,8 @@ import { BaseManager } from './base-manager';
  * Implements lazy event binding - only the active buttons are bound to events.
  */
 export class ButtonManager extends BaseManager {
-  private items: ButtonItem[] = [];
-  private itemMap: Map<string, ButtonItem> = new Map();
-  private prevButtons: ButtonItem[] = [];
-  private nextButtons: ButtonItem[] = [];
-  private submitButtons: ButtonItem[] = [];
+  private store = new ItemStore<ButtonItem>();
+  private activeButtonIds = new Set<string>();
 
   /** Active event listeners for cleanup */
   private activeListeners: Array<{
@@ -36,7 +38,7 @@ export class ButtonManager extends BaseManager {
    */
   public init(): void {
     this.groupStart(`Initializing Buttons`);
-    this.discoverButtons();
+    this.discoverItems();
     this.setupEventListeners();
     this.updateButtonStates(true);
 
@@ -48,11 +50,7 @@ export class ButtonManager extends BaseManager {
    * Cleanup manager resources
    */
   public destroy(): void {
-    this.items = [];
-    this.itemMap.clear();
-    this.prevButtons = [];
-    this.nextButtons = [];
-    this.submitButtons = [];
+    this.store.clear();
     this.unbindAllButtons();
 
     this.form.logDebug('ButtonManager destroyed');
@@ -66,7 +64,7 @@ export class ButtonManager extends BaseManager {
    * Discover all navigation buttons in the form
    * Finds buttons with [data-form-element="prev"], [data-form-element="next"], [data-form-element="submit"]
    */
-  public discoverButtons(): void {
+  public discoverItems(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
       throw this.form.createError(
@@ -78,107 +76,143 @@ export class ButtonManager extends BaseManager {
       );
     }
 
-    this.discoverButtonsForKey(rootElement, 'prev');
-    this.discoverButtonsForKey(rootElement, 'next');
-    this.discoverButtonsForKey(rootElement, 'submit');
-
-    this.form.logDebug(
-      `Discovered ${[...this.prevButtons, ...this.nextButtons, ...this.submitButtons].length} buttons`,
-      {
-        prev: this.prevButtons,
-        next: this.nextButtons,
-        submit: this.submitButtons,
-      }
+    // Query all buttons
+    const items = this.form.queryAll<HTMLElement>(
+      `[${ATTR}-element="prev"], [${ATTR}-element="next"], [${ATTR}-element="submit"]`
     );
-  }
 
-  private discoverButtonsForKey(rootElement: HTMLElement, key: ButtonType): void {
-    const elements = rootElement.querySelectorAll<HTMLElement>(`[${ATTR}-element="${key}"]`);
+    this.store.clear();
 
-    elements.forEach((element, index) => {
-      /**
-       * Button is hopefully the element with attribute applied
-       * Otherwise, check if there's a button inside
-       * Otherwise, check if there's a link inside
-       * Otherwise throw an error
-       */
-      const button =
-        element instanceof HTMLButtonElement
-          ? element
-          : (element.querySelector<HTMLButtonElement>(`button`) ??
-            element.querySelector<HTMLAnchorElement>('a'));
+    items.forEach((item, index) => {
+      const itemData = this.createItemData(item, index);
+      if (!itemData) return;
 
-      if (!button) {
-        throw this.form.createError('Cannot discover navigation buttons: button is null', 'init', {
-          cause: element,
-        });
-      }
+      this.store.update(itemData);
+    });
 
-      if (button instanceof HTMLAnchorElement) {
-        throw this.form.createError(
-          'Cannot discover navigation buttons: button is a link',
-          'init',
-          {
-            cause: element,
-          }
-        );
-      }
-
-      this[`${key}Buttons`].push({
-        element,
-        index,
-        id: `${key}-button-${index}`,
-        active: false,
-        current: false,
-        visited: false,
-        completed: false,
-        type: key,
-        parentHierarchy: this.findParentHierarchy(element),
-        button,
-        disabled: button.disabled,
-      });
+    this.form.logDebug(`Discovered ${this.store.length} buttons`, {
+      prev: this.store.filter((item) => item.type === 'prev'),
+      next: this.store.filter((item) => item.type === 'next'),
+      submit: this.store.filter((item) => item.type === 'submit'),
     });
   }
 
-  /**
-   * Get the parent hierarchy for a button
-   * @param container - The element with `[${ATTR}-element="prev/next/submit"]` applied
-   * @returns The parent hierarchy for the button
-   */
-  private findParentHierarchy(container: HTMLElement): ButtonParentHierarchy {
-    // Check if the closest element is a set and return set data if so
-    const closestSet = container.closest<HTMLElement>(`[${ATTR}-element="set"]`);
-    const closestCard = container.closest<HTMLElement>(`[${ATTR}-element="card"]`);
+  private createItemData(element: HTMLElement, index: number): ButtonItem | undefined {
+    if (!(element instanceof HTMLElement)) return;
 
-    const parentElement = closestSet
-      ? this.form.setManager.getByDOM(closestSet)
-      : closestCard
-        ? this.form.cardManager.getByDOM(closestCard)
-        : null;
-    return parentElement
-      ? this.buildHierarchyFromParent(parentElement)
-      : { formId: this.form.getId() };
-  }
+    const attrValue = element.getAttribute(`${ATTR}-element`);
+    if (!attrValue) return;
 
-  /**
-   * Build hierarchy object from parent element
-   * Recursively walks up parent chain
-   * @param parent - Card or Set element
-   * @returns Hierarchy context for the button
-   */
-  private buildHierarchyFromParent(parent: ButtonParentElement): ButtonParentHierarchy {
-    const hierarchy: Partial<ButtonParentHierarchy> = {
-      [`${parent.type}Id`]: parent.id,
-      [`${parent.type}Index`]: parent.index,
-    };
+    const parsed = parseElementAttribute(attrValue);
 
-    // If parent has hierarchy, merge it
-    if ('parentHierarchy' in parent && parent.parentHierarchy) {
-      Object.assign(hierarchy, parent.parentHierarchy);
+    // Skip if not prev, next or submit
+    if (!['prev', 'next', 'submit'].includes(parsed.type)) return;
+
+    /**
+     * Button is hopefully the element with attribute applied
+     * Otherwise, check if there's a button inside
+     * Otherwise, check if there's a link inside
+     * Otherwise throw an error
+     */
+    const button =
+      element instanceof HTMLButtonElement
+        ? element
+        : (element.querySelector<HTMLButtonElement>(`button`) ??
+          element.querySelector<HTMLAnchorElement>('a'));
+
+    if (!button) {
+      throw this.form.createError('Cannot discover navigation buttons: button is null', 'init', {
+        cause: element,
+      });
     }
 
-    return hierarchy as ButtonParentHierarchy;
+    if (button instanceof HTMLAnchorElement) {
+      throw this.form.createError('Cannot discover navigation buttons: button is a link', 'init', {
+        cause: element,
+      });
+    }
+
+    // Create button item object
+    return {
+      element,
+      index,
+      id: `${parsed.type}-button-${index}`,
+      active: false,
+      current: false,
+      visited: false,
+      completed: false,
+      type: parsed.type as ButtonType,
+      parentHierarchy: this.findParentHierarchy(element),
+      button,
+      disabled: button.disabled,
+    };
   }
+
+  private findParentHierarchy(child: HTMLElement): ButtonParentHierarchy {
+    return HierarchyBuilder.findParentHierarchy<ButtonParentHierarchy>(
+      child,
+      this.form,
+      (element) => this.findParentItem(element)
+    );
+  }
+
+  /**
+   * Find the parent item for a field
+   *
+   * @param element - The field element
+   * @returns Parent data or null
+   */
+  protected findParentItem(element: HTMLElement): CardItem | SetItem | undefined {
+    const parentSet = HierarchyBuilder.findParentByElement(element, 'set', () =>
+      this.form.setManager.getAll()
+    );
+
+    const parentCard = HierarchyBuilder.findParentByElement(element, 'card', () =>
+      this.form.cardManager.getAll()
+    );
+
+    return parentSet ?? parentCard;
+  }
+
+  // /**
+  //  * Get the parent hierarchy for a button
+  //  * @param container - The element with `[${ATTR}-element="prev/next/submit"]` applied
+  //  * @returns The parent hierarchy for the button
+  //  */
+  // private findParentHierarchy(container: HTMLElement): ButtonParentHierarchy {
+  //   // Check if the closest element is a set and return set data if so
+  //   const closestSet = container.closest<HTMLElement>(`[${ATTR}-element="set"]`);
+  //   const closestCard = container.closest<HTMLElement>(`[${ATTR}-element="card"]`);
+
+  //   const parentElement = closestSet
+  //     ? this.form.setManager.getByDOM(closestSet)
+  //     : closestCard
+  //       ? this.form.cardManager.getByDOM(closestCard)
+  //       : null;
+  //   return parentElement
+  //     ? this.buildHierarchyFromParent(parentElement)
+  //     : { formId: this.form.getId() };
+  // }
+
+  // /**
+  //  * Build hierarchy object from parent element
+  //  * Recursively walks up parent chain
+  //  * @param parent - Card or Set element
+  //  * @returns Hierarchy context for the button
+  //  */
+  // private buildHierarchyFromParent(parent: ButtonParentElement): ButtonParentHierarchy {
+  //   const hierarchy: Partial<ButtonParentHierarchy> = {
+  //     [`${parent.type}Id`]: parent.id,
+  //     [`${parent.type}Index`]: parent.index,
+  //   };
+
+  //   // If parent has hierarchy, merge it
+  //   if ('parentHierarchy' in parent && parent.parentHierarchy) {
+  //     Object.assign(hierarchy, parent.parentHierarchy);
+  //   }
+
+  //   return hierarchy as ButtonParentHierarchy;
+  // }
 
   /**
    * Setup event listeners for button clicks
@@ -359,9 +393,9 @@ export class ButtonManager extends BaseManager {
     const inputs = this.form.inputManager.getAllActive();
     const valid = inputs.every((input) => input.isValid);
 
-    this.enableButtons(this.prevButtons, current > 0, current === 0);
-    this.enableButtons(this.nextButtons, valid && current < total - 1, current === total - 1);
-    this.enableButtons(this.submitButtons, current === total - 1, current !== total - 1);
+    this.enableButtons(this.getByType('prev'), current > 0, current === 0);
+    this.enableButtons(this.getByType('next'), valid && current < total - 1, current === total - 1);
+    this.enableButtons(this.getByType('submit'), current === total - 1, current !== total - 1);
   }
 
   /**
@@ -400,12 +434,22 @@ export class ButtonManager extends BaseManager {
 
   /** Get all button elements */
   private getAll(): ButtonItem[] {
-    return [...this.prevButtons, ...this.nextButtons, ...this.submitButtons];
+    return this.store.getAll();
+  }
+
+  /** Get by type */
+  private getByType(type: ButtonType): ButtonItem[] {
+    return this.store.filter((item) => item.type === type);
+  }
+
+  /** Get active */
+  private getActive(): ButtonItem[] {
+    return this.store.filter((button) => button.active);
   }
 
   /** Get all buttons by parent */
   private getAllByParent(parentHierarchy: ButtonParentHierarchy): ButtonItem[] {
-    return this.getAll().filter((button) => button.parentHierarchy === parentHierarchy);
+    return this.store.filter((item) => item.parentHierarchy === parentHierarchy);
   }
 
   /** Get all buttons of type by parent*/
@@ -413,4 +457,27 @@ export class ButtonManager extends BaseManager {
     const allByParent = this.getAllByParent(parentHierarchy);
     return allByParent.filter((button) => button.type === type);
   }
+
+  // /**
+  //  * Set buttons as active based on current context
+  //  */
+  // public setActiveByContext(cardIndex: number, setIndex: number | null): void {
+  //   this.activeButtonIds.clear();
+
+  //   this.store.getAll().forEach((btn) => {
+  //     const { parentHierarchy } = btn;
+
+  //     // Button is active if it's in current card/set
+  //     const isActive =
+  //       parentHierarchy.cardIndex === cardIndex &&
+  //       (setIndex === null || parentHierarchy.setIndex === setIndex);
+
+  //     if (isActive) {
+  //       this.activeButtonIds.add(btn.id);
+  //     }
+
+  //     // Update button active state
+  //     this.store.update(btn.id, { isActive });
+  //   });
+  // }
 }
