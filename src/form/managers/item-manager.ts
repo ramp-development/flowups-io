@@ -6,6 +6,7 @@ import type {
   StateForItem,
   UpdatableItemData,
 } from '../types';
+import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { BaseManager } from './base-manager';
 
 /**
@@ -44,7 +45,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   }
 
   public onInitialized(): void {
-    this.logDebug(`Initialized`);
+    this.logDebug(`Initialized`, { items: this.items });
     this.groupEnd();
   }
 
@@ -366,37 +367,10 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       return { formId: this.form.getId() } as THierarchy;
     }
 
-    let parentItem: ItemData | null;
-
-    if (child instanceof HTMLElement) {
-      parentItem = this.findParentItem(child);
-    } else {
-      parentItem = child;
-    }
-
-    // Build hierarchy based on what parent exists
-    return this.buildHierarchyFromParent(parentItem) as THierarchy;
-  }
-
-  /**
-   * Build hierarchy object from parent item
-   * Recursively walks up parent chain
-   * @virtual - can be overridden for custom hierarchy building
-   */
-  protected buildHierarchyFromParent(parent: ItemData | null): Record<string, unknown> {
-    if (!parent) return {};
-
-    const hierarchy: Record<string, unknown> = {
-      [`${parent.type}Id`]: parent.id,
-      [`${parent.type}Index`]: parent.index,
-    };
-
-    // If parent has hierarchy, merge it
-    if ('parentHierarchy' in parent && parent.parentHierarchy) {
-      Object.assign(hierarchy, parent.parentHierarchy);
-    }
-
-    return hierarchy;
+    // Use HierarchyBuilder
+    return HierarchyBuilder.findParentHierarchy<THierarchy>(child, this.form, (child) =>
+      this.findParentItem(child)
+    );
   }
 
   /**
