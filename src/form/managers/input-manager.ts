@@ -498,8 +498,10 @@ export class InputManager extends ItemManager<InputItem> {
   private handleInputChange(name: string, value: unknown): void {
     this.updateItemData(name);
     // Update formData state
+    const payload = { name, value };
     const formData = this.form.getState('formData');
-    this.form.setState('formData', { ...formData, [name]: value });
+    this.form.setState('formData', { ...formData, ...payload });
+    this.form.emit('form:input:changed', payload);
 
     this.logDebug(`Input "${name}" changed to:`, value);
   }
