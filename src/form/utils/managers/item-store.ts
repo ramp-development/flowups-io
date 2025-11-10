@@ -1,4 +1,4 @@
-import type { BaseItem, UpdatableItemData } from 'src/form/types';
+import type { BaseItem } from 'src/form/types';
 
 /**
  * Shared storage and lookup utilities for items
@@ -21,11 +21,9 @@ export class ItemStore<TItem extends BaseItem> {
   }
 
   /** Update item data by merging */
-  public merge(item: TItem, data: UpdatableItemData<TItem>): TItem | undefined {
+  public merge(item: TItem, data: Partial<TItem>): void {
     const updated = { ...item, ...data };
     this.update(updated);
-
-    return updated;
   }
 
   /** Get all items */
@@ -45,12 +43,22 @@ export class ItemStore<TItem extends BaseItem> {
 
   /** Get by selector (ID or index) */
   public getBySelector(selector: string | number): TItem | undefined {
-    return typeof selector === 'number' ? this.getByIndex(selector) : this.getById(selector);
+    return typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
+  }
+
+  /** Get by DOM */
+  public getByDOM(dom: HTMLElement): TItem | undefined {
+    return this.items.find((item) => item.element === dom);
   }
 
   /** Filter items by predicate */
   public filter(predicate: (item: TItem) => boolean): TItem[] {
     return this.items.filter(predicate);
+  }
+
+  /** Filter items by predicate */
+  public find(predicate: (item: TItem) => boolean): TItem | undefined {
+    return this.items.find(predicate);
   }
 
   /** Clear all items */

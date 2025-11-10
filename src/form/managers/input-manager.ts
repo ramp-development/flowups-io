@@ -92,7 +92,7 @@ export class InputManager extends ItemManager<InputItem> {
         });
 
         if (!data) return;
-        this.updateStorage(data);
+        this.update(data);
       });
     });
 

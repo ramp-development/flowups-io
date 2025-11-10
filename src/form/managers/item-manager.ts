@@ -7,6 +7,7 @@ import type {
   UpdatableItemData,
 } from '../types';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
+import { ItemStore } from '../utils/managers/item-store';
 import { BaseManager } from './base-manager';
 
 /**
@@ -14,12 +15,7 @@ import { BaseManager } from './base-manager';
  * Provides common functionality for all item managers
  */
 export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
-  // ============================================
-  // Abstract Properties
-  // ============================================
-
-  protected abstract items: TItem[];
-  protected abstract itemMap: Map<string, TItem>;
+  protected store = new ItemStore<TItem>();
   protected abstract readonly itemType: string;
   protected navigationOrder: number[] = [];
 
@@ -45,13 +41,12 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   }
 
   public onInitialized(): void {
-    this.logDebug(`Initialized`, { items: this.items });
+    this.logDebug(`Initialized`, { items: this.getAll() });
     this.groupEnd();
   }
 
   public destroy(): void {
-    this.items = [];
-    this.itemMap.clear();
+    this.clear();
 
     this.logDebug(`${this.constructor.name} destroyed`);
   }
@@ -75,14 +70,13 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     // Query all items of this type
     const items = this.form.queryAll(`[${ATTR}-element^="${this.itemType}"]`);
 
-    this.items = [];
-    this.itemMap.clear();
+    this.clear();
 
     items.forEach((item, index) => {
       const itemData = this.createItemData(item, index);
       if (!itemData) return;
 
-      this.updateStorage(itemData);
+      this.update(itemData);
     });
 
     this.logDebug(`Discovered ${items.length} ${this.itemType}s`, {
@@ -100,7 +94,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   ): void {
     if (
       (typeof selector === 'number' && selector < 0) ||
-      (typeof selector === 'number' && selector >= this.items.length)
+      (typeof selector === 'number' && selector >= this.length)
     )
       return;
 
@@ -112,7 +106,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
     // Merge data with existing item data
     const updated = this.mergeItemData(item, data);
-    this.updateStorage(updated);
+    this.update(updated);
 
     this.logDebug(`Updated ${this.itemType} "${item.id}" data`, { updated });
   }
@@ -177,7 +171,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * @returns Array of active item indices
    */
   protected getActiveIndices(): number[] {
-    return this.items.filter((item) => item.active).map((item) => item.index);
+    return this.getByFilter((item) => item.active).map((item) => item.index);
   }
 
   /**
@@ -212,7 +206,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     this.logDebug(`${this.itemType}: Set current`, {
       id: item.id,
       index: item.index,
-      items: this.items,
+      items: this.getAll(),
     });
   }
 
@@ -220,7 +214,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * Clear current flag from all items
    */
   public clearCurrent(): void {
-    this.items.forEach((item) => {
+    this.getAll().forEach((item) => {
       if (item.current) {
         this.updateItemData(item.index, { current: false } as UpdatableItemData<TItem>);
       }
@@ -234,14 +228,14 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * Updates storage not states
    */
   public clearActiveAndCurrent(): void {
-    this.items.forEach((item) => {
+    this.getAll().forEach((item) => {
       const updated = { ...item, active: false, current: false } as TItem;
-      this.updateStorage(updated);
+      this.update(updated);
     });
 
     this.logDebug(`Cleared active and current flags for all ${this.itemType}s`, {
-      count: this.items.length,
-      items: this.items,
+      count: this.length,
+      items: this.getAll(),
     });
   }
 
@@ -257,12 +251,12 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     }
 
     const updated = { ...item, active: true } as TItem;
-    this.updateStorage(updated);
+    this.update(updated);
 
     this.logDebug(`Set active flag for ${this.itemType}: ${item.id}`, {
       id: item.id,
       index: item.index,
-      items: this.items,
+      items: this.getAll(),
     });
   }
 
@@ -283,7 +277,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     const children = this.getItemsByParentId(parentId, parentType);
     children.forEach((item, index) => {
       const updated = { ...item, active, current: index === 0 && firstIsCurrent } as TItem;
-      this.updateStorage(updated);
+      this.update(updated);
     });
 
     this.logDebug(`${this.itemType}: Set active: ${active} by parent ${parentType}: ${parentId}`, {
@@ -301,7 +295,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     parentId: string,
     parentType: 'card' | 'set' | 'group' | 'field'
   ): TItem[] {
-    return this.items.filter((item) => {
+    return this.getByFilter((item) => {
       // Cards have no parent
       if (item.type === 'card') return false;
 
@@ -380,16 +374,19 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * To be called after discovery and whenever item visibility changes
    */
   public buildNavigationOrder(): void {
-    this.navigationOrder = this.items
-      .filter((item) => ('isIncluded' in item ? item.isIncluded : true))
-      .map((item) => item.index);
+    this.navigationOrder = this.getByFilter((item) =>
+      'isIncluded' in item ? item.isIncluded : true
+    ).map((item) => item.index);
 
     // reduce the navigation order array to say "${index[0].id} --> ${index[1].id} --> ${index[2].id} --> ..."
-    const orderString = this.navigationOrder.reduce((acc, index) => {
-      if (index === 0) return acc;
-      const item = this.items[index];
-      return `${acc} --> ${item.id}`;
-    }, `${this.items[0].id}`);
+    const orderString = this.navigationOrder.reduce(
+      (acc, index) => {
+        if (index === 0) return acc;
+        const item = this.getByIndex(index);
+        return `${acc} --> ${item?.id}`;
+      },
+      `${this.getByIndex(0)?.id}`
+    );
 
     this.logDebug(`Navigation order built: ${orderString}`);
   }
@@ -413,55 +410,75 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     this.logDebug(`Inclusion updated for ${item.type} "${id}" to ${isIncluded}`);
   }
 
-  /**
-   * Get the total number of items
-   */
-  public getTotal(): number {
-    return this.items.length;
+  // ============================================
+  // Expore Store Methods
+  // ============================================
+
+  /** Add item to store */
+  protected add(item: TItem): void {
+    this.store.add(item);
   }
 
-  /**
-   * Get item by DOM
-   */
-  public getByDOM(dom: HTMLElement): TItem | null {
-    const item = this.items.find((item) => item.element === dom);
-    return item || null;
+  /** Update item in the store */
+  protected update(item: TItem): void {
+    this.store.update(item);
   }
 
-  /**
-   * Get item by selector
-   */
-  public getBySelector(selector: string | number): TItem | null {
-    const item = typeof selector === 'string' ? this.getById(selector) : this.getByIndex(selector);
-    return item || null;
+  /** Merge item data */
+  protected merge(item: TItem, data: Partial<TItem>): void {
+    this.store.merge(item, data);
   }
 
-  /**
-   * Get item by id
-   */
-  public getById(id: string): TItem | null {
-    return this.itemMap.get(id) || null;
+  /** Clear store */
+  public clear(): void {
+    this.store.clear();
   }
 
-  /**
-   * Get item by index
-   */
-  public getByIndex(index: number): TItem | null {
-    return this.items[index] || null;
+  /** Get all items */
+  public getAll(): TItem[] {
+    return this.store.getAll();
+  }
+
+  /** Get item by id */
+  public getById(id: string): TItem | undefined {
+    return this.store.getById(id);
+  }
+
+  /** Get item by index */
+  public getByIndex(index: number): TItem | undefined {
+    return this.store.getByIndex(index);
+  }
+
+  /** Get item by selector (id or index) */
+  public getBySelector(selector: string | number): TItem | undefined {
+    return this.store.getBySelector(selector);
+  }
+
+  /** Get item by DOM */
+  public getByDOM(dom: HTMLElement): TItem | undefined {
+    return this.store.getByDOM(dom);
+  }
+
+  /** Get items filtered by predicate */
+  public getByFilter(predicate: (item: TItem) => boolean): TItem[] {
+    return this.store.filter(predicate);
+  }
+
+  /** Find item by predicate */
+  public getByFind(predicate: (item: TItem) => boolean): TItem | undefined {
+    return this.store.find(predicate);
+  }
+
+  /** Get count */
+  public get length(): number {
+    return this.store.length;
   }
 
   /**
    * Get all active items
    */
   public getAllActive(): TItem[] {
-    return this.items.filter((item) => item.active);
-  }
-
-  /**
-   * Get all items (returns copy)
-   */
-  public getAll(): TItem[] {
-    return [...this.items];
+    return this.getByFilter((item) => item.active);
   }
 
   /** Get all items by parent ID */
@@ -469,7 +486,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     parentId: string,
     parentType: 'card' | 'set' | 'group' | 'field'
   ): TItem[] {
-    return this.items.filter((item) => {
+    return this.getByFilter((item) => {
       if (!('parentHierarchy' in item)) return false;
       switch (parentType) {
         case 'card':
@@ -490,7 +507,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * Get the current item
    */
   public getCurrent(): TItem | null {
-    const item = this.items.find((item) => item.current);
+    const item = this.getByFind((item) => item.current);
     return item || null;
   }
 
@@ -523,7 +540,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   /** Check if last */
   public isLast(): boolean {
     const currentIndex = this.getCurrentIndex();
-    return currentIndex === this.items.length - 1;
+    return currentIndex === this.length - 1;
   }
 
   /**
@@ -574,14 +591,5 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   public setStates(): void {
     const states = this.calculateStates();
     this.form.setStates(states as StateForItem<TItem>);
-  }
-
-  /**
-   * Update storage with the complete item
-   * Updates both the array and map
-   */
-  public updateStorage(item: TItem): void {
-    this.itemMap.set(item.id, item);
-    this.items[item.index] = item;
   }
 }
