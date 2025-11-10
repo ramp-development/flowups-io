@@ -235,14 +235,14 @@ export class InputManager extends ItemManager<InputItem> {
       if (!key || !relevantKeys.includes(key)) return;
 
       if (key === 'activeFieldIndices') {
-        this.handleActiveFieldsChanged(payload.to as number[]);
+        this.handleActiveFieldsChanged();
       }
     });
   }
 
-  private handleActiveFieldsChanged(activeFieldIndices: number[]): void {
+  private handleActiveFieldsChanged(): void {
     this.bindActiveInputs();
-    this.unbindInactiveInputs(activeFieldIndices);
+    this.unbindInactiveInputs();
   }
 
   /**
@@ -252,7 +252,7 @@ export class InputManager extends ItemManager<InputItem> {
   public bindActiveInputs(): void {
     let boundCount = 0;
 
-    const activeItems = this.getAllActive();
+    const activeItems = this.getActive();
     activeItems.forEach((item) => {
       // If already bound, skip - check if any of this item's inputs are already bound
       const alreadyBound = item.inputs.some((input) =>
@@ -291,10 +291,12 @@ export class InputManager extends ItemManager<InputItem> {
    * Unbind events from inputs not associated with active field indices
    * @param activeIndices - Array of active field indices to keep bound
    */
-  public unbindInactiveInputs(activeIndices: number[]): void {
+  public unbindInactiveInputs(): void {
     let removedCount = 0;
+    const activeItems = this.getActive();
+
     this.activeListeners = this.activeListeners.filter((listener) => {
-      const shouldRemove = !activeIndices.includes(listener.index);
+      const shouldRemove = !activeItems.find((item) => item.index === listener.index);
 
       if (shouldRemove) {
         listener.element.removeEventListener(listener.event, listener.handler);
