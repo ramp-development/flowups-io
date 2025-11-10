@@ -28,6 +28,7 @@ export class ButtonManager extends BaseManager {
   /** Active event listeners for cleanup */
   private activeListeners: Array<{
     button: HTMLButtonElement;
+    index: number;
     type: ButtonType;
     event: 'click';
     handler: EventListener;
@@ -132,20 +133,34 @@ export class ButtonManager extends BaseManager {
       });
     }
 
+    const id = `${parsed.type}-button-${index}`;
+    const active = this.determineActive(element);
+    if (active) this.activeButtonIds.add(id);
+
     // Create button item object
     return {
       element,
       index,
-      id: `${parsed.type}-button-${index}`,
-      active: false,
-      current: false,
-      visited: false,
-      completed: false,
+      id,
+      active,
       type: parsed.type as ButtonType,
       parentHierarchy: this.findParentHierarchy(element),
       button,
       disabled: button.disabled,
     };
+  }
+
+  /**
+   * Determine if item should be active based on parent and behavior
+   * Default implementation - can be overridden if needed
+   *
+   * @param element - HTMLElement to check
+   * @returns Whether element should be active
+   */
+  protected determineActive(element: HTMLElement): boolean {
+    // Get parent based on element type
+    const parent = this.findParentItem(element);
+    return parent ? parent.active : true;
   }
 
   private findParentHierarchy(child: HTMLElement): ButtonParentHierarchy {
@@ -218,7 +233,7 @@ export class ButtonManager extends BaseManager {
    * Setup event listeners for button clicks
    */
   private setupEventListeners(): void {
-    this.bindButtons();
+    this.bindActiveButtons();
 
     this.form.subscribe('form:navigation:changed', (payload) => {
       if (payload.to === 'field' || payload.to === 'group') return;
@@ -239,10 +254,11 @@ export class ButtonManager extends BaseManager {
   /**
    * Bind events to the current buttons
    */
-  public bindButtons(items: ButtonItem[]): void {
+  public bindActiveButtons(): void {
     let boundCount = 0;
 
-    items.forEach((item) => {
+    const activeItems = this.getActive();
+    activeItems.forEach((item) => {
       const { button } = item;
 
       // If already bound, skip
@@ -257,6 +273,7 @@ export class ButtonManager extends BaseManager {
       button.addEventListener('click', handler);
       this.activeListeners.push({
         button,
+        index: item.index,
         type: item.type,
         event: 'click',
         handler,
@@ -278,8 +295,10 @@ export class ButtonManager extends BaseManager {
   private unbindInactiveButtons(): void {
     let removedCount = 0;
 
+    const activeItems = this.getActive();
+
     this.activeListeners = this.activeListeners.filter((listener) => {
-      const shouldRemove = true;
+      const shouldRemove = !activeItems.find((item) => item.index === listener.index);
 
       if (shouldRemove) {
         listener.button.removeEventListener(listener.event, listener.handler);
@@ -342,14 +361,14 @@ export class ButtonManager extends BaseManager {
    */
   private handleContextChange(context: ButtonContext): void {
     let parent: ButtonParentElement;
-    if (context === 'set') [parent] = this.form.setManager.getAllActive();
-    if (context === 'card') [parent] = this.form.cardManager.getAllActive();
+    if (context === 'set') [parent] = this.form.setManager.getActive();
+    if (context === 'card') [parent] = this.form.cardManager.getActive();
     else return;
 
     const buttonsInContext = this.getAllByParent(parent.parentHierarchy);
 
     this.unbindAllButtons();
-    this.bindButtons(buttonsInContext);
+    this.bindActiveButtons(buttonsInContext);
   }
 
   /**
@@ -390,7 +409,7 @@ export class ButtonManager extends BaseManager {
       current = 0;
     }
 
-    const inputs = this.form.inputManager.getAllActive();
+    const inputs = this.form.inputManager.getActive();
     const valid = inputs.every((input) => input.isValid);
 
     this.enableButtons(this.getByType('prev'), current > 0, current === 0);
