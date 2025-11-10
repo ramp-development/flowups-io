@@ -86,7 +86,7 @@ export class ButtonManager extends BaseManager {
       const itemData = this.createItemData(item, index);
       if (!itemData) return;
 
-      this.store.update(itemData);
+      this.store.add(itemData);
     });
 
     this.form.logDebug(`Discovered ${this.store.length} buttons`, {
