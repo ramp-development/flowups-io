@@ -14,6 +14,7 @@ import type {
   UpdatableItemData,
 } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
+import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
 
 /**
@@ -148,7 +149,9 @@ export class SetManager extends ItemManager<SetItem> {
    * @param element - The set element
    * @returns Parent data or null
    */
-  protected findParentItem(element: HTMLElement): CardItem | null {
-    return this.findParentByElement(element, 'card', () => this.form.cardManager.getAll());
+  protected findParentItem(element: HTMLElement): CardItem | undefined {
+    return HierarchyBuilder.findParentByElement(element, 'card', () =>
+      this.form.cardManager.getAll()
+    );
   }
 }

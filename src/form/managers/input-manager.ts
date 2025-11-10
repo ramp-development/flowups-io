@@ -17,6 +17,7 @@ import type {
   InputParentHierarchy,
   UpdatableItemData,
 } from '../types';
+import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
 
 /**
@@ -558,7 +559,7 @@ export class InputManager extends ItemManager<InputItem> {
    * @returns Parent field item
    */
   protected findParentItem(element: HTMLElement): FieldItem {
-    const parentField = this.findParentByElement(element, 'field', () =>
+    const parentField = HierarchyBuilder.findParentByElement(element, 'field', () =>
       this.form.fieldManager.getAll()
     );
 

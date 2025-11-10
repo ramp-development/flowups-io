@@ -14,6 +14,7 @@ import type {
   UpdatableItemData,
 } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
+import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
 
 /**
@@ -146,7 +147,9 @@ export class GroupManager extends ItemManager<GroupItem> {
    * @param element - The group element
    * @returns Parent data or null
    */
-  protected findParentItem(element: HTMLElement): SetItem | null {
-    return this.findParentByElement(element, 'set', () => this.form.setManager.getAll());
+  protected findParentItem(element: HTMLElement): SetItem | undefined {
+    return HierarchyBuilder.findParentByElement(element, 'set', () =>
+      this.form.setManager.getAll()
+    );
   }
 }
