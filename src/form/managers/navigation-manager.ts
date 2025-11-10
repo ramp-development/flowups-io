@@ -5,19 +5,7 @@
  * coordinates with managers to progress through the form.
  */
 
-import { ATTR } from '../constants/attr';
-import type {
-  // ButtonContext,
-  ButtonItem,
-  ButtonParentElement,
-  ButtonParentHierarchy,
-  ButtonType,
-  CardItem,
-  FieldItem,
-  FormStateKeys,
-  GroupItem,
-  SetItem,
-} from '../types';
+import type { CardItem, FieldItem, GroupItem, SetItem } from '../types';
 import { BaseManager } from './base-manager';
 
 /**
@@ -27,27 +15,14 @@ import { BaseManager } from './base-manager';
  * Listens for boundary events to update button states.
  */
 export class NavigationManager extends BaseManager {
-  private prevButtons: ButtonItem[] = [];
-  private nextButtons: ButtonItem[] = [];
-  private submitButtons: ButtonItem[] = [];
   private navigationEnabled: boolean = true;
-
-  /** Active event listeners for cleanup */
-  private activeListeners: Array<{
-    button: HTMLButtonElement;
-    type: ButtonType;
-    event: 'click';
-    handler: EventListener;
-  }> = [];
 
   /**
    * Initialize the manager
    */
   public init(): void {
     this.groupStart(`Initializing Navigation`);
-    this.discoverButtons();
     this.setupEventListeners();
-    this.updateButtonStates(true);
 
     this.form.logDebug('Initialized');
     this.groupEnd();
@@ -57,134 +32,9 @@ export class NavigationManager extends BaseManager {
    * Cleanup manager resources
    */
   public destroy(): void {
-    this.prevButtons = [];
-    this.nextButtons = [];
-    this.submitButtons = [];
-    this.unbindAllButtons();
+    // unbind event subscribers
 
     this.form.logDebug('NavigationManager destroyed');
-  }
-
-  // ============================================
-  // Discovery
-  // ============================================
-
-  /**
-   * Discover all navigation buttons in the form
-   * Finds buttons with [data-form-element="prev"], [data-form-element="next"], [data-form-element="submit"]
-   */
-  public discoverButtons(): void {
-    const rootElement = this.form.getRootElement();
-    if (!rootElement) {
-      throw this.form.createError(
-        'Cannot discover navigation buttons: root element is null',
-        'init',
-        {
-          cause: rootElement,
-        }
-      );
-    }
-
-    this.discoverButtonsForKey(rootElement, 'prev');
-    this.discoverButtonsForKey(rootElement, 'next');
-    this.discoverButtonsForKey(rootElement, 'submit');
-
-    this.form.logDebug(
-      `Discovered ${[...this.prevButtons, ...this.nextButtons, ...this.submitButtons].length} buttons`,
-      {
-        prev: this.prevButtons,
-        next: this.nextButtons,
-        submit: this.submitButtons,
-      }
-    );
-  }
-
-  private discoverButtonsForKey(rootElement: HTMLElement, key: ButtonType): void {
-    const elements = rootElement.querySelectorAll<HTMLElement>(`[${ATTR}-element="${key}"]`);
-
-    elements.forEach((element, index) => {
-      /**
-       * Button is hopefully the element with attribute applied
-       * Otherwise, check if there's a button inside
-       * Otherwise, check if there's a link inside
-       * Otherwise throw an error
-       */
-      const button =
-        element instanceof HTMLButtonElement
-          ? element
-          : (element.querySelector<HTMLButtonElement>(`button`) ??
-            element.querySelector<HTMLAnchorElement>('a'));
-
-      if (!button) {
-        throw this.form.createError('Cannot discover navigation buttons: button is null', 'init', {
-          cause: element,
-        });
-      }
-
-      if (button instanceof HTMLAnchorElement) {
-        throw this.form.createError(
-          'Cannot discover navigation buttons: button is a link',
-          'init',
-          {
-            cause: element,
-          }
-        );
-      }
-
-      this[`${key}Buttons`].push({
-        element,
-        index,
-        id: `${key}-button-${index}`,
-        active: false,
-        current: false,
-        visited: false,
-        completed: false,
-        type: key,
-        parentHierarchy: this.findParentHierarchy(element),
-        button,
-        disabled: button.disabled,
-      });
-    });
-  }
-
-  /**
-   * Get the parent hierarchy for a button
-   * @param container - The element with `[${ATTR}-element="prev/next/submit"]` applied
-   * @returns The parent hierarchy for the button
-   */
-  private findParentHierarchy(container: HTMLElement): ButtonParentHierarchy {
-    // Check if the closest element is a set and return set data if so
-    const closestSet = container.closest<HTMLElement>(`[${ATTR}-element="set"]`);
-    const closestCard = container.closest<HTMLElement>(`[${ATTR}-element="card"]`);
-
-    const parentElement = closestSet
-      ? this.form.setManager.getByDOM(closestSet)
-      : closestCard
-        ? this.form.cardManager.getByDOM(closestCard)
-        : null;
-    return parentElement
-      ? this.buildHierarchyFromParent(parentElement)
-      : { formId: this.form.getId() };
-  }
-
-  /**
-   * Build hierarchy object from parent element
-   * Recursively walks up parent chain
-   * @param parent - Card or Set element
-   * @returns Hierarchy context for the button
-   */
-  private buildHierarchyFromParent(parent: ButtonParentElement): ButtonParentHierarchy {
-    const hierarchy: Partial<ButtonParentHierarchy> = {
-      [`${parent.type}Id`]: parent.id,
-      [`${parent.type}Index`]: parent.index,
-    };
-
-    // If parent has hierarchy, merge it
-    if ('parentHierarchy' in parent && parent.parentHierarchy) {
-      Object.assign(hierarchy, parent.parentHierarchy);
-    }
-
-    return hierarchy as ButtonParentHierarchy;
   }
 
   // ============================================
@@ -195,131 +45,19 @@ export class NavigationManager extends BaseManager {
    * Setup event listeners for button clicks and boundary events
    */
   private setupEventListeners(): void {
-    this.bindActiveButtons();
-
-    this.form.subscribe('state:changed', (payload) => {
-      // payload.key follows pattern `${formName}.${key}`
-      const key = payload.key.includes('.')
-        ? (payload.key.split('.').pop() as FormStateKeys)
-        : (payload.key as FormStateKeys);
-
-      if (!key) return;
-
-      switch (key) {
-        case 'formData':
-          this.handleNavigationChanged();
-          break;
-        // case 'activeCardIndices':
-        //   this.handleContextChange('card', payload.to as number[]);
-        //   break;
-        // case 'activeSetIndices':
-        //   this.handleContextChange('set', payload.to as number[]);
-        //   break;
-        default:
-          break;
-      }
+    this.form.subscribe('form:navigation:request', (payload) => {
+      this.handleMove(payload.type);
     });
 
     this.form.logDebug('Event listeners setup');
   }
 
   // ============================================
-  // Bind Listeners
+  // Navigation requests
   // ============================================
 
   /**
-   * Bind events to the current buttons
-   */
-  public bindActiveButtons(): void {
-    let boundCount = 0;
-
-    const buttons = this.getAll();
-    buttons.forEach((button) => {
-      const element = button.button;
-
-      // If already bound, skip - check if any of this input's elements are already bound
-      const alreadyBound = this.activeListeners.some((listener) => listener.button === element);
-      if (alreadyBound) return;
-
-      // Bind events to ALL elements in the input (for radio/checkbox groups)
-      const handler: EventListener = () => {
-        this.handleClick(button.type);
-      };
-
-      element.addEventListener('click', handler);
-      this.activeListeners.push({
-        button: element,
-        type: button.type,
-        event: 'click',
-        handler,
-      });
-
-      this.logDebug(`Bound "click" events to "${button.type}" button`, {
-        ...button.parentHierarchy,
-      });
-      boundCount += 1;
-    });
-
-    this.logDebug(`Bound listeners to ${boundCount} button${boundCount !== 1 ? 's' : ''}`);
-  }
-
-  /**
-   * Unbind all inactive button listeners
-   * @internal Used during cleanup
-   */
-  private unbindInactiveButtons(): void {
-    let removedCount = 0;
-
-    this.activeListeners = this.activeListeners.filter((listener) => {
-      const shouldRemove = true;
-
-      if (shouldRemove) {
-        listener.button.removeEventListener(listener.event, listener.handler);
-        const parentHierarchy = this.findParentHierarchy(listener.button);
-        this.logDebug(`Unbound "${listener.event}" events from ${listener.type} button`, {
-          ...parentHierarchy,
-        });
-        removedCount += 1;
-      }
-
-      return !shouldRemove; // Keep listeners that should NOT be removed
-    });
-
-    this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? 's' : ''}`);
-  }
-
-  /**
-   * Unbind all button listeners
-   * @internal Used during cleanup
-   */
-  private unbindAllButtons(): void {
-    this.activeListeners.forEach((listener) => {
-      listener.button.removeEventListener(listener.event, listener.handler);
-    });
-    this.activeListeners = [];
-  }
-
-  // ============================================
-  // Button Click Handlers
-  // ============================================
-
-  /**
-   * Handle prev button click
-   */
-  private handleClick = (type: 'prev' | 'next' | 'submit'): void => {
-    if (!this.navigationEnabled) return;
-
-    if (type === 'submit') {
-      this.handleSubmit();
-      return;
-    }
-
-    this.handleMove(type);
-  };
-
-  /**
-   * Handle next navigation
-   * Emits form:navigation:next event for managers to respond to
+   * Handle move in a direction
    */
   public handleMove(direction: 'prev' | 'next'): void {
     if (!this.navigationEnabled) return;
@@ -332,20 +70,20 @@ export class NavigationManager extends BaseManager {
 
     const behavior = this.form.getBehavior();
 
-    let success = false;
+    let changedBy = null;
 
     switch (behavior) {
       case 'byField':
-        success = this.byField(direction);
+        changedBy = this.byField(direction);
         break;
       case 'byGroup':
-        success = this.byGroup(direction);
+        changedBy = this.byGroup(direction);
         break;
       case 'bySet':
-        success = this.bySet(direction);
+        changedBy = this.bySet(direction);
         break;
       case 'byCard':
-        success = this.byCard(direction);
+        changedBy = this.byCard(direction);
         break;
       default:
         throw this.form.createError('Invalid behavior', 'runtime', {
@@ -353,38 +91,31 @@ export class NavigationManager extends BaseManager {
         });
     }
 
-    if (!success) return;
+    if (!changedBy) return;
 
-    this.handleNavigationChanged();
-  }
-
-  /**
-   * Handle submit request
-   * Emits form:submit:requested event with button metadata
-   * @param button - Button element that triggered the submit
-   */
-  public async handleSubmit(): Promise<void> {
-    const behavior = this.form.getBehavior();
-
-    // // Emit submit requested event
-    // this.form.emit('form:submit:requested', { behavior });
-
-    this.form.logDebug('Form submit requested', {
-      behavior,
-    });
+    this.form.emit('form:navigation:changed', { to: changedBy });
   }
 
   // /**
-  //  * Handle context change
+  //  * Handle submit request
+  //  * Emits form:submit:requested event with button metadata
+  //  * @param button - Button element that triggered the submit
   //  */
-  // private handleContextChange(context: ButtonContext, activeIndices: number[]): void {
-  //   const buttonsInContext = this.getAllByParent();
+  // public async handleSubmit(): Promise<void> {
+  //   const behavior = this.form.getBehavior();
+
+  //   // // Emit submit requested event
+  //   // this.form.emit('form:submit:requested', { behavior });
+
+  //   this.form.logDebug('Form submit requested', {
+  //     behavior,
+  //   });
   // }
 
   /**
    * Navigate to next field (byField behavior)
    */
-  private byField(direction: 'prev' | 'next'): boolean {
+  private byField(direction: 'prev' | 'next'): 'field' | 'group' | 'set' | 'card' | null {
     const targetPosition =
       direction === 'prev'
         ? this.form.fieldManager.getPrevPosition()
@@ -407,13 +138,13 @@ export class NavigationManager extends BaseManager {
     this.updateHierarchyData(targetField);
     this.batchStateUpdates();
 
-    return true;
+    return 'field';
   }
 
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private byGroup(direction: 'prev' | 'next'): boolean {
+  private byGroup(direction: 'prev' | 'next'): 'group' | 'set' | 'card' | null {
     const targetPosition =
       direction === 'prev'
         ? this.form.groupManager.getPrevPosition()
@@ -441,13 +172,13 @@ export class NavigationManager extends BaseManager {
     this.updateHierarchyData(targetGroup);
     this.batchStateUpdates();
 
-    return true;
+    return 'group';
   }
 
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private bySet(direction: 'prev' | 'next'): boolean {
+  private bySet(direction: 'prev' | 'next'): 'set' | 'card' | null {
     const targetPosition =
       direction === 'prev'
         ? this.form.setManager.getPrevPosition()
@@ -475,13 +206,13 @@ export class NavigationManager extends BaseManager {
     this.updateHierarchyData(targetSet);
     this.batchStateUpdates();
 
-    return true;
+    return 'set';
   }
 
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private byCard(direction: 'prev' | 'next'): boolean {
+  private byCard(direction: 'prev' | 'next'): 'card' | null {
     const targetPosition =
       direction === 'prev'
         ? this.form.cardManager.getPrevPosition()
@@ -490,7 +221,7 @@ export class NavigationManager extends BaseManager {
     // At end of cards - check if we can advance to next group/set/card
     if (targetPosition === null) {
       // this.handleFormComplete();
-      return false;
+      return null;
     }
 
     const targetCard = this.form.cardManager.getByIndex(targetPosition);
@@ -509,7 +240,7 @@ export class NavigationManager extends BaseManager {
     this.setChildrenActive(targetCard);
     this.batchStateUpdates();
 
-    return true;
+    return 'card';
   }
 
   /**
@@ -624,108 +355,5 @@ export class NavigationManager extends BaseManager {
 
     // Batch update all states
     this.form.setStates(allStates);
-  }
-
-  // ============================================
-  // Button State Management
-  // ============================================
-
-  // private handleNavigationChanged(payload: NavigationChangedEvent): void {
-  private handleNavigationChanged(): void {
-    this.updateButtonStates();
-  }
-
-  /**
-   * Update button states based on current navigation position
-   * Called after navigation or state changes
-   */
-  public updateButtonStates(isInitial: boolean = false): void {
-    this.logDebug(`${isInitial ? 'Initializing' : 'Updating'} button states`);
-
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = this.form.getAllState();
-
-    let total: number;
-    let current: number;
-
-    if (totalCards > 0) {
-      total = totalCards;
-      current = currentCardIndex;
-    } else if (totalSets > 0) {
-      total = totalSets;
-      current = currentSetIndex;
-    } else if (totalGroups > 0) {
-      total = totalGroups;
-      current = currentGroupIndex;
-    } else if (totalFields > 0) {
-      total = totalFields;
-      current = currentFieldIndex;
-    } else {
-      total = 0;
-      current = 0;
-    }
-
-    const inputs = this.form.inputManager.getAllActive();
-    const valid = inputs.every((input) => input.isValid);
-
-    this.enableButtons(this.prevButtons, current > 0, current === 0);
-    this.enableButtons(this.nextButtons, valid && current < total - 1, current === total - 1);
-    this.enableButtons(this.submitButtons, current === total - 1, current !== total - 1);
-  }
-
-  /**
-   * Toggle navigation
-   * @param enabled - Whether to enable navigation (default: toggle current state)
-   */
-  public toggleNavigation(enabled?: boolean): void {
-    this.navigationEnabled = enabled ?? !this.navigationEnabled;
-    this.updateButtonStates();
-
-    this.form.logDebug(`Navigation ${this.navigationEnabled ? 'enabled' : 'disabled'}`);
-  }
-
-  /**
-   * Toggle buttons
-   * @param buttons - The buttons to toggle
-   * @param enabled - Whether to enable the buttons
-   * @param hide - Whether to hide the buttons
-   */
-  public enableButtons(buttons: ButtonItem[], enabled: boolean, hide: boolean = false): void {
-    buttons.forEach((button) => {
-      button.button.disabled = !enabled;
-      if (hide) {
-        button.element.style.display = 'none';
-      } else {
-        button.element.style.removeProperty('display');
-      }
-    });
-  }
-
-  // ============================================
-  // Private Helpers
-  // ============================================
-
-  /** Get all button elements */
-  private getAll(): ButtonItem[] {
-    return [...this.prevButtons, ...this.nextButtons, ...this.submitButtons];
-  }
-
-  /** Get all buttons by parent */
-  private getAllByParent(parentHierarchy: ButtonParentHierarchy): ButtonItem[] {
-    return this.getAll().filter((button) => button.parentHierarchy === parentHierarchy);
-  }
-
-  /** Get all buttons of type by parent*/
-  private getTypeByParent(parentHierarchy: ButtonParentHierarchy, type: ButtonType): ButtonItem[] {
-    const allByParent = this.getAllByParent(parentHierarchy);
-    return allByParent.filter((button) => button.type === type);
   }
 }
