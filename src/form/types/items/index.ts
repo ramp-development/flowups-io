@@ -27,4 +27,6 @@ export * from './card-item';
 export * from './field-item';
 export * from './group-item';
 export * from './input-item';
+export * from './navigable-item';
+export * from './progress-item';
 export * from './set-item';

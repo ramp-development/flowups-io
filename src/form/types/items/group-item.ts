@@ -1,5 +1,5 @@
-import type { SetParentHierarchy } from './set-item';
 import type { NavigableItem } from './navigable-item';
+import type { SetParentHierarchy } from './set-item';
 
 export interface GroupParentHierarchy extends SetParentHierarchy {
   setId: string;

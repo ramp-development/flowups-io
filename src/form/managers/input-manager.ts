@@ -504,7 +504,6 @@ export class InputManager extends ItemManager<InputItem> {
    */
   private handleInputChange(name: string, value: unknown): void {
     this.updateItemData(name);
-    console.log('handleInputChange', this.store.getById(name));
     // Update formData state
     const payload = { name, value };
     const formData = this.form.getState('formData');
