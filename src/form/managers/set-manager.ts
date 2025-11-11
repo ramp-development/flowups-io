@@ -117,7 +117,7 @@ export class SetManager extends ItemManager<SetItem> {
 
     const completed = use.every((item) => item.completed);
     const isValid = use.every((item) => item.isValid);
-    const progress = use.filter((item) => item.completed).length / use.length;
+    const progress = (use.filter((item) => item.completed).length / use.length) * 100;
 
     return {
       ...item,
