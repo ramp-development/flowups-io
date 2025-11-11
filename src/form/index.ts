@@ -16,6 +16,7 @@ import {
   NavigationManager,
   SetManager,
 } from './managers';
+import { ButtonManager } from './managers/button-manager';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
@@ -54,6 +55,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public groupManager: GroupManager;
   public fieldManager: FieldManager;
   public inputManager: InputManager;
+  public buttonManager: ButtonManager;
   public navigationManager: NavigationManager;
   public displayManager: DisplayManager;
   // private accessibilityManager: AccessibilityManager;
@@ -81,6 +83,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.groupManager = new GroupManager(this);
     this.fieldManager = new FieldManager(this);
     this.inputManager = new InputManager(this);
+    this.buttonManager = new ButtonManager(this);
     this.navigationManager = new NavigationManager(this);
     this.displayManager = new DisplayManager(this);
 
@@ -249,6 +252,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.groupManager.init();
     this.fieldManager.init();
     this.inputManager.init();
+    this.buttonManager.init();
     this.displayManager.init();
     this.navigationManager.init();
 
