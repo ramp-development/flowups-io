@@ -23,6 +23,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   // Abstract Methods
   // ============================================
 
+  protected abstract buildItemData(item: TItem): TItem;
   protected abstract createItemData(element: HTMLElement, index: number): TItem | undefined;
   public abstract calculateStates(): StateForItem<TItem>;
   protected abstract findParentItem(element: HTMLElement): ItemData | undefined;
@@ -280,7 +281,8 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
     const children = this.getItemsByParentId(parentId, parentType);
     children.forEach((item, index) => {
-      const updated = { ...item, active, current: index === 0 && firstIsCurrent } as TItem;
+      const builtItem = this.buildItemData(item);
+      const updated = { ...builtItem, active, current: index === 0 && firstIsCurrent } as TItem;
       this.update(updated);
     });
 

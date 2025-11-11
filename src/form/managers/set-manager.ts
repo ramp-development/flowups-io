@@ -119,6 +119,17 @@ export class SetManager extends ItemManager<SetItem> {
    * @param data - Data to merge
    */
   protected mergeItemData(item: SetItem, data: UpdatableItemData<SetItem>): SetItem {
+    const builtItem = this.buildItemData(item);
+
+    return {
+      ...builtItem,
+      visited: true,
+      active: data.active ?? item.active,
+      ...data,
+    };
+  }
+
+  protected buildItemData(item: SetItem): SetItem {
     const groups = this.form.groupManager.getAllByParentId(item.id, 'set');
     const fields = this.form.fieldManager
       .getAllByParentId(item.id, 'set')
@@ -132,12 +143,9 @@ export class SetManager extends ItemManager<SetItem> {
 
     return {
       ...item,
-      visited: true,
       completed,
-      active: data.active ?? item.active,
       isValid,
       progress,
-      ...data,
     };
   }
 

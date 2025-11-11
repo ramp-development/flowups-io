@@ -110,6 +110,17 @@ export class CardManager extends ItemManager<CardItem> {
    * @param data - Data to merge
    */
   protected mergeItemData(item: CardItem, data: UpdatableItemData<CardItem> = {}): CardItem {
+    const builtItem = this.buildItemData(item);
+
+    return {
+      ...builtItem,
+      visited: true,
+      active: data.active ?? item.active,
+      ...data,
+    };
+  }
+
+  protected buildItemData(item: CardItem): CardItem {
     const sets = this.form.setManager.getAllByParentId(item.id, 'card');
     const completed = sets.length > 0 ? sets.every((set) => set.completed) : true;
     const isValid = sets.length > 0 ? sets.every((set) => set.isValid) : true;
@@ -118,11 +129,9 @@ export class CardManager extends ItemManager<CardItem> {
 
     return {
       ...item,
-      visited: true,
       completed,
       isValid,
       progress,
-      ...data,
     };
   }
 

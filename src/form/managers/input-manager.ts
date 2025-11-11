@@ -202,16 +202,23 @@ export class InputManager extends ItemManager<InputItem> {
    * @param data - Data to merge
    */
   protected mergeItemData(item: InputItem, data: UpdatableItemData<InputItem>): InputItem {
-    const isValid = this.checkIfValid(item.element);
+    const builtItem = this.buildItemData(item);
 
     return {
-      ...item,
+      ...builtItem,
       visited: true,
+      ...data,
+    };
+  }
+
+  protected buildItemData(item: InputItem): InputItem {
+    const isValid = this.checkIfValid(item.element);
+    return {
+      ...item,
       completed: isValid,
       value: this.getValue(item.name),
       isRequired: this.checkIfRequired(item.element),
       isValid,
-      ...data,
     };
   }
 
@@ -497,6 +504,7 @@ export class InputManager extends ItemManager<InputItem> {
    */
   private handleInputChange(name: string, value: unknown): void {
     this.updateItemData(name);
+    console.log('handleInputChange', this.store.getById(name));
     // Update formData state
     const payload = { name, value };
     const formData = this.form.getState('formData');

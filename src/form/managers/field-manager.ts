@@ -123,7 +123,21 @@ export class FieldManager extends ItemManager<FieldItem> {
    * @param data - Data to merge
    */
   protected mergeItemData(item: FieldItem, data: UpdatableItemData<FieldItem>): FieldItem {
-    const input = this.form.inputManager.getAllByParentId(item.id, 'field')[0];
+    const builtItem = this.buildItemData(item);
+
+    return {
+      ...builtItem,
+      visited: true,
+      active: data.active ?? item.active,
+      ...data,
+    };
+  }
+
+  protected buildItemData(item: FieldItem): FieldItem {
+    const input = this.form.inputManager.getByFind(
+      (input) => input.parentHierarchy.fieldId === item.id
+    );
+
     if (!input) {
       throw this.createError('Cannot merge field data: input not found', 'runtime', {
         cause: { manager: 'FieldManager', element: item, input },
@@ -131,14 +145,17 @@ export class FieldManager extends ItemManager<FieldItem> {
     }
 
     const { completed, isValid } = input;
+    console.log('buildItemData - input', {
+      input,
+      completed,
+      isValid,
+      field: { ...item, completed, isValid },
+    });
 
     return {
       ...item,
-      visited: true,
       completed,
-      active: data.active ?? item.active,
       isValid,
-      ...data,
     };
   }
 

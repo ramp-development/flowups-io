@@ -119,6 +119,16 @@ export class GroupManager extends ItemManager<GroupItem> {
    * @param data - Data to merge
    */
   protected mergeItemData(item: GroupItem, data: UpdatableItemData<GroupItem>): GroupItem {
+    const builtItem = this.buildItemData(item);
+    return {
+      ...builtItem,
+      visited: true,
+      active: data.active ?? item.active,
+      ...data,
+    };
+  }
+
+  protected buildItemData(item: GroupItem): GroupItem {
     const includedFields = this.form.fieldManager
       .getAllByParentId(item.id, 'group')
       .filter((field) => field.isIncluded);
@@ -130,12 +140,9 @@ export class GroupManager extends ItemManager<GroupItem> {
 
     return {
       ...item,
-      visited: true,
       completed,
-      active: data.active ?? item.active,
       isValid,
       progress,
-      ...data,
     };
   }
 
