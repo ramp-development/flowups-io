@@ -1608,3 +1608,138 @@ active: data.active ?? element.active; // ✅ Preserves existing value
 ```
 
 **Future Consideration:** If `determineActive()` needs enhancement, it should only read from parent's current active state, not calculate based on behavior assumptions. However, since navigation now handles all active flag management explicitly, `determineActive()` should remain limited to initial discovery only.
+
+---
+
+## Data Freshness & Progress Calculation
+
+### Problem Statement
+
+When navigating between elements, item data must be recalculated to ensure accurate progress tracking and rollup calculations. The challenge is determining **when** and **what** to recalculate for optimal performance.
+
+### Implemented Solution: Option 1 - Full Rebuild on Navigation ✅
+
+**Status:** ✅ Implemented in NavigationManager.batchStateUpdates() (lines 342-368)
+
+**Approach:** Before calculating state, rebuild all items across all managers to ensure data is fresh.
+
+```typescript
+private batchStateUpdates(): void {
+  // Rebuild all item data first (ensures rollups are accurate)
+  this.form.inputManager.rebuildAll();
+  this.form.fieldManager.rebuildAll();
+  this.form.groupManager.rebuildAll();
+  this.form.setManager.rebuildAll();
+  this.form.cardManager.rebuildAll();
+
+  // Now calculate state from fresh data
+  const allStates = {
+    ...this.form.inputManager.calculateStates(),
+    ...this.form.fieldManager.calculateStates(),
+    ...this.form.groupManager.calculateStates(),
+    ...this.form.setManager.calculateStates(),
+    ...this.form.cardManager.calculateStates(),
+  };
+
+  this.form.setStates(allStates);
+}
+```
+
+**Pros:**
+- ✅ Simple, explicit
+- ✅ Guarantees accurate state every navigation
+- ✅ No risk of stale data
+- ✅ Easy to understand and maintain
+
+**Cons:**
+- ⚠️ Recalculates all items every navigation (performance overhead for large forms)
+
+### Future Optimization Options
+
+#### Option 2: Hierarchical Rebuild (Performance Optimization)
+
+**Approach:** Only rebuild affected items and their ancestors.
+
+```typescript
+private rebuildAffectedHierarchy(item: FieldItem | GroupItem | SetItem | CardItem): void {
+  // Rebuild the item itself
+  if (item.type === 'field') {
+    this.form.fieldManager.rebuildItem(item.id);
+  }
+
+  // Rebuild parents (they depend on children for rollups)
+  const { parentHierarchy } = item;
+
+  if (parentHierarchy.groupId) {
+    this.form.groupManager.rebuildItem(parentHierarchy.groupId);
+  }
+
+  if (parentHierarchy.setId) {
+    this.form.setManager.rebuildItem(parentHierarchy.setId);
+  }
+
+  if (parentHierarchy.cardId) {
+    this.form.cardManager.rebuildItem(parentHierarchy.cardId);
+  }
+}
+```
+
+**Implementation Notes:**
+- Need to track "previous" item to rebuild both source and destination
+- Add `rebuildItem(selector)` method to ItemManager
+- More performant but more complex
+
+#### Option 3: Debounced Rebuild on Input (Eager Updates)
+
+**Approach:** Rebuild field → parents immediately on input change (debounced).
+
+```typescript
+// InputManager.handleInputChange()
+private rebuildTimer: number | null = null;
+
+private handleInputChange(name: string, value: unknown): void {
+  this.updateItemData(name);
+  const payload = { name, value };
+  const formData = this.form.getState('formData');
+  this.form.setState('formData', { ...formData, ...payload });
+  this.form.emit('form:input:changed', payload);
+
+  // Debounced rebuild (300ms)
+  if (this.rebuildTimer !== null) {
+    clearTimeout(this.rebuildTimer);
+  }
+
+  this.rebuildTimer = window.setTimeout(() => {
+    const input = this.getById(name);
+    if (input?.parentHierarchy.fieldId) {
+      this.form.fieldManager.rebuildItem(input.parentHierarchy.fieldId);
+      this.rebuildParents(input.parentHierarchy);
+    }
+    this.rebuildTimer = null;
+  }, 300);
+}
+```
+
+**Pros:**
+- ✅ Progress updates in near-real-time as user types
+- ✅ Navigation accuracy guaranteed
+
+**Cons:**
+- ⚠️ More rebuilds overall (but debounced)
+- ⚠️ Complexity in InputManager
+
+#### Option 4: Hybrid Approach (Recommended for Future)
+
+**Approach:** Combine debounced input updates + full navigation rebuild.
+
+- **On Input Change**: Debounced rebuild (300ms) - keeps progress bar responsive
+- **On Navigation**: Full rebuild - guarantees accuracy before state calculation
+
+**Benefits:**
+- ✅ Responsive UI (progress updates as user types)
+- ✅ Guaranteed accuracy (full rebuild on navigation)
+- ✅ Acceptable performance (debounce prevents spam)
+
+**Implementation Priority:** Consider if form performance becomes an issue or if real-time progress updates are required.
+
+---
