@@ -17,6 +17,7 @@ import {
   SetManager,
 } from './managers';
 import { ButtonManager } from './managers/button-manager';
+import { ProgressManager } from './managers/progress-manager';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
@@ -58,6 +59,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public buttonManager: ButtonManager;
   public navigationManager: NavigationManager;
   public displayManager: DisplayManager;
+  public progressManager: ProgressManager;
   // private accessibilityManager: AccessibilityManager;
   // private animationManager: AnimationManager;
   // private conditionManager: ConditionManager;
@@ -86,6 +88,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.buttonManager = new ButtonManager(this);
     this.navigationManager = new NavigationManager(this);
     this.displayManager = new DisplayManager(this);
+    this.progressManager = new ProgressManager(this);
 
     if (this.config.autoInit && !this.isInitialized()) this.init();
   }
@@ -255,6 +258,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.buttonManager.init();
     this.displayManager.init();
     this.navigationManager.init();
+    this.progressManager.init();
 
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
