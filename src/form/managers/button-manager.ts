@@ -155,6 +155,7 @@ export class ButtonManager extends BaseManager {
     const active = this.determineActive(item.element);
     const visible = this.determineVisible(item.type);
     const enabled = this.determineEnabled(item.type, active && visible);
+    console.log('buildItemData: item', { item, active, visible, enabled });
 
     return {
       ...item,
@@ -184,10 +185,11 @@ export class ButtonManager extends BaseManager {
    */
   private determineVisible(type: ButtonType): boolean {
     const { current, total } = this.getRelevantState();
+    const { currentCardIndex, totalCards, currentSetIndex, totalSets } = this.form.getAllState();
 
     switch (type) {
       case 'prev':
-        return current > 0;
+        return (totalCards > 0 && currentCardIndex > 0) || (totalSets > 0 && currentSetIndex > 0);
       case 'next':
         return current !== total - 1;
       case 'submit':
@@ -203,10 +205,10 @@ export class ButtonManager extends BaseManager {
 
     switch (type) {
       case 'prev':
-        return current > 0;
-      case 'next': // valid && current < total - 1
+        return activeAndVisible;
+      case 'next':
         return valid && current < total - 1;
-      case 'submit': // valid && current === total - 1
+      case 'submit':
         return valid && current === total - 1;
     }
   }
