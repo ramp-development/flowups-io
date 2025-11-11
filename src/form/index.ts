@@ -243,7 +243,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   protected async onInit(): Promise<void> {
     await super.onInit();
 
-    this.groupStart(`[FLOWUPS-DEBUG] Form: Initializing "${this.getId()}"`);
+    this.groupStart(`[FLOWUPS-DEBUG] Form: Initializing "${this.getId()}"`, false);
     this.logDebug(`Started at ${new Date().toISOString()}`);
     this.timeDebug('form:init');
 
