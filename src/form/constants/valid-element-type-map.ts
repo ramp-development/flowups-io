@@ -14,5 +14,5 @@ export const VALID_ELEMENT_TYPE_MAP: Record<FormElementType, true> = {
   prev: true,
   next: true,
   submit: true,
-  error: true,
+  'progress-line': true,
 } as const;
