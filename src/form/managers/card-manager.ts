@@ -108,8 +108,13 @@ export class CardManager extends ItemManager<CardItem> {
     const sets = this.form.setManager.getAllByParentId(item.id, 'card');
     const completed = sets.length > 0 ? sets.every((set) => set.completed) : true;
     const isValid = sets.length > 0 ? sets.every((set) => set.isValid) : true;
+
+    const fieldsInCard = this.form.fieldManager
+      .getAllByParentId(item.id, 'card')
+      .filter((field) => field.isIncluded);
+
     const progress =
-      sets.length > 0 ? sets.reduce((acc, set) => acc + set.progress, 0) / sets.length : 100;
+      (fieldsInCard.filter((field) => field.completed).length / fieldsInCard.length) * 100;
 
     return {
       ...item,
