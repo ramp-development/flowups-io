@@ -70,7 +70,7 @@ export class NavigationManager extends BaseManager {
 
     const behavior = this.form.getBehavior();
 
-    let changedBy = null;
+    let changedBy = undefined;
 
     switch (behavior) {
       case 'byField':
@@ -115,14 +115,14 @@ export class NavigationManager extends BaseManager {
   /**
    * Navigate to next field (byField behavior)
    */
-  private byField(direction: 'prev' | 'next'): 'field' | 'group' | 'set' | 'card' | null {
+  private byField(direction: 'prev' | 'next'): 'field' | 'group' | 'set' | 'card' | undefined {
     const targetPosition =
       direction === 'prev'
         ? this.form.fieldManager.getPrevPosition()
         : this.form.fieldManager.getNextPosition();
 
     // At end of fields - check if we can advance to next group/set/card
-    if (targetPosition === null) {
+    if (targetPosition === undefined) {
       return this.byGroup(direction);
     }
 
@@ -144,14 +144,14 @@ export class NavigationManager extends BaseManager {
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private byGroup(direction: 'prev' | 'next'): 'group' | 'set' | 'card' | null {
+  private byGroup(direction: 'prev' | 'next'): 'group' | 'set' | 'card' | undefined {
     const targetPosition =
       direction === 'prev'
         ? this.form.groupManager.getPrevPosition()
         : this.form.groupManager.getNextPosition();
 
     // At end of groups - check if we can advance to next group/set/card
-    if (targetPosition === null) {
+    if (targetPosition === undefined) {
       return this.bySet(direction);
     }
 
@@ -178,14 +178,14 @@ export class NavigationManager extends BaseManager {
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private bySet(direction: 'prev' | 'next'): 'set' | 'card' | null {
+  private bySet(direction: 'prev' | 'next'): 'set' | 'card' | undefined {
     const targetPosition =
       direction === 'prev'
         ? this.form.setManager.getPrevPosition()
         : this.form.setManager.getNextPosition();
 
     // At end of sets - check if we can advance to next group/set/card
-    if (targetPosition === null) {
+    if (targetPosition === undefined) {
       return this.byCard(direction);
     }
 
@@ -212,16 +212,16 @@ export class NavigationManager extends BaseManager {
   /**
    * Navigate to next group (byGroup behavior)
    */
-  private byCard(direction: 'prev' | 'next'): 'card' | null {
+  private byCard(direction: 'prev' | 'next'): 'card' | undefined {
     const targetPosition =
       direction === 'prev'
         ? this.form.cardManager.getPrevPosition()
         : this.form.cardManager.getNextPosition();
 
     // At end of cards - check if we can advance to next group/set/card
-    if (targetPosition === null) {
+    if (targetPosition === undefined) {
       // this.handleFormComplete();
-      return null;
+      return undefined;
     }
 
     const targetCard = this.form.cardManager.getByIndex(targetPosition);
@@ -286,16 +286,11 @@ export class NavigationManager extends BaseManager {
       this.form.fieldManager.setActiveByParent(element.id, element.type, { firstIsCurrent: true });
     }
 
-    // Set inputs active for ALL active fields (not just current)
+    this.form.inputManager.clearActiveAndCurrent();
     const activeFields = this.form.fieldManager.getActive();
-    if (activeFields.length === 0) {
-      this.form.inputManager.clearActiveAndCurrent();
-      return;
-    }
-
     activeFields.forEach((field, index) => {
       this.form.inputManager.setActiveByParent(field.id, 'field', {
-        firstIsCurrent: index === 0, // First active field's inputs get first current
+        firstIsCurrent: index === 0,
       });
     });
   }
