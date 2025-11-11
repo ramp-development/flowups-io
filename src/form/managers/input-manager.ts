@@ -15,7 +15,6 @@ import type {
   InputElement,
   InputItem,
   InputParentHierarchy,
-  UpdatableItemData,
 } from '../types';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
@@ -193,21 +192,6 @@ export class InputManager extends ItemManager<InputItem> {
   public calculateStates(): FormInputState {
     return {
       formData: this.getFormData(),
-    };
-  }
-
-  /**
-   * Update data values
-   * @param item - Input Item
-   * @param data - Data to merge
-   */
-  protected mergeItemData(item: InputItem, data: UpdatableItemData<InputItem>): InputItem {
-    const builtItem = this.buildItemData(item);
-
-    return {
-      ...builtItem,
-      visited: true,
-      ...data,
     };
   }
 

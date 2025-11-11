@@ -6,13 +6,7 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type {
-  CardItem,
-  FormSetState,
-  SetItem,
-  SetParentHierarchy,
-  UpdatableItemData,
-} from '../types';
+import type { CardItem, FormSetState, SetItem, SetParentHierarchy } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
@@ -110,22 +104,6 @@ export class SetManager extends ItemManager<SetItem> {
       totalSets,
       setsComplete,
       setValidity,
-    };
-  }
-
-  /**
-   * Update data values
-   * @param item - Set Item
-   * @param data - Data to merge
-   */
-  protected mergeItemData(item: SetItem, data: UpdatableItemData<SetItem>): SetItem {
-    const builtItem = this.buildItemData(item);
-
-    return {
-      ...builtItem,
-      visited: true,
-      active: data.active ?? item.active,
-      ...data,
     };
   }
 

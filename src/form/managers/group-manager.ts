@@ -6,13 +6,7 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type {
-  FormGroupState,
-  GroupItem,
-  GroupParentHierarchy,
-  SetItem,
-  UpdatableItemData,
-} from '../types';
+import type { FormGroupState, GroupItem, GroupParentHierarchy, SetItem } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
@@ -110,21 +104,6 @@ export class GroupManager extends ItemManager<GroupItem> {
       totalGroups,
       groupsComplete,
       groupValidity,
-    };
-  }
-
-  /**
-   * Update data values
-   * @param item - Group Item
-   * @param data - Data to merge
-   */
-  protected mergeItemData(item: GroupItem, data: UpdatableItemData<GroupItem>): GroupItem {
-    const builtItem = this.buildItemData(item);
-    return {
-      ...builtItem,
-      visited: true,
-      active: data.active ?? item.active,
-      ...data,
     };
   }
 

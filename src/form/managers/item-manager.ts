@@ -120,9 +120,11 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * Merge item data - can be overridden
    * @virtual
    */
+
   protected mergeItemData(item: TItem, data: UpdatableItemData<TItem>): TItem {
+    const builtItem = this.buildItemData(item);
     return {
-      ...item,
+      ...builtItem,
       visited: true, // Always mark as visited when updated
       ...data,
     } as TItem;

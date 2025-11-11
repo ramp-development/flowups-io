@@ -5,14 +5,7 @@
  */
 
 import { ATTR } from '../constants/attr';
-import type {
-  FieldItem,
-  FieldParentHierarchy,
-  FormFieldState,
-  GroupItem,
-  SetItem,
-  UpdatableItemData,
-} from '../types';
+import type { FieldItem, FieldParentHierarchy, FormFieldState, GroupItem, SetItem } from '../types';
 import { parseElementAttribute } from '../utils';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
@@ -117,22 +110,6 @@ export class FieldManager extends ItemManager<FieldItem> {
     };
   }
 
-  /**
-   * Update data values
-   * @param item - Field Item
-   * @param data - Data to merge
-   */
-  protected mergeItemData(item: FieldItem, data: UpdatableItemData<FieldItem>): FieldItem {
-    const builtItem = this.buildItemData(item);
-
-    return {
-      ...builtItem,
-      visited: true,
-      active: data.active ?? item.active,
-      ...data,
-    };
-  }
-
   protected buildItemData(item: FieldItem): FieldItem {
     const input = this.form.inputManager.getByFind(
       (input) => input.parentHierarchy.fieldId === item.id
@@ -145,12 +122,6 @@ export class FieldManager extends ItemManager<FieldItem> {
     }
 
     const { completed, isValid } = input;
-    console.log('buildItemData - input', {
-      input,
-      completed,
-      isValid,
-      field: { ...item, completed, isValid },
-    });
 
     return {
       ...item,

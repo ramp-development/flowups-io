@@ -6,7 +6,7 @@
  */
 
 import { ATTR } from '../constants';
-import type { CardItem, CardParentHierarchy, FormCardState, UpdatableItemData } from '../types';
+import type { CardItem, CardParentHierarchy, FormCardState } from '../types';
 import { extractTitle, parseElementAttribute } from '../utils';
 import { ItemManager } from './item-manager';
 
@@ -101,22 +101,6 @@ export class CardManager extends ItemManager<CardItem> {
       totalCards,
       cardsComplete,
       cardValidity,
-    };
-  }
-
-  /**
-   * Update data values
-   * @param item - Card Item
-   * @param data - Data to merge
-   */
-  protected mergeItemData(item: CardItem, data: UpdatableItemData<CardItem> = {}): CardItem {
-    const builtItem = this.buildItemData(item);
-
-    return {
-      ...builtItem,
-      visited: true,
-      active: data.active ?? item.active,
-      ...data,
     };
   }
 
