@@ -17,8 +17,6 @@ import { ItemManager } from './item-manager';
  * Provides access to cards by index or ID.
  */
 export class CardManager extends ItemManager<CardItem> {
-  protected items: CardItem[] = [];
-  protected itemMap: Map<string, CardItem> = new Map();
   protected readonly itemType = 'card';
 
   /**
@@ -76,14 +74,14 @@ export class CardManager extends ItemManager<CardItem> {
     const currentCardId = currentCard ? currentCard.id : null;
     const currentCardTitle = currentCard ? currentCard.title : null;
     const previousCardIndex = currentCardIndex > 0 ? currentCardIndex - 1 : null;
-    const nextCardIndex = currentCardIndex < this.items.length - 1 ? currentCardIndex + 1 : null;
+    const nextCardIndex = currentCardIndex < this.length - 1 ? currentCardIndex + 1 : null;
     const completedCards = new Set(
-      this.items.filter((item) => item.completed).map((item) => item.id)
+      this.getByFilter((item) => item.completed).map((item) => item.id)
     );
-    const visitedCards = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
-    const totalCards = this.items.length;
+    const visitedCards = new Set(this.getByFilter((item) => item.visited).map((item) => item.id));
+    const totalCards = this.length;
     const cardsComplete = completedCards.size;
-    const cardValidity = this.items.reduce(
+    const cardValidity = this.getAll().reduce(
       (acc, item) => {
         acc[item.id] = item.isValid;
         return acc;

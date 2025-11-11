@@ -24,8 +24,6 @@ import { ItemManager } from './item-manager';
  * Builds navigation order.
  */
 export class FieldManager extends ItemManager<FieldItem> {
-  protected items: FieldItem[] = [];
-  protected itemMap: Map<string, FieldItem> = new Map();
   protected readonly itemType = 'field';
 
   /**
@@ -88,15 +86,15 @@ export class FieldManager extends ItemManager<FieldItem> {
     const currentFieldIndex = currentField ? currentField.index : -1;
     const currentFieldId = currentField ? currentField.id : null;
     const previousFieldIndex = currentFieldIndex > 0 ? currentFieldIndex - 1 : null;
-    const nextFieldIndex = currentFieldIndex < this.items.length - 1 ? currentFieldIndex + 1 : null;
+    const nextFieldIndex = currentFieldIndex < this.length - 1 ? currentFieldIndex + 1 : null;
     const completedFields = new Set(
-      this.items.filter((item) => item.completed).map((item) => item.id)
+      this.getByFilter((item) => item.completed).map((item) => item.id)
     );
-    const visitedFields = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
-    const totalFields = this.items.length;
-    const totalIncludedFields = this.items.filter((item) => item.isIncluded).length;
+    const visitedFields = new Set(this.getByFilter((item) => item.visited).map((item) => item.id));
+    const totalFields = this.length;
+    const totalIncludedFields = this.getByFilter((item) => item.isIncluded).length;
     const fieldsComplete = completedFields.size;
-    const fieldValidity = this.items.reduce(
+    const fieldValidity = this.getAll().reduce(
       (acc, item) => {
         acc[item.id] = item.isValid;
         return acc;

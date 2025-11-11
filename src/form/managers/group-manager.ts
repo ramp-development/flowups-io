@@ -25,8 +25,6 @@ import { ItemManager } from './item-manager';
  * Associates groups with their parent sets and cards.
  */
 export class GroupManager extends ItemManager<GroupItem> {
-  protected items: GroupItem[] = [];
-  protected itemMap: Map<string, GroupItem> = new Map();
   protected readonly itemType = 'group';
 
   /**
@@ -85,14 +83,14 @@ export class GroupManager extends ItemManager<GroupItem> {
     const currentGroupId = currentGroup ? currentGroup.id : null;
     const currentGroupTitle = currentGroup ? currentGroup.title : null;
     const previousGroupIndex = currentGroupIndex > 0 ? currentGroupIndex - 1 : null;
-    const nextGroupIndex = currentGroupIndex < this.items.length - 1 ? currentGroupIndex + 1 : null;
+    const nextGroupIndex = currentGroupIndex < this.length - 1 ? currentGroupIndex + 1 : null;
     const completedGroups = new Set(
-      this.items.filter((item) => item.completed).map((item) => item.id)
+      this.getByFilter((item) => item.completed).map((item) => item.id)
     );
-    const visitedGroups = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
-    const totalGroups = this.items.length;
+    const visitedGroups = new Set(this.getByFilter((item) => item.visited).map((item) => item.id));
+    const totalGroups = this.length;
     const groupsComplete = completedGroups.size;
-    const groupValidity = this.items.reduce(
+    const groupValidity = this.getAll().reduce(
       (acc, item) => {
         acc[item.id] = item.isValid;
         return acc;

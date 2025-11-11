@@ -27,8 +27,6 @@ import { ItemManager } from './item-manager';
  * Implements lazy event binding - only the active field inputs are bound to events.
  */
 export class InputManager extends ItemManager<InputItem> {
-  protected items: InputItem[] = [];
-  protected itemMap: Map<string, InputItem> = new Map();
   protected readonly itemType = 'input';
 
   /** Active event listeners for cleanup */
@@ -64,8 +62,7 @@ export class InputManager extends ItemManager<InputItem> {
   protected discoverItems(): void {
     const fields = this.form.fieldManager.getAll();
 
-    this.items = [];
-    this.itemMap.clear();
+    this.clear();
 
     // Track which names we've already processed to avoid duplicates
     const processedNames = new Set<string>();
@@ -97,8 +94,8 @@ export class InputManager extends ItemManager<InputItem> {
       });
     });
 
-    this.logDebug(`Discovered ${this.items.length} ${this.itemType}s`, {
-      elements: this.items,
+    this.logDebug(`Discovered ${this.length} ${this.itemType}s`, {
+      elements: this.getAll(),
     });
   }
 
@@ -147,7 +144,7 @@ export class InputManager extends ItemManager<InputItem> {
     // If we've already processed this name, it's part of a radio/checkbox group
     if (processedNames.has(name)) {
       // Find the existing item, add this input and recalc the data
-      const existingInput = this.itemMap.get(name);
+      const existingInput = this.getById(name);
       if (existingInput) {
         existingInput.inputs.push(input);
         existingInput.isGroup = existingInput.inputs.length > 1;
@@ -480,7 +477,7 @@ export class InputManager extends ItemManager<InputItem> {
   public getFormData(): Record<string, unknown> {
     const formData: Record<string, unknown> = {};
 
-    this.items.forEach((item) => {
+    this.getAll().forEach((item) => {
       formData[item.name] = this.extractInputValue(item);
     });
 

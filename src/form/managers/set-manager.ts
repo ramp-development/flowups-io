@@ -25,8 +25,6 @@ import { ItemManager } from './item-manager';
  * Associates sets with their parent cards.
  */
 export class SetManager extends ItemManager<SetItem> {
-  protected items: SetItem[] = [];
-  protected itemMap: Map<string, SetItem> = new Map();
   protected readonly itemType = 'set';
 
   /**
@@ -85,14 +83,14 @@ export class SetManager extends ItemManager<SetItem> {
     const currentSetId = currentSet ? currentSet.id : null;
     const currentSetTitle = currentSet ? currentSet.title : null;
     const previousSetIndex = currentSetIndex > 0 ? currentSetIndex - 1 : null;
-    const nextSetIndex = currentSetIndex < this.items.length - 1 ? currentSetIndex + 1 : null;
+    const nextSetIndex = currentSetIndex < this.length - 1 ? currentSetIndex + 1 : null;
     const completedSets = new Set(
-      this.items.filter((item) => item.completed).map((item) => item.id)
+      this.getByFilter((item) => item.completed).map((item) => item.id)
     );
-    const visitedSets = new Set(this.items.filter((item) => item.visited).map((item) => item.id));
-    const totalSets = this.items.length;
+    const visitedSets = new Set(this.getByFilter((item) => item.visited).map((item) => item.id));
+    const totalSets = this.length;
     const setsComplete = completedSets.size;
-    const setValidity = this.items.reduce(
+    const setValidity = this.getAll().reduce(
       (acc, item) => {
         acc[item.id] = item.isValid;
         return acc;
