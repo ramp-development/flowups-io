@@ -155,7 +155,6 @@ export class ButtonManager extends BaseManager {
     const active = this.determineActive(item.element);
     const visible = this.determineVisible(item.type);
     const enabled = this.determineEnabled(item.type, active && visible);
-    console.log('buildItemData: item', { item, active, visible, enabled });
 
     return {
       ...item,
@@ -426,23 +425,6 @@ export class ButtonManager extends BaseManager {
         item.element.style.removeProperty('display');
       } else {
         item.element.style.display = 'none';
-      }
-    });
-  }
-
-  /**
-   * Enable buttons
-   * @param items - The buttons to enable/disable
-   * @param enabled - true to enable, false to disable
-   * @param hide - true to hide, false to show (defaults to false)
-   */
-  public enableButtons(items: ButtonItem[], enabled: boolean, hide: boolean = false): void {
-    items.forEach((item) => {
-      item.button.disabled = !enabled;
-      if (hide) {
-        item.element.style.display = 'none';
-      } else {
-        item.element.style.removeProperty('display');
       }
     });
   }
