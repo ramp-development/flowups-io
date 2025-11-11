@@ -115,7 +115,7 @@ export class GroupManager extends ItemManager<GroupItem> {
     const completed = includedFields.every((field) => field.completed);
     const isValid = includedFields.every((field) => field.isValid);
     const progress =
-      includedFields.filter((field) => field.completed).length / includedFields.length;
+      (includedFields.filter((field) => field.completed).length / includedFields.length) * 100;
 
     return {
       ...item,
