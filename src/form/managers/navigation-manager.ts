@@ -166,8 +166,9 @@ export class NavigationManager extends BaseManager {
     this.clearHierarchyData('group');
 
     // Set new group active and current
-    this.form.groupManager.setActive(targetGroup.id);
-    this.form.groupManager.setCurrent(targetGroup.id);
+    this.form.groupManager.updateItemData(targetGroup.id, { active: true, current: true });
+    // this.form.groupManager.setActive(targetGroup.id);
+    // this.form.groupManager.setCurrent(targetGroup.id);
     this.setChildrenActive(targetGroup);
     this.updateHierarchyData(targetGroup);
     this.batchStateUpdates();
@@ -339,13 +340,27 @@ export class NavigationManager extends BaseManager {
    * Prevents multiple state:changed events and DisplayManager flicker
    */
   private batchStateUpdates(): void {
+    this.form.inputManager.rebuildAll();
+    this.form.fieldManager.rebuildAll();
+    this.form.groupManager.rebuildAll();
+    this.form.setManager.rebuildAll();
+    this.form.cardManager.rebuildAll();
+
+    console.log('batchStateUpdates', {
+      inputs: this.form.inputManager.getAll(),
+      fields: this.form.fieldManager.getAll(),
+      groups: this.form.groupManager.getAll(),
+      sets: this.form.setManager.getAll(),
+      cards: this.form.cardManager.getAll(),
+    });
+
     // Collect state from all managers (doesn't write to state yet)
     const allStates = {
-      ...this.form.cardManager.calculateStates(),
-      ...this.form.setManager.calculateStates(),
-      ...this.form.groupManager.calculateStates(),
-      ...this.form.fieldManager.calculateStates(),
       ...this.form.inputManager.calculateStates(),
+      ...this.form.fieldManager.calculateStates(),
+      ...this.form.groupManager.calculateStates(),
+      ...this.form.setManager.calculateStates(),
+      ...this.form.cardManager.calculateStates(),
     };
 
     // Batch update all states
