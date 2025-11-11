@@ -27,4 +27,7 @@ export interface ButtonItem extends BaseItem {
 
   /** Whether button is currently disabled */
   disabled: boolean;
+
+  /** Whether button is visible */
+  visible: boolean;
 }

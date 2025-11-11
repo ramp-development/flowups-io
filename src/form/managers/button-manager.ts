@@ -4,6 +4,8 @@ import type {
   ButtonParentHierarchy,
   ButtonType,
   CardItem,
+  FormState,
+  InputChangedEvent,
   SetItem,
   SubmitRequestedEvent,
 } from '../types';
@@ -135,6 +137,14 @@ export class ButtonManager extends BaseManager {
     const active = this.determineActive(element);
     if (active) this.activeButtonIds.add(id);
 
+    const currentAndTotal = this.getCurrentAndTotalIndex(this.form.getAllState());
+
+    const visible = this.determineVisible(
+      parsed.type as ButtonType,
+      currentAndTotal.total,
+      currentAndTotal.current
+    );
+
     // Create button item object
     return {
       element,
@@ -145,6 +155,7 @@ export class ButtonManager extends BaseManager {
       parentHierarchy: this.findParentHierarchy(element),
       button,
       disabled: button.disabled,
+      visible,
     };
   }
 
@@ -159,6 +170,55 @@ export class ButtonManager extends BaseManager {
     // Get parent based on element type
     const parent = this.findParentItem(element);
     return parent ? parent.active : true;
+  }
+
+  private getCurrentAndTotalIndex(state: FormState): { current: number; total: number } {
+    const {
+      totalCards,
+      currentCardIndex,
+      totalSets,
+      currentSetIndex,
+      totalGroups,
+      currentGroupIndex,
+      totalFields,
+      currentFieldIndex,
+    } = state;
+
+    let total: number;
+    let current: number;
+
+    if (totalCards > 0) {
+      total = totalCards;
+      current = currentCardIndex;
+    } else if (totalSets > 0) {
+      total = totalSets;
+      current = currentSetIndex;
+    } else if (totalGroups > 0) {
+      total = totalGroups;
+      current = currentGroupIndex;
+    } else {
+      total = totalFields;
+      current = currentFieldIndex;
+    }
+
+    return {
+      current,
+      total,
+    };
+  }
+
+  /**
+   * Determine whether a button should be visible
+   */
+  public determineVisible(type: ButtonType, total: number, current: number): boolean {
+    switch (type) {
+      case 'prev':
+        return current > 0;
+      case 'next':
+        return current !== total - 1;
+      case 'submit':
+        return current === total - 1;
+    }
   }
 
   private findParentHierarchy(child: HTMLElement): ButtonParentHierarchy {
@@ -238,8 +298,8 @@ export class ButtonManager extends BaseManager {
       this.handleContextChange();
     });
 
-    this.form.subscribe('form:input:changed', () => {
-      this.handleInputChanged();
+    this.form.subscribe('form:input:changed', (payload) => {
+      this.handleInputChanged(payload);
     });
 
     this.form.logDebug('Event listeners setup');
@@ -350,7 +410,7 @@ export class ButtonManager extends BaseManager {
   // ============================================
 
   // private handleNavigationChanged(payload: NavigationChangedEvent): void {
-  private handleInputChanged(): void {
+  private handleInputChanged(payload: InputChangedEvent): void {
     this.updateButtonStates();
   }
 
