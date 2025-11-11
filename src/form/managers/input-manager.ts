@@ -500,7 +500,7 @@ export class InputManager extends ItemManager<InputItem> {
     // Update formData state
     const payload = { name, value };
     const formData = this.form.getState('formData');
-    this.form.setState('formData', { ...formData, ...payload });
+    this.form.setState('formData', { ...formData, [payload.name]: payload.value });
     this.form.emit('form:input:changed', payload);
 
     this.logDebug(`Input "${name}" changed to:`, value);
