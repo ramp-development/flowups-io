@@ -80,7 +80,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       const itemData = this.createItemData(item, index);
       if (!itemData) return;
 
-      this.update(itemData);
+      this.add(itemData);
     });
 
     this.logDebug(`Discovered ${items.length} ${this.itemType}s`, {
