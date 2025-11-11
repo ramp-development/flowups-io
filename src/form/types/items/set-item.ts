@@ -1,5 +1,5 @@
 import type { CardParentHierarchy } from './card-item';
-import type { RollupItem } from './rollup-item';
+import type { NavigableItem } from './navigable-item';
 
 export interface SetParentHierarchy extends CardParentHierarchy {
   cardId: string | null;
@@ -11,7 +11,7 @@ export interface SetParentHierarchy extends CardParentHierarchy {
  * Semantic grouping of related fields (uses <fieldset>)
  * @extends BaseItem
  */
-export interface SetItem extends RollupItem {
+export interface SetItem extends NavigableItem {
   /** Type identifier */
   type: 'set';
 

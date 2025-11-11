@@ -1,5 +1,5 @@
 import type { FieldParentHierarchy } from './field-item';
-import type { RollupItem } from './rollup-item';
+import type { NavigableItem } from './navigable-item';
 
 export interface InputParentHierarchy extends FieldParentHierarchy {
   fieldId: string;
@@ -17,7 +17,7 @@ export type InputElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaEl
  * The `element` property (from BaseItem) points to the first input.
  * @extends BaseItem
  */
-export interface InputItem extends RollupItem {
+export interface InputItem extends NavigableItem {
   /** The primary input element */
   element: InputElement;
 

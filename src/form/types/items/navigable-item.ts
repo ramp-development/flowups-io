@@ -3,7 +3,7 @@ import type { BaseItem } from '.';
 /**
  * Base item interface shared by all hierarchy items
  */
-export interface RollupItem extends BaseItem {
+export interface NavigableItem extends BaseItem {
   /** Whether this element is the current focused/primary element (only one can be current at a time) */
   current: boolean;
 

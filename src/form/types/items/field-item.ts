@@ -1,5 +1,5 @@
 import type { GroupParentHierarchy } from './group-item';
-import type { RollupItem } from './rollup-item';
+import type { NavigableItem } from './navigable-item';
 
 export interface FieldParentHierarchy extends GroupParentHierarchy {
   groupId: string | null;
@@ -11,7 +11,7 @@ export interface FieldParentHierarchy extends GroupParentHierarchy {
  * Wrapper for label, input, error, hint
  * @extends BaseItem
  */
-export interface FieldItem extends RollupItem {
+export interface FieldItem extends NavigableItem {
   /** Type identifier */
   type: 'field';
 
