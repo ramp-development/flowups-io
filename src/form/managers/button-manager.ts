@@ -4,8 +4,6 @@ import type {
   ButtonParentHierarchy,
   ButtonType,
   CardItem,
-  FormState,
-  InputChangedEvent,
   SetItem,
   SubmitRequestedEvent,
 } from '../types';
@@ -23,7 +21,6 @@ import { BaseManager } from './base-manager';
  */
 export class ButtonManager extends BaseManager {
   private store = new ItemStore<ButtonItem>();
-  private activeButtonIds = new Set<string>();
 
   /** Active event listeners for cleanup */
   private activeListeners: Array<{
@@ -41,7 +38,7 @@ export class ButtonManager extends BaseManager {
     this.groupStart(`Initializing Buttons`);
     this.discoverItems();
     this.setupEventListeners();
-    this.updateButtonStates(true);
+    this.applyStates(true);
 
     this.form.logDebug('Initialized');
     this.groupEnd();
@@ -134,28 +131,36 @@ export class ButtonManager extends BaseManager {
     }
 
     const id = `${parsed.type}-button-${index}`;
-    const active = this.determineActive(element);
-    if (active) this.activeButtonIds.add(id);
-
-    const currentAndTotal = this.getCurrentAndTotalIndex(this.form.getAllState());
-
-    const visible = this.determineVisible(
-      parsed.type as ButtonType,
-      currentAndTotal.total,
-      currentAndTotal.current
-    );
 
     // Create button item object
-    return {
+    return this.buildItemData({
       element,
       index,
       id,
-      active,
+      active: false, // Calculated
       type: parsed.type as ButtonType,
       parentHierarchy: this.findParentHierarchy(element),
       button,
-      disabled: button.disabled,
+      disabled: true, // Calculated
+      visible: false, // Calculated
+    });
+  }
+
+  /**
+   * Build button item data
+   * Used during discovery and state updates
+   * Single source of truth for button data calculation
+   */
+  private buildItemData(item: ButtonItem): ButtonItem {
+    const active = this.determineActive(item.element);
+    const visible = this.determineVisible(item.type);
+    const enabled = this.determineEnabled(item.type, active && visible);
+
+    return {
+      ...item,
+      active,
       visible,
+      disabled: !enabled,
     };
   }
 
@@ -172,45 +177,14 @@ export class ButtonManager extends BaseManager {
     return parent ? parent.active : true;
   }
 
-  private getCurrentAndTotalIndex(state: FormState): { current: number; total: number } {
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = state;
-
-    let total: number;
-    let current: number;
-
-    if (totalCards > 0) {
-      total = totalCards;
-      current = currentCardIndex;
-    } else if (totalSets > 0) {
-      total = totalSets;
-      current = currentSetIndex;
-    } else if (totalGroups > 0) {
-      total = totalGroups;
-      current = currentGroupIndex;
-    } else {
-      total = totalFields;
-      current = currentFieldIndex;
-    }
-
-    return {
-      current,
-      total,
-    };
-  }
-
   /**
    * Determine whether a button should be visible
+   * - Need to get the parent hierarchy
+   * - Check if parent Id is the currently active Card/Set
    */
-  public determineVisible(type: ButtonType, total: number, current: number): boolean {
+  private determineVisible(type: ButtonType): boolean {
+    const { current, total } = this.getRelevantState();
+
     switch (type) {
       case 'prev':
         return current > 0;
@@ -219,6 +193,57 @@ export class ButtonManager extends BaseManager {
       case 'submit':
         return current === total - 1;
     }
+  }
+
+  private determineEnabled(type: ButtonType, activeAndVisible: boolean = true): boolean {
+    if (!activeAndVisible) return false;
+    const { current, total } = this.getRelevantState();
+
+    const valid = this.form.inputManager.getActive().every((input) => input.isValid);
+
+    switch (type) {
+      case 'prev':
+        return current > 0;
+      case 'next': // valid && current < total - 1
+        return valid && current < total - 1;
+      case 'submit': // valid && current === total - 1
+        return valid && current === total - 1;
+    }
+  }
+
+  private getRelevantState(): { current: number; total: number } {
+    const behavior = this.form.getBehavior();
+    const state = this.form.getAllState();
+
+    let current: number;
+    let total: number;
+
+    switch (behavior) {
+      case 'byField':
+        current = state.currentFieldIndex;
+        total = state.totalFields;
+        break;
+      case 'byGroup':
+        current = state.currentGroupIndex;
+        total = state.totalGroups;
+        break;
+      case 'bySet':
+        current = state.currentSetIndex;
+        total = state.totalSets;
+        break;
+      case 'byCard':
+        current = state.currentCardIndex;
+        total = state.totalCards;
+        break;
+      default:
+        throw this.form.createError(
+          'Cannot determine button visibility: invalid behavior',
+          'init',
+          { cause: behavior }
+        );
+    }
+
+    return { current, total };
   }
 
   private findParentHierarchy(child: HTMLElement): ButtonParentHierarchy {
@@ -247,59 +272,21 @@ export class ButtonManager extends BaseManager {
     return parentSet ?? parentCard;
   }
 
-  // /**
-  //  * Get the parent hierarchy for a button
-  //  * @param container - The element with `[${ATTR}-element="prev/next/submit"]` applied
-  //  * @returns The parent hierarchy for the button
-  //  */
-  // private findParentHierarchy(container: HTMLElement): ButtonParentHierarchy {
-  //   // Check if the closest element is a set and return set data if so
-  //   const closestSet = container.closest<HTMLElement>(`[${ATTR}-element="set"]`);
-  //   const closestCard = container.closest<HTMLElement>(`[${ATTR}-element="card"]`);
-
-  //   const parentElement = closestSet
-  //     ? this.form.setManager.getByDOM(closestSet)
-  //     : closestCard
-  //       ? this.form.cardManager.getByDOM(closestCard)
-  //       : null;
-  //   return parentElement
-  //     ? this.buildHierarchyFromParent(parentElement)
-  //     : { formId: this.form.getId() };
-  // }
-
-  // /**
-  //  * Build hierarchy object from parent element
-  //  * Recursively walks up parent chain
-  //  * @param parent - Card or Set element
-  //  * @returns Hierarchy context for the button
-  //  */
-  // private buildHierarchyFromParent(parent: ButtonParentElement): ButtonParentHierarchy {
-  //   const hierarchy: Partial<ButtonParentHierarchy> = {
-  //     [`${parent.type}Id`]: parent.id,
-  //     [`${parent.type}Index`]: parent.index,
-  //   };
-
-  //   // If parent has hierarchy, merge it
-  //   if ('parentHierarchy' in parent && parent.parentHierarchy) {
-  //     Object.assign(hierarchy, parent.parentHierarchy);
-  //   }
-
-  //   return hierarchy as ButtonParentHierarchy;
-  // }
-
   /**
    * Setup event listeners for button clicks
    */
   private setupEventListeners(): void {
     this.bindActiveButtons();
 
-    this.form.subscribe('form:navigation:changed', (payload) => {
-      if (payload.to === 'field' || payload.to === 'group') return;
-      this.handleContextChange();
+    this.form.subscribe('form:navigation:changed', () => {
+      this.calculateStates();
+      this.applyStates();
+      this.handleActiveButtons();
     });
 
-    this.form.subscribe('form:input:changed', (payload) => {
-      this.handleInputChanged(payload);
+    this.form.subscribe('form:input:changed', () => {
+      this.calculateStates();
+      this.applyStates();
     });
 
     this.form.logDebug('Event listeners setup');
@@ -354,7 +341,6 @@ export class ButtonManager extends BaseManager {
     let removedCount = 0;
 
     const activeItems = this.getActive();
-
     this.activeListeners = this.activeListeners.filter((listener) => {
       const shouldRemove = !activeItems.find((item) => item.index === listener.index);
 
@@ -410,76 +396,37 @@ export class ButtonManager extends BaseManager {
   // ============================================
 
   // private handleNavigationChanged(payload: NavigationChangedEvent): void {
-  private handleInputChanged(payload: InputChangedEvent): void {
-    this.updateButtonStates();
+  private calculateStates(): void {
+    this.getAll().forEach((item) => {
+      const updated = this.buildItemData(item);
+      this.store.update(updated);
+    });
   }
 
   /**
    * Handle context change
    */
-  private handleContextChange(): void {
-    this.bindActiveButtons();
+  private handleActiveButtons(): void {
     this.unbindInactiveButtons();
+    this.bindActiveButtons();
   }
 
   /**
    * Update button states based on current navigation position
    * Called after state changes
    */
-  public updateButtonStates(isInitial: boolean = false): void {
+  public applyStates(isInitial: boolean = false): void {
     this.logDebug(`${isInitial ? 'Initializing' : 'Updating'} button states`);
 
-    const {
-      totalCards,
-      currentCardIndex,
-      totalSets,
-      currentSetIndex,
-      totalGroups,
-      currentGroupIndex,
-      totalFields,
-      currentFieldIndex,
-    } = this.form.getAllState();
-
-    let total: number;
-    let current: number;
-
-    if (totalCards > 0) {
-      total = totalCards;
-      current = currentCardIndex;
-    } else if (totalSets > 0) {
-      total = totalSets;
-      current = currentSetIndex;
-    } else if (totalGroups > 0) {
-      total = totalGroups;
-      current = currentGroupIndex;
-    } else if (totalFields > 0) {
-      total = totalFields;
-      current = currentFieldIndex;
-    } else {
-      total = 0;
-      current = 0;
-    }
-
-    const inputs = this.form.inputManager.getActive();
-    const valid = inputs.every((input) => input.isValid);
-
-    this.enableButtons(this.getByType('prev'), current > 0, current === 0);
-    this.enableButtons(this.getByType('next'), valid && current < total - 1, current === total - 1);
-    this.enableButtons(this.getByType('submit'), current === total - 1, current !== total - 1);
+    this.getAll().forEach((item) => {
+      item.button.disabled = item.disabled;
+      if (item.visible) {
+        item.element.style.removeProperty('display');
+      } else {
+        item.element.style.display = 'none';
+      }
+    });
   }
-
-  // /**
-  //  * Toggle navigation
-  //  * @param enabled - Whether to enable navigation (default: toggle current state)
-  //  *
-  //  * @todo call this when button is clicked and again when we want to be interactive again
-  //  */
-  // public toggleNavigation(enabled?: boolean): void {
-  //   this.navigationEnabled = enabled ?? !this.navigationEnabled;
-  //   this.updateButtonStates();
-
-  //   this.form.logDebug(`Navigation ${this.navigationEnabled ? 'enabled' : 'disabled'}`);
-  // }
 
   /**
    * Enable buttons
@@ -514,7 +461,7 @@ export class ButtonManager extends BaseManager {
 
   /** Get active */
   private getActive(): ButtonItem[] {
-    return this.store.filter((button) => button.active);
+    return this.store.filter((button) => button.active && button.visible);
   }
 
   /** Get all buttons by parent */
@@ -527,27 +474,4 @@ export class ButtonManager extends BaseManager {
     const allByParent = this.getAllByParent(parentHierarchy);
     return allByParent.filter((button) => button.type === type);
   }
-
-  // /**
-  //  * Set buttons as active based on current context
-  //  */
-  // public setActiveByContext(cardIndex: number, setIndex: number | null): void {
-  //   this.activeButtonIds.clear();
-
-  //   this.store.getAll().forEach((btn) => {
-  //     const { parentHierarchy } = btn;
-
-  //     // Button is active if it's in current card/set
-  //     const isActive =
-  //       parentHierarchy.cardIndex === cardIndex &&
-  //       (setIndex === null || parentHierarchy.setIndex === setIndex);
-
-  //     if (isActive) {
-  //       this.activeButtonIds.add(btn.id);
-  //     }
-
-  //     // Update button active state
-  //     this.store.update(btn.id, { isActive });
-  //   });
-  // }
 }
