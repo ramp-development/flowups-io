@@ -1,10 +1,9 @@
 import { ATTR } from '../constants';
 import type {
   ButtonItem,
+  ButtonParentElement,
   ButtonParentHierarchy,
   ButtonType,
-  CardItem,
-  SetItem,
   SubmitRequestedEvent,
 } from '../types';
 import type { NavigationRequestEvent } from '../types/events/navigation-events';
@@ -261,7 +260,7 @@ export class ButtonManager extends BaseManager {
    * @param element - The field element
    * @returns Parent data or null
    */
-  protected findParentItem(element: HTMLElement): CardItem | SetItem | undefined {
+  protected findParentItem(element: HTMLElement): ButtonParentElement | undefined {
     const parentSet = HierarchyBuilder.findParentByElement(element, 'set', () =>
       this.form.setManager.getAll()
     );
