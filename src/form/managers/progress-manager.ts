@@ -1,4 +1,5 @@
 import { ATTR } from '../constants';
+import type { FormBehavior } from '../types';
 import type {
   ProgressItem,
   ProgressParentElement,
@@ -107,39 +108,155 @@ export class ProgressManager extends BaseManager {
   }
 
   private setupEventListeners(): void {
-    this.form.subscribe('form:navigation:changed', (payload) => {
-      console.log('form:navigation:changed', payload);
+    this.form.subscribe('form:navigation:changed', () => {
       this.updateProgress();
     });
   }
 
   private updateProgress(): void {
     this.store.getAll().forEach((item) => {
-      item.element.style.setProperty('--progress', this.getProgress(item).toString());
+      const progress = this.getProgressForBehavior(item);
+      if (progress === undefined) return;
+      item.element.style.setProperty('--progress', progress.toString());
     });
   }
 
-  private getProgress(item: ProgressItem): number {
-    console.log('getProgress', item);
-    if (!item.parentHierarchy) return 0;
+  /**
+   * Progress calculation config
+   * First key: Where progress bar is placed (parent context)
+   * Second key: What we're tracking (behavior)
+   */
+  private static readonly PROGRESS_CONFIG: Record<
+    'form' | 'card' | 'set',
+    Partial<
+      Record<
+        FormBehavior,
+        {
+          manager: 'cardManager' | 'setManager' | 'groupManager' | 'fieldManager';
+          parentType: 'form' | 'card' | 'set';
+          stateKey:
+            | 'currentCardIndex'
+            | 'currentSetIndex'
+            | 'currentGroupIndex'
+            | 'currentFieldIndex';
+        }
+      >
+    >
+  > = {
+    form: {
+      byCard: {
+        manager: 'cardManager',
+        parentType: 'form',
+        stateKey: 'currentCardIndex',
+      },
+      bySet: {
+        manager: 'setManager',
+        parentType: 'form',
+        stateKey: 'currentSetIndex',
+      },
+      byGroup: {
+        manager: 'groupManager',
+        parentType: 'form',
+        stateKey: 'currentGroupIndex',
+      },
+      byField: {
+        manager: 'fieldManager',
+        parentType: 'form',
+        stateKey: 'currentFieldIndex',
+      },
+    },
+    card: {
+      bySet: {
+        manager: 'setManager',
+        parentType: 'card',
+        stateKey: 'currentSetIndex',
+      },
+      byGroup: {
+        manager: 'groupManager',
+        parentType: 'card',
+        stateKey: 'currentGroupIndex',
+      },
+      byField: {
+        manager: 'fieldManager',
+        parentType: 'card',
+        stateKey: 'currentFieldIndex',
+      },
+    },
+    set: {
+      byGroup: {
+        manager: 'groupManager',
+        parentType: 'set',
+        stateKey: 'currentGroupIndex',
+      },
+      byField: {
+        manager: 'fieldManager',
+        parentType: 'set',
+        stateKey: 'currentFieldIndex',
+      },
+    },
+  };
 
+  /**
+   * Get progress for item based on its parent context and current behavior
+   */
+  private getProgressForBehavior(item: ProgressItem): number | undefined {
+    const behavior = this.form.getBehavior();
     const { parentHierarchy } = item;
-    if ('groupIndex' in parentHierarchy && typeof parentHierarchy.groupIndex === 'number') {
-      const group = this.form.groupManager.getByIndex(parentHierarchy.groupIndex);
-      return group?.progress ?? 0;
+
+    // Determine progress bar's parent context (most specific first)
+    const parentContext = this.getParentContext(parentHierarchy);
+    if (!parentContext) return undefined;
+
+    const [contextLevel, parentId] = parentContext;
+
+    // Get config for this parent context + behavior combination
+    const config = ProgressManager.PROGRESS_CONFIG[contextLevel]?.[behavior];
+    if (!config) return undefined; // No valid combination
+
+    const { manager, parentType, stateKey } = config;
+
+    // Get siblings within the parent
+    const managerInstance = this.form[manager];
+    const siblings =
+      parentType === 'form'
+        ? managerInstance.getAll()
+        : managerInstance.getAllByParentId(parentId, parentType);
+    if (siblings.length === 0) return undefined;
+
+    // Get current index
+    const state = this.form.getAllState();
+    const currentIndex = state[stateKey];
+
+    // Find position
+    const currentPosition = siblings.findIndex((s) => s.index === currentIndex);
+    if (currentPosition === -1) return undefined;
+
+    return ((currentPosition + 1) / siblings.length) * 100;
+  }
+
+  /**
+   * Determine the parent context level for a progress item
+   * Returns [contextLevel, parentId] or undefined
+   * Checks from most specific (group) to least specific (form)
+   */
+  private getParentContext(
+    hierarchy: ProgressParentHierarchy
+  ): ['set' | 'card' | 'form', string] | undefined {
+    // Check set (most specific)
+    if ('setId' in hierarchy && hierarchy.setId) {
+      return ['set', hierarchy.setId];
     }
 
-    if ('setIndex' in parentHierarchy && typeof parentHierarchy.setIndex === 'number') {
-      const set = this.form.setManager.getByIndex(parentHierarchy.setIndex);
-      return set?.progress ?? 0;
+    // Check card
+    if ('cardId' in hierarchy && hierarchy.cardId) {
+      return ['card', hierarchy.cardId];
     }
 
-    if ('cardIndex' in parentHierarchy && typeof parentHierarchy.cardIndex === 'number') {
-      const card = this.form.cardManager.getByIndex(parentHierarchy.cardIndex);
-      console.log('card', card);
-      return card?.progress ?? 0;
+    // Check form (least specific)
+    if (hierarchy.formId) {
+      return ['form', hierarchy.formId];
     }
 
-    return 100;
+    return undefined;
   }
 }
