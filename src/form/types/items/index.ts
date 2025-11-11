@@ -18,7 +18,8 @@ export type FormElementType =
   | 'input'
   | 'prev'
   | 'next'
-  | 'submit';
+  | 'submit'
+  | 'progress-line';
 
 export * from './base-item';
 export * from './button-item';
