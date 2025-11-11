@@ -131,6 +131,17 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   }
 
   /**
+   * Rebuild all items using buildItemData()
+   * Ensures item data is fresh before calculating state
+   */
+  public rebuildAll(): void {
+    this.getAll().forEach((item) => {
+      const rebuilt = this.buildItemData(item);
+      this.update(rebuilt);
+    });
+  }
+
+  /**
    * Determine if item should be active based on parent and behavior
    * Default implementation - can be overridden if needed
    *
