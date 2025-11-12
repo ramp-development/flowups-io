@@ -225,7 +225,6 @@ export class ConditionManager extends BaseManager {
 
     // If no conditions, element is always included
     if (!conditionalElement) return true;
-    console.log('conditionalElement', conditionalElement);
 
     let showIfResult = true;
     let hideIfResult = false;
@@ -239,9 +238,6 @@ export class ConditionManager extends BaseManager {
     if (conditionalElement.hideIfExpression) {
       hideIfResult = this.evaluateExpression(conditionalElement.hideIfExpression);
     }
-
-    console.log('showIfResult', showIfResult);
-    console.log('hideIfResult', hideIfResult);
 
     // Element is included if showif is true AND hideif is false
     return showIfResult && !hideIfResult;
@@ -312,9 +308,6 @@ export class ConditionManager extends BaseManager {
     // Convert to string for comparison
     const currentValueStr = String(currentValue ?? '').toLowerCase();
     const expectedValueStr = value.toLowerCase();
-
-    console.log('currentValueStr', currentValueStr);
-    console.log('expectedValueStr', expectedValueStr);
 
     // Evaluate based on operator
     switch (operator) {
@@ -408,15 +401,17 @@ export class ConditionManager extends BaseManager {
 
       // Trigger rebuild for all hierarchy managers
       // This will cause buildItemData() to be called, which will re-evaluate conditions
+      // The rebuild will update isIncluded flags for all affected items
       this.form.fieldManager.rebuildAll();
       this.form.groupManager.rebuildAll();
       this.form.setManager.rebuildAll();
       this.form.cardManager.rebuildAll();
 
+      // Emit event for each affected element so DisplayManager can update visibility
+      // This ensures immediate visibility changes without waiting for navigation
       affectedElements.forEach((element) => {
         const attrValue = element.getAttribute(`${ATTR}-element`);
         if (!attrValue) return;
-
         const parsed = parseElementAttribute(attrValue);
         if (!parsed) return;
 
