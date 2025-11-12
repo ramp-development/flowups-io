@@ -8,17 +8,18 @@
 import { StatefulComponent } from '$lib/core/components/stateful-component';
 
 import {
+  ButtonManager,
   CardManager,
+  ConditionManager,
   DisplayManager,
   FieldManager,
+  FocusManager,
   GroupManager,
   InputManager,
   NavigationManager,
+  ProgressManager,
   SetManager,
 } from './managers';
-import { ButtonManager } from './managers/button-manager';
-import { FocusManager } from './managers/focus-manager';
-import { ProgressManager } from './managers/progress-manager';
 import type {
   FlowupsFormConfig,
   FlowupsFormProps,
@@ -62,9 +63,9 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public displayManager: DisplayManager;
   public progressManager: ProgressManager;
   public focusManager: FocusManager;
+  public conditionManager: ConditionManager;
   // private accessibilityManager: AccessibilityManager;
   // private animationManager: AnimationManager;
-  // private conditionManager: ConditionManager;
   // private errorManager: ErrorManager;
   // private renderManager: RenderManager;
   // private validationManager: ValidationManager;
@@ -92,6 +93,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.displayManager = new DisplayManager(this);
     this.progressManager = new ProgressManager(this);
     this.focusManager = new FocusManager(this);
+    this.conditionManager = new ConditionManager(this);
 
     if (this.config.autoInit && !this.isInitialized()) this.init();
   }
@@ -263,6 +265,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.navigationManager.init();
     this.progressManager.init();
     this.focusManager.init();
+    this.conditionManager.init();
 
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
@@ -292,6 +295,10 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.inputManager.destroy();
     this.navigationManager.destroy();
     this.displayManager.destroy();
+    this.buttonManager.destroy();
+    this.progressManager.destroy();
+    this.focusManager.destroy();
+    this.conditionManager.destroy();
 
     await super.onDestroy();
   }
