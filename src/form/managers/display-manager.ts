@@ -56,6 +56,29 @@ export class DisplayManager extends BaseManager {
       this.handleStateChange(payload);
     });
 
+    this.form.subscribe('form:condition:evaluated', (payload) => {
+      console.log('form:condition:evaluated', payload);
+      let manager: ItemManager<ItemData> | undefined;
+      switch (payload.type) {
+        case 'card':
+          manager = this.form.cardManager;
+          break;
+        case 'set':
+          manager = this.form.setManager;
+          break;
+        case 'group':
+          manager = this.form.groupManager;
+          break;
+        case 'field':
+          manager = this.form.fieldManager;
+          break;
+        default:
+          return;
+      }
+
+      this.handleVisibility(manager, true);
+    });
+
     this.logDebug('DisplayManager event listeners setup');
   }
 
@@ -119,8 +142,13 @@ export class DisplayManager extends BaseManager {
   /**
    * Handle item visibility based on data
    */
-  private handleVisibility<TItem extends ItemData>(manager: ItemManager<TItem>): void {
-    const items = manager.getByFilter((item) => item.visible !== item.active);
+  private handleVisibility<TItem extends ItemData>(
+    manager: ItemManager<TItem>,
+    isCondition: boolean = false
+  ): void {
+    const items = manager.getAll();
+    // const items = manager.getByFilter((item) => item.visible !== item.active);
+    if (isCondition) console.log('items', items);
     items.forEach((item) => {
       this.showElement(item, (visible) =>
         manager.updateItemData(item.index, { visible } as UpdatableItemData<TItem>)
@@ -130,17 +158,23 @@ export class DisplayManager extends BaseManager {
 
   /**
    * Show/Hide an element
-   * Sets "display: none" or removes display property based on active state
+   * Sets "display: none" or removes display property based on active state AND isIncluded
    * Updates the "active" data-attribute to be inline with the display property
    * Updates the visible flag to be inline with the active state
    */
   public showElement(item: ItemData, updateVisible: (visible: boolean) => void): void {
-    const { element, active, type } = item;
-    if (active) element.style.removeProperty('display');
-    else element.style.setProperty('display', 'none');
-    element.setAttribute(`${ATTR}-${type}-active`, active.toString());
+    const { element, active, type, isIncluded } = item;
 
-    // Update visible flag to be inline with active
-    updateVisible(active);
+    // Element should only be visible if active AND included
+    const shouldBeVisible = active && isIncluded;
+
+    if (shouldBeVisible) element.style.removeProperty('display');
+    else element.style.setProperty('display', 'none');
+
+    element.setAttribute(`${ATTR}-${type}-active`, active.toString());
+    element.setAttribute(`${ATTR}-${type}-included`, isIncluded.toString());
+
+    // Update visible flag
+    updateVisible(shouldBeVisible);
   }
 }
