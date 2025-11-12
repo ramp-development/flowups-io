@@ -1,58 +1,29 @@
 /**
  * Condition Manager
  *
- * Handles conditional visibility with performance optimization.
- * Discovers showif/hideif elements, parses condition expressions,
- * builds dependency graph, and evaluates conditions efficiently.
+ * Service for evaluating conditional visibility expressions.
+ * Hierarchy managers call evaluateElementCondition() during buildItemData()
+ * to determine isIncluded based on showif/hideif attributes.
+ * Triggers rebuilds when field values change.
  */
 
 import { ATTR } from '../constants/attr';
-import type { InputItem } from '../types';
+import type {
+  ComparisonOperator,
+  Condition,
+  ConditionalElement,
+  ConditionExpression,
+  InputChangedEvent,
+  LogicalOperator,
+} from '../types';
+import { parseElementAttribute } from '../utils';
 import { BaseManager } from './base-manager';
-
-/**
- * Supported comparison operators
- */
-type ComparisonOperator = '=' | '!=' | '>' | '<' | '>=' | '<=' | '*=' | '^=' | '$=';
-
-/**
- * Logical operators
- */
-type LogicalOperator = '&&' | '||';
-
-/**
- * Parsed condition expression
- */
-interface Condition {
-  field: string;
-  operator: ComparisonOperator;
-  value: string;
-}
-
-/**
- * Parsed expression tree (supports logical operators)
- */
-interface Expression {
-  conditions: Condition[];
-  logicalOperators: LogicalOperator[];
-}
-
-/**
- * Conditional element data
- */
-interface ConditionalElement {
-  element: HTMLElement;
-  showIfExpression?: Expression;
-  hideIfExpression?: Expression;
-  dependsOn: Set<string>; // Field names this element depends on
-  lastResult: boolean; // Cached evaluation result
-}
 
 /**
  * ConditionManager Implementation
  *
- * Discovers conditional elements, parses expressions, evaluates conditions,
- * and updates visibility efficiently using dependency graph.
+ * Service-oriented manager that provides condition evaluation for hierarchy managers.
+ * Managers call evaluateElementCondition() during buildItemData() to determine isIncluded.
  */
 export class ConditionManager extends BaseManager {
   /** All conditional elements indexed by element */
@@ -68,9 +39,11 @@ export class ConditionManager extends BaseManager {
     this.groupStart('Initializing Conditions');
     this.discoverConditionalElements();
     this.setupEventListeners();
-    this.evaluateAllConditions(true); // Initial evaluation
 
-    this.logDebug('Initialized');
+    this.logDebug('Initialized', {
+      conditionalElements: this.conditionalElements.size,
+      dependencies: Object.fromEntries(this.affectedElements),
+    });
     this.groupEnd();
   }
 
@@ -94,17 +67,13 @@ export class ConditionManager extends BaseManager {
   private discoverConditionalElements(): void {
     const rootElement = this.form.getRootElement();
     if (!rootElement) {
-      throw this.createError(
-        'Cannot discover conditional elements: root element is null',
-        'init',
-        { cause: rootElement }
-      );
+      throw this.createError('Cannot discover conditional elements: root element is null', 'init', {
+        cause: rootElement,
+      });
     }
 
     // Query all conditional elements
-    const elements = this.form.queryAll<HTMLElement>(
-      `[${ATTR}-showif], [${ATTR}-hideif]`
-    );
+    const elements = this.form.queryAll<HTMLElement>(`[${ATTR}-showif], [${ATTR}-hideif]`);
 
     this.conditionalElements.clear();
     this.affectedElements.clear();
@@ -125,7 +94,7 @@ export class ConditionManager extends BaseManager {
    *
    * @param element - HTMLElement with showif/hideif attributes
    */
-  public registerCondition(element: HTMLElement): void {
+  private registerCondition(element: HTMLElement): void {
     const showIfAttr = element.getAttribute(`${ATTR}-showif`);
     const hideIfAttr = element.getAttribute(`${ATTR}-hideif`);
 
@@ -136,7 +105,6 @@ export class ConditionManager extends BaseManager {
       showIfExpression: showIfAttr ? this.parseExpression(showIfAttr) : undefined,
       hideIfExpression: hideIfAttr ? this.parseExpression(hideIfAttr) : undefined,
       dependsOn: new Set<string>(),
-      lastResult: true, // Default to visible
     };
 
     // Extract all field dependencies
@@ -181,7 +149,7 @@ export class ConditionManager extends BaseManager {
    * @param expression - Raw expression string
    * @returns Parsed expression tree
    */
-  private parseExpression(expression: string): Expression {
+  private parseExpression(expression: string): ConditionExpression {
     const conditions: Condition[] = [];
     const logicalOperators: LogicalOperator[] = [];
 
@@ -242,34 +210,22 @@ export class ConditionManager extends BaseManager {
   }
 
   // ============================================
-  // Condition Evaluation
+  // Public Evaluation API
   // ============================================
 
   /**
-   * Evaluate all conditions
-   * Used during initial load
-   *
-   * @param isInitial - Whether this is the initial evaluation
-   */
-  private evaluateAllConditions(isInitial: boolean = false): void {
-    this.logDebug(`${isInitial ? 'Initial' : 'Re-evaluating'} all conditions`);
-
-    this.conditionalElements.forEach((conditionalElement) => {
-      const isVisible = this.evaluateCondition(conditionalElement.element);
-      this.toggleElement(conditionalElement.element, isVisible, isInitial);
-      conditionalElement.lastResult = isVisible;
-    });
-  }
-
-  /**
-   * Evaluate condition for a specific element
+   * Evaluate condition for an element
+   * Called by hierarchy managers during buildItemData()
    *
    * @param element - Element to evaluate
-   * @returns Whether element should be visible
+   * @returns Whether element should be included (visible)
    */
-  public evaluateCondition(element: HTMLElement): boolean {
+  public evaluateElementCondition(element: HTMLElement): boolean {
     const conditionalElement = this.conditionalElements.get(element);
+
+    // If no conditions, element is always included
     if (!conditionalElement) return true;
+    console.log('conditionalElement', conditionalElement);
 
     let showIfResult = true;
     let hideIfResult = false;
@@ -284,9 +240,26 @@ export class ConditionManager extends BaseManager {
       hideIfResult = this.evaluateExpression(conditionalElement.hideIfExpression);
     }
 
-    // Element is visible if showif is true AND hideif is false
+    console.log('showIfResult', showIfResult);
+    console.log('hideIfResult', hideIfResult);
+
+    // Element is included if showif is true AND hideif is false
     return showIfResult && !hideIfResult;
   }
+
+  /**
+   * Check if element has conditions
+   *
+   * @param element - Element to check
+   * @returns Whether element has showif/hideif attributes
+   */
+  public hasConditions(element: HTMLElement): boolean {
+    return this.conditionalElements.has(element);
+  }
+
+  // ============================================
+  // Expression Evaluation
+  // ============================================
 
   /**
    * Evaluate expression tree with logical operators
@@ -294,7 +267,7 @@ export class ConditionManager extends BaseManager {
    * @param expression - Parsed expression
    * @returns Evaluation result
    */
-  private evaluateExpression(expression: Expression): boolean {
+  private evaluateExpression(expression: ConditionExpression): boolean {
     const { conditions, logicalOperators } = expression;
 
     if (conditions.length === 0) return true;
@@ -340,6 +313,9 @@ export class ConditionManager extends BaseManager {
     const currentValueStr = String(currentValue ?? '').toLowerCase();
     const expectedValueStr = value.toLowerCase();
 
+    console.log('currentValueStr', currentValueStr);
+    console.log('expectedValueStr', expectedValueStr);
+
     // Evaluate based on operator
     switch (operator) {
       case '=':
@@ -367,7 +343,7 @@ export class ConditionManager extends BaseManager {
   }
 
   /**
-   * Get field value from input manager
+   * Get field value from input manager or form state
    *
    * @param fieldName - Name of the field/input
    * @returns Current value
@@ -391,76 +367,6 @@ export class ConditionManager extends BaseManager {
   }
 
   // ============================================
-  // Element Visibility Toggle
-  // ============================================
-
-  /**
-   * Toggle element visibility
-   *
-   * @param element - Element to toggle
-   * @param isVisible - Whether element should be visible
-   * @param isInitial - Whether this is the initial toggle (skip transitions)
-   */
-  private toggleElement(element: HTMLElement, isVisible: boolean, isInitial: boolean = false): void {
-    if (isVisible) {
-      element.style.removeProperty('display');
-      if (!isInitial) {
-        // Optionally add transition class
-        element.classList.add('is-visible');
-      }
-    } else {
-      element.style.display = 'none';
-      if (!isInitial) {
-        element.classList.remove('is-visible');
-      }
-    }
-
-    // Update input required states for inputs within this element
-    this.updateInputRequiredStates(element, isVisible);
-  }
-
-  /**
-   * Update required state for inputs within an element
-   * When an element is hidden, its inputs should not be required
-   *
-   * @param element - Parent element
-   * @param isVisible - Whether element is visible
-   */
-  private updateInputRequiredStates(element: HTMLElement, isVisible: boolean): void {
-    const inputs = element.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-      'input, select, textarea'
-    );
-
-    inputs.forEach((input) => {
-      const name = input.getAttribute('name');
-      if (!name) return;
-
-      const inputItem = this.form.inputManager.getById(name);
-      if (!inputItem) return;
-
-      // Update isIncluded state based on visibility
-      const wasIncluded = inputItem.isIncluded;
-      const nowIncluded = isVisible;
-
-      if (wasIncluded !== nowIncluded) {
-        // Update isIncluded and isRequired directly on the item
-        inputItem.isIncluded = nowIncluded;
-        inputItem.isRequired = nowIncluded ? inputItem.isRequiredOriginal : false;
-
-        this.logDebug(`Updated input "${name}" required state`, {
-          isIncluded: nowIncluded,
-          isRequired: inputItem.isRequired,
-        });
-      }
-    });
-
-    // If visibility changed, trigger navigation rebuild
-    if (inputs.length > 0) {
-      this.form.emit('form:navigation:request', { type: 'next' }); // Triggers rebuild
-    }
-  }
-
-  // ============================================
   // Event Listeners
   // ============================================
 
@@ -470,7 +376,7 @@ export class ConditionManager extends BaseManager {
   private setupEventListeners(): void {
     // Listen to input changes
     this.form.subscribe('form:input:changed', (payload) => {
-      this.onFieldChange(payload);
+      this.onInputChange(payload);
     });
 
     this.logDebug('Event listeners setup');
@@ -478,38 +384,47 @@ export class ConditionManager extends BaseManager {
 
   /**
    * Handle field value change
-   * Only re-evaluates elements affected by the changed field
+   * Triggers rebuilds for affected hierarchy items
+   * Defers rebuild to next tick to ensure input values are fresh
    *
    * @param payload - Input change payload
    */
-  private onFieldChange(payload: { name: string; value: unknown }): void {
-    const { name: fieldName } = payload;
+  private onInputChange(payload: InputChangedEvent): void {
+    const { name } = payload;
 
     // Get all elements affected by this field
-    const affectedElements = this.affectedElements.get(fieldName);
+    const affectedElements = this.affectedElements.get(name);
     if (!affectedElements || affectedElements.size === 0) return;
 
-    this.logDebug(`Field "${fieldName}" changed, evaluating ${affectedElements.size} affected elements`);
+    this.logDebug(
+      `Input "${name}" changed, scheduling rebuild for ${affectedElements.size} affected elements`
+    );
 
-    affectedElements.forEach((element) => {
-      const conditionalElement = this.conditionalElements.get(element);
-      if (!conditionalElement) return;
+    // Defer rebuild to next tick to ensure all input values are fresh
+    // This allows the current event loop to complete, including any other
+    // input change handlers that might update values
+    queueMicrotask(() => {
+      this.logDebug(`Executing deferred rebuild for input "${name}"`);
 
-      const isVisible = this.evaluateCondition(element);
-      const wasVisible = conditionalElement.lastResult;
+      // Trigger rebuild for all hierarchy managers
+      // This will cause buildItemData() to be called, which will re-evaluate conditions
+      this.form.fieldManager.rebuildAll();
+      this.form.groupManager.rebuildAll();
+      this.form.setManager.rebuildAll();
+      this.form.cardManager.rebuildAll();
 
-      // Only update if visibility changed
-      if (isVisible !== wasVisible) {
-        this.toggleElement(element, isVisible);
-        conditionalElement.lastResult = isVisible;
+      affectedElements.forEach((element) => {
+        const attrValue = element.getAttribute(`${ATTR}-element`);
+        if (!attrValue) return;
 
-        this.logDebug(`Toggled element visibility`, {
-          element: element.getAttribute(`${ATTR}-element`),
-          isVisible,
-          wasVisible,
-          fieldName,
+        const parsed = parseElementAttribute(attrValue);
+        if (!parsed) return;
+
+        this.form.emit('form:condition:evaluated', {
+          element,
+          type: parsed.type as 'card' | 'set' | 'group' | 'field',
         });
-      }
+      });
     });
   }
 
@@ -525,24 +440,5 @@ export class ConditionManager extends BaseManager {
    */
   public getAffectedElements(fieldName: string): Set<HTMLElement> {
     return this.affectedElements.get(fieldName) || new Set();
-  }
-
-  /**
-   * Clear condition cache
-   * Useful for forcing re-evaluation
-   */
-  public clearCache(): void {
-    this.conditionalElements.forEach((conditionalElement) => {
-      conditionalElement.lastResult = true;
-    });
-    this.logDebug('Condition cache cleared');
-  }
-
-  /**
-   * Re-evaluate all conditions
-   * Public method to manually trigger evaluation
-   */
-  public evaluateConditions(): void {
-    this.evaluateAllConditions();
   }
 }
