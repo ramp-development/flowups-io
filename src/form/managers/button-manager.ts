@@ -291,6 +291,11 @@ export class ButtonManager extends BaseManager {
       this.applyStates();
     });
 
+    this.form.subscribe('form:condition:evaluated', () => {
+      this.calculateStates();
+      this.applyStates();
+    });
+
     this.form.logDebug('Event listeners setup');
   }
 
