@@ -5,4 +5,5 @@
  * Each manager handles a specific concern (navigation, validation, etc.).
  */
 
+export * from './condition-manager';
 export * from './element-manager';
