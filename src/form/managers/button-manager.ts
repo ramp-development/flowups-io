@@ -199,7 +199,9 @@ export class ButtonManager extends BaseManager {
     if (!activeAndVisible) return false;
     const { current, total } = this.getRelevantState();
 
-    const valid = this.form.inputManager.getActive().every((input) => input.isValid);
+    const valid = this.form.inputManager
+      .getByFilter((input) => input.active && input.isIncluded)
+      .every((input) => input.isValid);
 
     switch (type) {
       case 'prev':
