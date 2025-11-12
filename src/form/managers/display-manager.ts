@@ -56,8 +56,10 @@ export class DisplayManager extends BaseManager {
       this.handleStateChange(payload);
     });
 
+    // Listen for condition evaluation events to immediately update visibility
+    // When a conditional element's visibility changes, we need to update the display
+    // without waiting for navigation state changes
     this.form.subscribe('form:condition:evaluated', (payload) => {
-      console.log('form:condition:evaluated', payload);
       let manager: ItemManager<ItemData> | undefined;
       switch (payload.type) {
         case 'card':
