@@ -217,6 +217,14 @@ export class InputManager extends ItemManager<InputItem> {
     };
   }
 
+  public applyStates(): void {
+    this.getAll().forEach((item) => {
+      item.inputs.forEach((input) => {
+        input.required = item.isRequired;
+      });
+    });
+  }
+
   /**
    * Setup event listeners for state changes
    */
@@ -379,7 +387,6 @@ export class InputManager extends ItemManager<InputItem> {
     // Radio - return selected value from group
     if (type === 'radio') {
       const checked = (item.inputs as HTMLInputElement[]).find((r) => r.checked);
-      console.log('Radio', item, checked);
       return checked ? checked.value : null;
     }
 
@@ -508,30 +515,6 @@ export class InputManager extends ItemManager<InputItem> {
 
     this.logDebug(`Input "${name}" changed to:`, value);
   }
-
-  // ============================================
-  // Field Inclusion Sync
-  // ============================================
-
-  // /**
-  //  * Update input required state based on parent field inclusion
-  //  * Called by FieldManager when field.isIncluded changes
-  //  *
-  //  * @param fieldId - ID of the field whose inclusion changed
-  //  * @param isIncluded - New inclusion state
-  //  */
-  // public syncInputInclusionWithField(fieldId: string, isIncluded: boolean): void {
-  //   const input = this.getAllByParentId(fieldId, 'field')[0];
-
-  //   input.isIncluded = isIncluded;
-  //   this.setInputRequired(input, isIncluded && input.isRequiredOriginal);
-
-  //   this.form.logDebug(`Synced input with field "${fieldId}"`, {
-  //     input: input.name,
-  //     inclusion: isIncluded,
-  //     required: input.isRequired,
-  //   });
-  // }
 
   /**
    * Set required state for an input
