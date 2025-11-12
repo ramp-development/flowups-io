@@ -7,14 +7,14 @@
 // Config Types
 export type * from './config';
 
-// Element Types
-export type * from './items';
-
 // Event Types
 export type * from './events';
 
-// Form State
-export type * from './state';
+// Element Types
+export type * from './items';
 
 // Manager Interfaces
 export type * from './managers';
+
+// Form State
+export type * from './state';
