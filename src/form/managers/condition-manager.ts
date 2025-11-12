@@ -396,31 +396,33 @@ export class ConditionManager extends BaseManager {
     // Defer rebuild to next tick to ensure all input values are fresh
     // This allows the current event loop to complete, including any other
     // input change handlers that might update values
-    queueMicrotask(() => {
-      this.logDebug(`Executing deferred rebuild for input "${name}"`);
+    // queueMicrotask(() => {
+    this.logDebug(`Executing deferred rebuild for input "${name}"`);
 
-      // Trigger rebuild for all hierarchy managers
-      // This will cause buildItemData() to be called, which will re-evaluate conditions
-      // The rebuild will update isIncluded flags for all affected items
-      this.form.fieldManager.rebuildAll();
-      this.form.groupManager.rebuildAll();
-      this.form.setManager.rebuildAll();
-      this.form.cardManager.rebuildAll();
+    // Trigger rebuild for all hierarchy managers
+    // This will cause buildItemData() to be called, which will re-evaluate conditions
+    // The rebuild will update isIncluded flags for all affected items
+    this.form.cardManager.rebuildAll();
+    this.form.setManager.rebuildAll();
+    this.form.groupManager.rebuildAll();
+    this.form.fieldManager.rebuildAll();
+    this.form.inputManager.rebuildAll();
+    this.form.inputManager.applyStates();
 
-      // Emit event for each affected element so DisplayManager can update visibility
-      // This ensures immediate visibility changes without waiting for navigation
-      affectedElements.forEach((element) => {
-        const attrValue = element.getAttribute(`${ATTR}-element`);
-        if (!attrValue) return;
-        const parsed = parseElementAttribute(attrValue);
-        if (!parsed) return;
+    // Emit event for each affected element so DisplayManager can update visibility
+    // This ensures immediate visibility changes without waiting for navigation
+    affectedElements.forEach((element) => {
+      const attrValue = element.getAttribute(`${ATTR}-element`);
+      if (!attrValue) return;
+      const parsed = parseElementAttribute(attrValue);
+      if (!parsed) return;
 
-        this.form.emit('form:condition:evaluated', {
-          element,
-          type: parsed.type as 'card' | 'set' | 'group' | 'field',
-        });
+      this.form.emit('form:condition:evaluated', {
+        element,
+        type: parsed.type as 'card' | 'set' | 'group' | 'field',
       });
     });
+    // });
   }
 
   // ============================================
