@@ -15,6 +15,7 @@ import type {
   InputElement,
   InputItem,
   InputParentHierarchy,
+  UpdatableItemData,
 } from '../types';
 import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
 import { ItemManager } from './item-manager';
@@ -198,11 +199,20 @@ export class InputManager extends ItemManager<InputItem> {
 
   protected buildItemData(item: InputItem): InputItem {
     const isValid = this.checkIfValid(item.element);
+
+    // Get parent field to check if it's included
+    const parentField = this.form.fieldManager.getById(item.parentHierarchy.fieldId);
+    const isIncluded = parentField ? parentField.isIncluded : true;
+
+    // Input is only required if parent field is included AND input was originally required
+    const isRequired = isIncluded ? item.isRequiredOriginal : false;
+
     return {
       ...item,
       completed: isValid,
       value: this.getValue(item.name),
-      isRequired: this.checkIfRequired(item.element),
+      isIncluded,
+      isRequired,
       isValid,
     };
   }
@@ -369,6 +379,7 @@ export class InputManager extends ItemManager<InputItem> {
     // Radio - return selected value from group
     if (type === 'radio') {
       const checked = (item.inputs as HTMLInputElement[]).find((r) => r.checked);
+      console.log('Radio', item, checked);
       return checked ? checked.value : null;
     }
 
@@ -488,7 +499,7 @@ export class InputManager extends ItemManager<InputItem> {
    * @internal Called by event handlers
    */
   private handleInputChange(name: string, value: unknown): void {
-    this.updateItemData(name);
+    this.updateItemData(name, { value } as UpdatableItemData<InputItem>);
     // Update formData state
     const payload = { name, value };
     const formData = this.form.getState('formData');
