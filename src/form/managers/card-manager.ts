@@ -117,11 +117,15 @@ export class CardManager extends ItemManager<CardItem> {
     const progress =
       (fieldsInCard.filter((field) => field.completed).length / fieldsInCard.length) * 100;
 
+    // Evaluate conditional visibility
+    const isIncluded = this.form.conditionManager.evaluateElementCondition(item.element);
+
     return {
       ...item,
       completed,
       isValid,
       progress,
+      isIncluded,
     };
   }
 

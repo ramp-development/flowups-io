@@ -118,11 +118,15 @@ export class GroupManager extends ItemManager<GroupItem> {
     const progress =
       (includedFields.filter((field) => field.completed).length / includedFields.length) * 100;
 
+    // Evaluate conditional visibility
+    const isIncluded = this.form.conditionManager.evaluateElementCondition(item.element);
+
     return {
       ...item,
       completed,
       isValid,
       progress,
+      isIncluded,
     };
   }
 

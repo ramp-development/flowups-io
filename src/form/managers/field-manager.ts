@@ -124,10 +124,16 @@ export class FieldManager extends ItemManager<FieldItem> {
 
     const { completed, isValid } = input;
 
+    // Evaluate conditional visibility
+    const isIncluded = this.form.conditionManager.evaluateElementCondition(item.element);
+
+    console.log('buildFieldData', { ...item, completed, isValid, isIncluded });
+
     return {
       ...item,
       completed,
       isValid,
+      isIncluded,
     };
   }
 

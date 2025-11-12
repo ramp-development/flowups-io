@@ -120,11 +120,15 @@ export class SetManager extends ItemManager<SetItem> {
     const isValid = use.every((item) => item.isValid);
     const progress = (use.filter((item) => item.completed).length / use.length) * 100;
 
+    // Evaluate conditional visibility
+    const isIncluded = this.form.conditionManager.evaluateElementCondition(item.element);
+
     return {
       ...item,
       completed,
       isValid,
       progress,
+      isIncluded,
     };
   }
 
