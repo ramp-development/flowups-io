@@ -288,19 +288,32 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   public setActiveByParent(
     parentId: string,
     parentType: 'card' | 'set' | 'group' | 'field',
-    options?: { active?: boolean; firstIsCurrent?: boolean }
+    options?: { firstIsCurrent?: boolean }
   ): void {
-    const { active = true, firstIsCurrent = false } = options ?? {};
+    const { firstIsCurrent = false } = options ?? {};
 
     const children = this.getItemsByParentId(parentId, parentType);
+
+    // // Filter to only included items
+    // const includedChildren = children.filter((item) => {
+    //   return this.form.conditionManager.evaluateElementCondition(item.element);
+    // });
+
+    // console.log('includedChildren', includedChildren);
+
     children.forEach((item, index) => {
       const builtItem = this.buildItemData(item);
-      const updated = { ...builtItem, active, current: index === 0 && firstIsCurrent } as TItem;
+      const updated = {
+        ...builtItem,
+        active: true,
+        current: index === 0 && firstIsCurrent,
+      } as TItem;
       this.update(updated);
     });
 
-    this.logDebug(`${this.itemType}: Set active: ${active} by parent ${parentType}: ${parentId}`, {
-      count: children.length,
+    this.logDebug(`${this.itemType}: Set active: "true" by parent ${parentType}: ${parentId}`, {
+      // count: includedChildren.length,
+      total: children.length,
       children,
     });
   }
