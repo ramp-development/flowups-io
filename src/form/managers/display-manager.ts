@@ -10,8 +10,9 @@
 import type { StateChangePayload } from '$lib/types';
 
 import { ATTR } from '../constants';
-import type { FormStateKeys, ItemData } from '../types';
+import type { FormStateKeys, ItemData, UpdatableItemData } from '../types';
 import { BaseManager } from './base-manager';
+import type { ItemManager } from './item-manager';
 
 /**
  * DisplayManager Implementation
@@ -30,7 +31,7 @@ export class DisplayManager extends BaseManager {
   public init(): void {
     this.groupStart(`Initializing Display`);
     this.setupEventListeners();
-    this.updateDisplay();
+    this.initializeDisplay();
 
     this.logDebug('Initialized');
     this.groupEnd();
@@ -84,72 +85,62 @@ export class DisplayManager extends BaseManager {
   };
 
   /**
+   * Initialize the display
+   */
+  private initializeDisplay(): void {
+    this.handleVisibility(this.form.cardManager);
+    this.handleVisibility(this.form.setManager);
+    this.handleVisibility(this.form.groupManager);
+    this.handleVisibility(this.form.fieldManager);
+    this.removeInitialStyles();
+  }
+
+  /**
+   * Remove initial styles from all elements
+   */
+  private removeInitialStyles(): void {
+    const elements = this.form.queryAll(`[${ATTR}-initialdisplay]`);
+    elements.forEach((element) => {
+      element.removeAttribute(`${ATTR}-initialdisplay`);
+    });
+  }
+
+  /**
    * Update display depending on the state changed, no need for behavior
    */
-  private updateDisplay(key?: FormStateKeys): void {
-    if (!key) {
-      this.handleCardVisibility();
-      this.handleSetVisibility();
-      this.handleGroupVisibility();
-      this.handleFieldVisibility();
-      return;
-    }
-
+  private updateDisplay(key: FormStateKeys): void {
     const lowercaseKey = key.toLowerCase();
-    if (lowercaseKey.includes('card')) this.handleCardVisibility();
-    if (lowercaseKey.includes('set')) this.handleSetVisibility();
-    if (lowercaseKey.includes('group')) this.handleGroupVisibility();
-    if (lowercaseKey.includes('field')) this.handleFieldVisibility();
+    if (lowercaseKey.includes('card')) this.handleVisibility(this.form.cardManager);
+    if (lowercaseKey.includes('set')) this.handleVisibility(this.form.setManager);
+    if (lowercaseKey.includes('group')) this.handleVisibility(this.form.groupManager);
+    if (lowercaseKey.includes('field')) this.handleVisibility(this.form.fieldManager);
   }
 
   /**
-   * Handle card visibility based on form state
+   * Handle item visibility based on data
    */
-  private handleCardVisibility(): void {
-    const cards = this.form.cardManager.getAll();
-    cards.forEach((card) => {
-      this.showElement(card);
-    });
-  }
-
-  /**
-   * Handle set visibility based on form state
-   */
-  private handleSetVisibility(): void {
-    const sets = this.form.setManager.getAll();
-    sets.forEach((set) => {
-      this.showElement(set);
-    });
-  }
-
-  /**
-   * Handle group visibility based on form state
-   */
-  private handleGroupVisibility(): void {
-    const groups = this.form.groupManager.getAll();
-    groups.forEach((group) => {
-      this.showElement(group);
-    });
-  }
-
-  /**
-   * Handle field visibility based on form state
-   */
-  private handleFieldVisibility(): void {
-    const fields = this.form.fieldManager.getAll();
-    fields.forEach((field) => {
-      this.showElement(field);
+  private handleVisibility<TItem extends ItemData>(manager: ItemManager<TItem>): void {
+    const items = manager.getByFilter((item) => item.visible !== item.active);
+    items.forEach((item) => {
+      this.showElement(item, (visible) =>
+        manager.updateItemData(item.index, { visible } as UpdatableItemData<TItem>)
+      );
     });
   }
 
   /**
    * Show/Hide an element
-   * Sets display: sets or removes display: none based on visibility
+   * Sets "display: none" or removes display property based on active state
+   * Updates the "active" data-attribute to be inline with the display property
+   * Updates the visible flag to be inline with the active state
    */
-  public showElement(elementData: ItemData): void {
-    const { element, active, type } = elementData;
+  public showElement(item: ItemData, updateVisible: (visible: boolean) => void): void {
+    const { element, active, type } = item;
     if (active) element.style.removeProperty('display');
     else element.style.setProperty('display', 'none');
     element.setAttribute(`${ATTR}-${type}-active`, active.toString());
+
+    // Update visible flag to be inline with active
+    updateVisible(active);
   }
 }
