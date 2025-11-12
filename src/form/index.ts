@@ -255,6 +255,9 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.logDebug(`Started at ${new Date().toISOString()}`);
     this.timeDebug('form:init');
 
+    // Initialize ConditionManager first so conditions can be evaluated during hierarchy discovery
+    this.conditionManager.init();
+
     this.cardManager.init();
     this.setManager.init();
     this.groupManager.init();
@@ -265,7 +268,6 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.navigationManager.init();
     this.progressManager.init();
     this.focusManager.init();
-    this.conditionManager.init();
 
     this.logDebug(`Form initialized`, {
       state: this.getAllState(),
