@@ -21,6 +21,7 @@ export type UpdatableItemData<T extends ItemData> = Partial<
     T,
     Extract<
       keyof T,
+      | 'visible'
       | 'active'
       | 'current'
       | 'visited'

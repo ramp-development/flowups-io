@@ -55,14 +55,15 @@ export class FieldManager extends ItemManager<FieldItem> {
     // Create field item object
     return {
       element,
-      type: this.itemType,
-      id,
       index,
+      id,
+      visible: true,
+      active,
+      type: this.itemType,
+      parentHierarchy,
+      current: active && index === 0,
       visited: active,
       completed: false,
-      active,
-      current: active && index === 0,
-      parentHierarchy,
       isIncluded: true,
       isValid: false,
     };

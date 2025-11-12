@@ -47,16 +47,17 @@ export class CardManager extends ItemManager<CardItem> {
     // Create card item object
     return {
       element,
-      type: this.itemType,
-      id: titleData.id,
-      title: titleData.title,
       index,
+      id: titleData.id,
+      visible: true,
+      active: index === 0,
+      type: this.itemType,
+      parentHierarchy: this.findParentHierarchy<CardParentHierarchy>(element),
       visited: index === 0,
       completed: !hasSets,
-      active: index === 0,
       current: index === 0,
+      title: titleData.title,
       progress: hasSets ? 0 : 100,
-      parentHierarchy: this.findParentHierarchy<CardParentHierarchy>(element),
       isIncluded: true,
       isValid: !hasSets,
     };

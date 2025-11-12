@@ -13,7 +13,10 @@ export interface BaseItem {
   /** Unique identifier (parsed or generated) */
   id: string;
 
-  /** Whether this element is currently active/visible */
+  /** Whether this element is currently visible */
+  visible: boolean;
+
+  /** Whether this element is active */
   active: boolean;
 
   /** Element type @override */

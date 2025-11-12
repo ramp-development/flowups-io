@@ -50,16 +50,17 @@ export class SetManager extends ItemManager<SetItem> {
     // Create set item object
     return {
       element,
-      type: this.itemType,
-      id: titleData.id,
-      title: titleData.title,
       index,
+      id: titleData.id,
+      visible: true,
+      active,
+      parentHierarchy,
+      current: active && index === 0,
       visited: active,
       completed: false,
-      active,
-      current: active && index === 0,
+      type: this.itemType,
+      title: titleData.title,
       progress: 0,
-      parentHierarchy,
       isIncluded: true,
       isValid: false,
     };

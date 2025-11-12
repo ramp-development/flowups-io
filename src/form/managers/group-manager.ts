@@ -50,16 +50,17 @@ export class GroupManager extends ItemManager<GroupItem> {
     // Create group item object
     return {
       element,
-      type: this.itemType,
-      id: titleData.id,
-      title: titleData.title,
       index,
+      id: titleData.id,
+      visible: true,
+      active,
+      type: this.itemType,
+      parentHierarchy,
+      current: active && index === 0,
       visited: active,
       completed: false,
-      active,
-      current: active && index === 0,
+      title: titleData.title,
       progress: 0,
-      parentHierarchy,
       isIncluded: true,
       isValid: false,
     };
