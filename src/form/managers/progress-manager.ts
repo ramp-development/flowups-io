@@ -64,6 +64,7 @@ export class ProgressManager extends BaseManager {
       element,
       index,
       id: parsed.id ?? `progress-line-${index}`,
+      visible: true,
       active: false, // Calculated
       type: parsed.type,
       parentHierarchy: this.findParentHierarchy(element),
