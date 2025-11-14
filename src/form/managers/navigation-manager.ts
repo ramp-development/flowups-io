@@ -387,14 +387,6 @@ export class NavigationManager extends BaseManager {
     this.form.setManager.rebuildAll();
     this.form.cardManager.rebuildAll();
 
-    console.log('batchStateUpdates', {
-      inputs: this.form.inputManager.getAll(),
-      fields: this.form.fieldManager.getAll(),
-      groups: this.form.groupManager.getAll(),
-      sets: this.form.setManager.getAll(),
-      cards: this.form.cardManager.getAll(),
-    });
-
     // Collect state from all managers (doesn't write to state yet)
     const allStates = {
       ...this.form.inputManager.calculateStates(),
