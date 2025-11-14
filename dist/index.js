@@ -4376,6 +4376,7 @@
   // src/form/managers/navigation-manager.ts
   var NavigationManager = class extends BaseManager {
     navigationEnabled = true;
+    enterKeyHandler = null;
     /**
      * Initialize the manager
      */
@@ -4389,6 +4390,7 @@
      * Cleanup manager resources
      */
     destroy() {
+      this.removeEventListeners();
       this.form.logDebug("NavigationManager destroyed");
     }
     // ============================================
@@ -4401,7 +4403,35 @@
       this.form.subscribe("form:navigation:request", (payload) => {
         this.handleMove(payload.type);
       });
+      this.setupEnterKeyListener();
       this.form.logDebug("Event listeners setup");
+    }
+    /**
+     * Remove event listeners
+     */
+    removeEventListeners() {
+      if (this.enterKeyHandler) {
+        document.removeEventListener("keydown", this.enterKeyHandler);
+        this.enterKeyHandler = null;
+      }
+    }
+    /**
+     * Setup global Enter key listener for form progression
+     * Allows users to press Enter to advance through the form
+     */
+    setupEnterKeyListener() {
+      this.enterKeyHandler = (event) => {
+        if (event.key !== "Enter" || event.shiftKey) return;
+        this.form.logDebug("Enter key pressed", { event });
+        const formElement = this.form.getRootElement();
+        const { activeElement } = document;
+        const isWithinForm = formElement.contains(activeElement);
+        if (!isWithinForm && activeElement !== document.body) return;
+        event.preventDefault();
+        this.form.emit("form:navigation:request", { type: "next" });
+      };
+      document.addEventListener("keydown", this.enterKeyHandler);
+      this.form.logDebug("Global Enter key listener setup");
     }
     // ============================================
     // Navigation requests

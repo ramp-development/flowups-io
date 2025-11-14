@@ -16,6 +16,7 @@ import { BaseManager } from './base-manager';
  */
 export class NavigationManager extends BaseManager {
   private navigationEnabled: boolean = true;
+  private enterKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   /**
    * Initialize the manager
@@ -32,7 +33,7 @@ export class NavigationManager extends BaseManager {
    * Cleanup manager resources
    */
   public destroy(): void {
-    // unbind event subscribers
+    this.removeEventListeners();
 
     this.form.logDebug('NavigationManager destroyed');
   }
@@ -49,7 +50,47 @@ export class NavigationManager extends BaseManager {
       this.handleMove(payload.type);
     });
 
+    this.setupEnterKeyListener();
+
     this.form.logDebug('Event listeners setup');
+  }
+
+  /**
+   * Remove event listeners
+   */
+  private removeEventListeners(): void {
+    if (this.enterKeyHandler) {
+      document.removeEventListener('keydown', this.enterKeyHandler);
+      this.enterKeyHandler = null;
+    }
+  }
+
+  /**
+   * Setup global Enter key listener for form progression
+   * Allows users to press Enter to advance through the form
+   */
+  private setupEnterKeyListener(): void {
+    this.enterKeyHandler = (event: KeyboardEvent) => {
+      // Only respond to Enter without shift key
+      if (event.key !== 'Enter' || event.shiftKey) return;
+      this.form.logDebug('Enter key pressed', { event });
+
+      // Check if focus is within this form
+      const formElement = this.form.getRootElement()!;
+      const { activeElement } = document;
+      const isWithinForm = formElement.contains(activeElement);
+
+      if (!isWithinForm && activeElement !== document.body) return;
+
+      // Prevent default form submission or other Enter key behaviors
+      event.preventDefault();
+
+      // Request navigation to next step
+      this.form.emit('form:navigation:request', { type: 'next' });
+    };
+
+    document.addEventListener('keydown', this.enterKeyHandler);
+    this.form.logDebug('Global Enter key listener setup');
   }
 
   // ============================================

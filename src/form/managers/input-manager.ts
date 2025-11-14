@@ -267,7 +267,7 @@ export class InputManager extends ItemManager<InputItem> {
       );
       if (alreadyBound) return;
 
-      // Determine event type
+      // Determine event type for value changes
       const eventType = this.getEventTypeForInput(item.element);
 
       // Bind events to ALL inputs in the item (for radio/checkbox groups)
