@@ -4047,6 +4047,7 @@
       const isRequired = this.checkIfRequired(input);
       const isValid = this.checkIfValid(input);
       const { visited, active, current, isIncluded } = field;
+      const format = input.getAttribute(`${ATTR}-format`) || void 0;
       return {
         element: input,
         index,
@@ -4066,7 +4067,8 @@
         isRequiredOriginal: isRequired,
         isRequired,
         isValid,
-        isIncluded
+        isIncluded,
+        format
       };
     }
     /**
@@ -4133,7 +4135,11 @@
         if (alreadyBound) return;
         const eventType = this.getEventTypeForInput(item.element);
         item.inputs.forEach((input) => {
+          const needsFormatting = item.format && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement);
           const handler = () => {
+            if (needsFormatting) {
+              this.handleFormatting(input, item.format);
+            }
             const value = this.extractInputValue(item);
             this.handleInputChange(item.name, value);
           };
@@ -4205,7 +4211,13 @@
      */
     extractInputValue(item) {
       const { element } = item;
-      if (element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) {
+      if (element instanceof HTMLSelectElement) {
+        return element.value;
+      }
+      if (element instanceof HTMLTextAreaElement) {
+        if (item.format) {
+          return this.stripFormatting(element.value);
+        }
         return element.value;
       }
       const type = item.inputType;
@@ -4218,6 +4230,9 @@
       if (type === "radio") {
         const checked = item.inputs.find((r) => r.checked);
         return checked ? checked.value : null;
+      }
+      if (item.format) {
+        return this.stripFormatting(element.value);
       }
       return element.value;
     }
@@ -4292,6 +4307,93 @@
         formData[item.name] = this.extractInputValue(item);
       });
       return formData;
+    }
+    // ============================================
+    // Input Formatting
+    // ============================================
+    /**
+     * Apply format pattern to input value
+     * Formats the value according to pattern (e.g., "(XXX) XXX-XXXX")
+     * Maintains cursor position after formatting
+     *
+     * @param input - Input element to format
+     * @param pattern - Format pattern (X = digit placeholder)
+     */
+    handleFormatting(input, pattern) {
+      const cursorPosition = input.selectionStart || 0;
+      const oldValue = input.value;
+      const rawValue = this.stripFormatting(oldValue);
+      const formattedValue = this.applyFormat(rawValue, pattern);
+      if (formattedValue !== oldValue) {
+        input.value = formattedValue;
+        const newCursorPosition = this.calculateCursorPosition(
+          oldValue,
+          formattedValue,
+          cursorPosition
+        );
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+      }
+    }
+    /**
+     * Strip all non-digit characters from value
+     * @param value - Value to strip
+     * @returns Raw digits only
+     */
+    stripFormatting(value) {
+      return value.replace(/\D/g, "");
+    }
+    /**
+     * Apply format pattern to raw digits
+     * If value exceeds pattern length, returns unformatted digits
+     * @param rawValue - Raw digit string
+     * @param pattern - Format pattern (X = digit)
+     * @returns Formatted value or raw digits if overflow
+     */
+    applyFormat(rawValue, pattern) {
+      const maxDigits = (pattern.match(/[Xx]/g) || []).length;
+      if (rawValue.length > maxDigits) {
+        return rawValue;
+      }
+      let formatted = "";
+      let rawIndex = 0;
+      for (let i = 0; i < pattern.length && rawIndex < rawValue.length; i++) {
+        const patternChar = pattern[i];
+        if (patternChar === "X" || patternChar === "x") {
+          formatted += rawValue[rawIndex];
+          rawIndex += 1;
+        } else {
+          formatted += patternChar;
+        }
+      }
+      return formatted;
+    }
+    /**
+     * Calculate new cursor position after formatting
+     * Accounts for added/removed formatting characters
+     *
+     * @param oldValue - Value before formatting
+     * @param newValue - Value after formatting
+     * @param oldCursor - Cursor position before formatting
+     * @param pattern - Format pattern
+     * @returns New cursor position
+     */
+    calculateCursorPosition(oldValue, newValue, oldCursor) {
+      const digitsBeforeCursor = oldValue.slice(0, oldCursor).replace(/\D/g, "").length;
+      let digitCount = 0;
+      let newCursor = 0;
+      for (let i = 0; i < newValue.length; i++) {
+        if (/\d/.test(newValue[i])) {
+          digitCount += 1;
+          if (digitCount === digitsBeforeCursor) {
+            newCursor = i + 1;
+            break;
+          }
+        }
+      }
+      if (digitCount < digitsBeforeCursor) {
+        newCursor = newValue.length;
+      }
+      return newCursor;
     }
     // ============================================
     // Input Change Handling
@@ -4642,13 +4744,6 @@
       this.form.groupManager.rebuildAll();
       this.form.setManager.rebuildAll();
       this.form.cardManager.rebuildAll();
-      console.log("batchStateUpdates", {
-        inputs: this.form.inputManager.getAll(),
-        fields: this.form.fieldManager.getAll(),
-        groups: this.form.groupManager.getAll(),
-        sets: this.form.setManager.getAll(),
-        cards: this.form.cardManager.getAll()
-      });
       const allStates = {
         ...this.form.inputManager.calculateStates(),
         ...this.form.fieldManager.calculateStates(),

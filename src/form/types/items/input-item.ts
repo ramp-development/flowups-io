@@ -50,4 +50,7 @@ export interface InputItem extends NavigableItem {
 
   /** Whether this input is valid (true if all validation rules pass) */
   isValid: boolean;
+
+  /** Format pattern for input (e.g., "(XXX) XXX-XXXX" for phone numbers) */
+  format?: string;
 }

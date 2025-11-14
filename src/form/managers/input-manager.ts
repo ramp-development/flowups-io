@@ -8,6 +8,7 @@
 
 import type { StateChangePayload } from '$lib/types';
 
+import { ATTR } from '../constants';
 import type {
   FieldItem,
   FormInputState,
@@ -162,6 +163,9 @@ export class InputManager extends ItemManager<InputItem> {
     const isValid = this.checkIfValid(input);
     const { visited, active, current, isIncluded } = field;
 
+    // Check for format attribute
+    const format = input.getAttribute(`${ATTR}-format`) || undefined;
+
     return {
       element: input,
       index,
@@ -182,6 +186,7 @@ export class InputManager extends ItemManager<InputItem> {
       isRequired,
       isValid,
       isIncluded,
+      format,
     };
   }
 
@@ -272,7 +277,19 @@ export class InputManager extends ItemManager<InputItem> {
 
       // Bind events to ALL inputs in the item (for radio/checkbox groups)
       item.inputs.forEach((input) => {
+        // Check if this input needs formatting
+        const needsFormatting =
+          item.format &&
+          (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement);
+
         const handler: EventListener = () => {
+          // Apply formatting FIRST if pattern exists
+          // This ensures the value is formatted before extraction and validation
+          if (needsFormatting) {
+            this.handleFormatting(input as HTMLInputElement | HTMLTextAreaElement, item.format!);
+          }
+
+          // Then extract and handle the change
           const value = this.extractInputValue(item);
           this.handleInputChange(item.name, value);
         };
@@ -365,8 +382,17 @@ export class InputManager extends ItemManager<InputItem> {
   private extractInputValue(item: InputItem): unknown {
     const { element } = item;
 
-    // Handle select and textarea elements
-    if (element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) {
+    // Handle select elements
+    if (element instanceof HTMLSelectElement) {
+      return element.value;
+    }
+
+    // Handle textarea elements
+    if (element instanceof HTMLTextAreaElement) {
+      // Strip formatting if format pattern exists
+      if (item.format) {
+        return this.stripFormatting(element.value);
+      }
       return element.value;
     }
 
@@ -390,7 +416,10 @@ export class InputManager extends ItemManager<InputItem> {
       return checked ? checked.value : null;
     }
 
-    // Default - return value as string
+    // Default - return value as string, stripping formatting if pattern exists
+    if (item.format) {
+      return this.stripFormatting(element.value);
+    }
     return element.value;
   }
 
@@ -492,6 +521,122 @@ export class InputManager extends ItemManager<InputItem> {
     });
 
     return formData;
+  }
+
+  // ============================================
+  // Input Formatting
+  // ============================================
+
+  /**
+   * Apply format pattern to input value
+   * Formats the value according to pattern (e.g., "(XXX) XXX-XXXX")
+   * Maintains cursor position after formatting
+   *
+   * @param input - Input element to format
+   * @param pattern - Format pattern (X = digit placeholder)
+   */
+  private handleFormatting(input: HTMLInputElement | HTMLTextAreaElement, pattern: string): void {
+    const cursorPosition = input.selectionStart || 0;
+    const oldValue = input.value;
+    const rawValue = this.stripFormatting(oldValue);
+
+    // Apply formatting
+    const formattedValue = this.applyFormat(rawValue, pattern);
+
+    // Only update if value changed
+    if (formattedValue !== oldValue) {
+      input.value = formattedValue;
+
+      // Calculate new cursor position
+      const newCursorPosition = this.calculateCursorPosition(
+        oldValue,
+        formattedValue,
+        cursorPosition
+      );
+
+      // Restore cursor position
+      input.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+  }
+
+  /**
+   * Strip all non-digit characters from value
+   * @param value - Value to strip
+   * @returns Raw digits only
+   */
+  private stripFormatting(value: string): string {
+    return value.replace(/\D/g, '');
+  }
+
+  /**
+   * Apply format pattern to raw digits
+   * If value exceeds pattern length, returns unformatted digits
+   * @param rawValue - Raw digit string
+   * @param pattern - Format pattern (X = digit)
+   * @returns Formatted value or raw digits if overflow
+   */
+  private applyFormat(rawValue: string, pattern: string): string {
+    // Count how many digit placeholders are in the pattern
+    const maxDigits = (pattern.match(/[Xx]/g) || []).length;
+
+    // If raw value exceeds pattern capacity, return raw digits (no formatting)
+    if (rawValue.length > maxDigits) {
+      return rawValue;
+    }
+
+    let formatted = '';
+    let rawIndex = 0;
+
+    for (let i = 0; i < pattern.length && rawIndex < rawValue.length; i++) {
+      const patternChar = pattern[i];
+
+      if (patternChar === 'X' || patternChar === 'x') {
+        // Insert digit
+        formatted += rawValue[rawIndex];
+        rawIndex += 1;
+      } else {
+        // Insert literal character
+        formatted += patternChar;
+      }
+    }
+
+    return formatted;
+  }
+
+  /**
+   * Calculate new cursor position after formatting
+   * Accounts for added/removed formatting characters
+   *
+   * @param oldValue - Value before formatting
+   * @param newValue - Value after formatting
+   * @param oldCursor - Cursor position before formatting
+   * @param pattern - Format pattern
+   * @returns New cursor position
+   */
+  private calculateCursorPosition(oldValue: string, newValue: string, oldCursor: number): number {
+    // Count how many digits are before cursor in old value
+    const digitsBeforeCursor = oldValue.slice(0, oldCursor).replace(/\D/g, '').length;
+
+    // Find position in new value where we've seen that many digits
+    let digitCount = 0;
+    let newCursor = 0;
+
+    for (let i = 0; i < newValue.length; i++) {
+      if (/\d/.test(newValue[i])) {
+        digitCount += 1;
+        if (digitCount === digitsBeforeCursor) {
+          newCursor = i + 1;
+          break;
+        }
+      }
+    }
+
+    // If we didn't find enough digits, put cursor at end
+    if (digitCount < digitsBeforeCursor) {
+      newCursor = newValue.length;
+    }
+
+    return newCursor;
   }
 
   // ============================================
