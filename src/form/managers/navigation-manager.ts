@@ -80,7 +80,8 @@ export class NavigationManager extends BaseManager {
       const { activeElement } = document;
       const isWithinForm = formElement.contains(activeElement);
 
-      if (!isWithinForm && activeElement !== document.body) return;
+      if ((!isWithinForm && activeElement !== document.body) || activeElement?.tagName === 'BUTTON')
+        return;
 
       // Prevent default form submission or other Enter key behaviors
       event.preventDefault();
@@ -103,38 +104,42 @@ export class NavigationManager extends BaseManager {
   public handleMove(direction: 'prev' | 'next'): void {
     if (!this.navigationEnabled) return;
 
-    // const canAdvance = this.validateCurrent();
-    // if (!canAdvance) {
-    //   this.showValidationErrors();
-    //   return;
-    // }
-
+    const canMove = (direction === 'next' && this.validateCurrent()) || direction === 'prev';
     const behavior = this.form.getBehavior();
 
-    let changedBy = undefined;
+    if (canMove) {
+      this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
+    } else {
+      this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
+      return;
+    }
 
     switch (behavior) {
       case 'byField':
-        changedBy = this.byField(direction);
+        this.byField(direction);
         break;
       case 'byGroup':
-        changedBy = this.byGroup(direction);
+        this.byGroup(direction);
         break;
       case 'bySet':
-        changedBy = this.bySet(direction);
+        this.bySet(direction);
         break;
       case 'byCard':
-        changedBy = this.byCard(direction);
+        this.byCard(direction);
         break;
       default:
         throw this.form.createError('Invalid behavior', 'runtime', {
           cause: { behavior },
         });
     }
+  }
 
-    if (!changedBy) return;
+  private validateCurrent(): boolean {
+    const inputsToValidate = this.form.inputManager.getByFilter(
+      (input) => input.active && input.isIncluded
+    );
 
-    this.form.emit('form:navigation:changed', { to: changedBy });
+    return inputsToValidate.every((input) => input.isValid);
   }
 
   // /**
@@ -207,9 +212,9 @@ export class NavigationManager extends BaseManager {
     this.clearHierarchyData('group');
 
     // Set new group active and current
-    this.form.groupManager.updateItemData(targetGroup.id, { active: true, current: true });
-    // this.form.groupManager.setActive(targetGroup.id);
-    // this.form.groupManager.setCurrent(targetGroup.id);
+    // this.form.groupManager.updateItemData(targetGroup.id, { active: true, current: true });
+    this.form.groupManager.setActive(targetGroup.id);
+    this.form.groupManager.setCurrent(targetGroup.id);
     this.setChildrenActive(targetGroup);
     this.updateHierarchyData(targetGroup);
     this.batchStateUpdates();
@@ -352,7 +357,6 @@ export class NavigationManager extends BaseManager {
         this.form.groupManager.clearActiveAndCurrent();
         this.form.groupManager.setActive(groupIndex);
         this.form.groupManager.setCurrent(groupIndex);
-        // this.form.groupManager.updateElementData(groupIndex, { active: true, current: true });
       }
     }
 
@@ -363,7 +367,6 @@ export class NavigationManager extends BaseManager {
         this.form.setManager.clearActiveAndCurrent();
         this.form.setManager.setActive(setIndex);
         this.form.setManager.setCurrent(setIndex);
-        // this.form.setManager.updateElementData(setIndex, { active: true, current: true });
       }
     }
 
