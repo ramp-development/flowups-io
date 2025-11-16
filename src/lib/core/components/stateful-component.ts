@@ -157,6 +157,7 @@ export abstract class StatefulComponent<
 
     // Emit batch change event
     if (!options.silent && changes.length > 0) {
+      this.logDebug(`Batch state change`, { changes });
       changes.forEach(({ key, from, to }) => {
         this.onStateChange(key, from, to);
       });
@@ -205,15 +206,15 @@ export abstract class StatefulComponent<
    * Called when state changes
    */
   protected onStateChange(key: keyof TState, from: StateValue, to: StateValue): void {
-    const event: StateChangeEvent = {
-      key: String(key),
-      from,
-      to,
-      component: this.id,
-    };
+    // const event: StateChangeEvent = {
+    //   key: String(key),
+    //   from,
+    //   to,
+    //   component: this.id,
+    // };
 
-    // Emit local state change
-    this.emitCustom('state:changed', event);
+    // // Emit local state change
+    // this.emitCustom('state:changed', event);
 
     // Emit to EventBus
     this.emit('state:changed', {
