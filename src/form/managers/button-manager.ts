@@ -6,10 +6,7 @@ import type {
   ButtonType,
   SubmitRequestedEvent,
 } from '../types';
-import type { NavigationRequestEvent } from '../types/events/navigation-events';
-import { parseElementAttribute } from '../utils';
-import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
-import { ItemStore } from '../utils/managers/item-store';
+import { HierarchyBuilder, ItemStore, parseElementAttribute, sentenceCase } from '../utils';
 import { BaseManager } from './base-manager';
 
 /**
@@ -39,7 +36,7 @@ export class ButtonManager extends BaseManager {
     this.setupEventListeners();
     this.applyStates(true);
 
-    this.form.logDebug('Initialized');
+    this.logDebug('Initialized');
     this.groupEnd();
   }
 
@@ -50,7 +47,7 @@ export class ButtonManager extends BaseManager {
     this.store.clear();
     this.unbindAllButtons();
 
-    this.form.logDebug('ButtonManager destroyed');
+    this.logDebug('ButtonManager destroyed');
   }
 
   // ============================================
@@ -87,11 +84,7 @@ export class ButtonManager extends BaseManager {
       this.store.add(itemData);
     });
 
-    this.form.logDebug(`Discovered ${this.store.length} buttons`, {
-      prev: this.store.filter((item) => item.type === 'prev'),
-      next: this.store.filter((item) => item.type === 'next'),
-      submit: this.store.filter((item) => item.type === 'submit'),
-    });
+    this.logDebug(`Discovered ${this.store.length} buttons`);
   }
 
   private createItemData(element: HTMLElement, index: number): ButtonItem | undefined {
@@ -197,11 +190,12 @@ export class ButtonManager extends BaseManager {
 
   private determineEnabled(type: ButtonType, activeAndVisible: boolean = true): boolean {
     if (!activeAndVisible) return false;
-    const { current, total } = this.getRelevantState();
 
     const valid = this.form.inputManager
       .getByFilter((input) => input.active && input.isIncluded)
       .every((input) => input.isValid);
+
+    const { current, total } = this.getRelevantState();
 
     switch (type) {
       case 'prev':
@@ -296,7 +290,7 @@ export class ButtonManager extends BaseManager {
       this.applyStates();
     });
 
-    this.form.logDebug('Event listeners setup');
+    this.logDebug('Event listeners setup');
   }
 
   // ============================================
@@ -307,9 +301,9 @@ export class ButtonManager extends BaseManager {
    * Bind events to the current buttons
    */
   public bindActiveButtons(): void {
-    let boundCount = 0;
-
     const activeItems = this.getActive();
+    if (activeItems.length === 0) return;
+
     activeItems.forEach((item) => {
       const { button } = item;
 
@@ -331,13 +325,13 @@ export class ButtonManager extends BaseManager {
         handler,
       });
 
-      this.logDebug(`Bound "click" events to "${item.type}" button`, {
-        ...item.parentHierarchy,
-      });
-      boundCount += 1;
-    });
+      const parent = this.findParentItem(item.element);
+      if (!parent) return;
 
-    this.logDebug(`Bound listeners to ${boundCount} button${boundCount !== 1 ? 's' : ''}`);
+      this.logDebug(
+        `Bound "click" events to "${item.type}" button within ${parent.type} "${parent.id}"`
+      );
+    });
   }
 
   /**
@@ -345,25 +339,25 @@ export class ButtonManager extends BaseManager {
    * @internal Used during cleanup
    */
   private unbindInactiveButtons(): void {
-    let removedCount = 0;
-
     const activeItems = this.getActive();
+    if (activeItems.length === 0) return;
+
     this.activeListeners = this.activeListeners.filter((listener) => {
       const shouldRemove = !activeItems.find((item) => item.index === listener.index);
 
       if (shouldRemove) {
         listener.button.removeEventListener(listener.event, listener.handler);
-        const parentHierarchy = this.findParentHierarchy(listener.button);
-        this.logDebug(`Unbound "${listener.event}" events from ${listener.type} button`, {
-          ...parentHierarchy,
-        });
-        removedCount += 1;
+
+        const parent = this.findParentItem(listener.button);
+        if (parent) {
+          this.logDebug(
+            `Unbound "${listener.event}" events from "${listener.type}" button within ${parent.type} "${parent.id}"`
+          );
+        }
       }
 
       return !shouldRemove; // Keep listeners that should NOT be removed
     });
-
-    this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? 's' : ''}`);
   }
 
   /**
@@ -388,21 +382,19 @@ export class ButtonManager extends BaseManager {
     if (type === 'submit') {
       /** @update submit event and payload */
       const payload: SubmitRequestedEvent = {};
-      this.form.logDebug('Submit clicked: requesting form submission', { payload });
+      this.logDebug('Submit button clicked: requesting form submission');
       this.form.emit('form:submit:request', payload);
       return;
     }
 
-    const payload: NavigationRequestEvent = { type };
-    this.form.logDebug(`Button clicked: requesting navigation to ${type}`, { payload });
-    this.form.emit('form:navigation:request', payload);
+    this.logDebug(`${sentenceCase(type)} button clicked: requesting navigation`);
+    this.form.emit('form:navigation:request', { type });
   };
 
   // ============================================
   // Button State Management
   // ============================================
 
-  // private handleNavigationChanged(payload: NavigationChangedEvent): void {
   private calculateStates(): void {
     this.getAll().forEach((item) => {
       const updated = this.buildItemData(item);
