@@ -1777,6 +1777,7 @@
         }
       });
       if (!options.silent && changes.length > 0) {
+        this.logDebug(`Batch state change`, { changes });
         changes.forEach(({ key, from, to }) => {
           this.onStateChange(key, from, to);
         });
@@ -1819,13 +1820,6 @@
      * Called when state changes
      */
     onStateChange(key, from, to) {
-      const event = {
-        key: String(key),
-        from,
-        to,
-        component: this.id
-      };
-      this.emitCustom("state:changed", event);
       this.emit("state:changed", {
         key: `${this.statePrefix}.${String(key)}`,
         from,
@@ -1960,139 +1954,6 @@
     slide: true,
     none: true
   };
-
-  // src/form/utils/parsing/generate-id-from-title.ts
-  function generateIdFromTitle(title) {
-    return title.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
-  }
-
-  // src/form/utils/parsing/extract-title.ts
-  function extractTitleFromLegend(element) {
-    const legend = element.querySelector("legend");
-    return legend?.textContent?.trim() || null;
-  }
-  function extractTitle(element, elementType, combinedId, index) {
-    const titleAttr = element.getAttribute(`${ATTR}-${elementType}title`);
-    if (titleAttr?.trim()) {
-      const title = titleAttr.trim();
-      return {
-        title,
-        source: "attribute",
-        id: combinedId || generateIdFromTitle(title)
-      };
-    }
-    if (elementType === "set" || elementType === "group") {
-      const legendTitle = extractTitleFromLegend(element);
-      if (legendTitle) {
-        return {
-          title: legendTitle,
-          source: "legend",
-          id: combinedId || generateIdFromTitle(legendTitle)
-        };
-      }
-    }
-    if (combinedId) {
-      const title = combinedId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-      return {
-        title,
-        source: "attribute",
-        id: combinedId
-      };
-    }
-    const generatedId = `${elementType}-${index}`;
-    const generatedTitle = `${elementType.charAt(0).toUpperCase() + elementType.slice(1)} ${index + 1}`;
-    return {
-      title: generatedTitle,
-      source: "generated",
-      id: generatedId
-    };
-  }
-
-  // src/form/utils/parsing/get-config-attributes.ts
-  function getConfigAttributes(element) {
-    const config = {};
-    Array.from(element.attributes).forEach((attr) => {
-      if (attr.name.startsWith(`${ATTR}-`)) {
-        const key = attr.name.replace(`${ATTR}-`, "");
-        config[key] = attr.value;
-      }
-    });
-    return config;
-  }
-
-  // src/form/utils/parsing/parse-boolean-attribute.ts
-  function parseBooleanAttribute(value, defaultValue = false) {
-    if (value === void 0) return defaultValue;
-    return value === "true" || value === "";
-  }
-
-  // src/form/utils/validation/is-valid-type.ts
-  function isValidType(value, typeMap) {
-    if (!value) return false;
-    return value in typeMap;
-  }
-
-  // src/form/utils/validation/assert-valid-type.ts
-  function assertValidType(value, typeMap, typeName, context) {
-    if (!isValidType(value, typeMap)) {
-      const validTypes = Object.keys(typeMap).join(", ");
-      const errorContext = context ? `${context}: ` : "";
-      throw new Error(
-        `${errorContext}Invalid ${typeName} "${value}". Valid types are: ${validTypes}`
-      );
-    }
-  }
-
-  // src/form/utils/validation/behavior-type-validators.ts
-  function isValidBehaviorType(value) {
-    return isValidType(value, VALID_BEHAVIOR_TYPE_MAP);
-  }
-
-  // src/form/utils/validation/element-type-validators.ts
-  function assertValidElementType(value, context) {
-    assertValidType(value, VALID_ELEMENT_TYPE_MAP, "element type", context);
-  }
-
-  // src/form/utils/validation/error-mode-type-validators.ts
-  function isValidErrorModeType(value) {
-    return isValidType(value, VALID_ERROR_DISPLAY_TYPE_MAP);
-  }
-
-  // src/form/utils/validation/storage-type-validators.ts
-  function isValidStorageType(value) {
-    return isValidType(value, VALID_STORAGE_TYPE_MAP);
-  }
-
-  // src/form/utils/validation/transition-type-validators.ts
-  function isValidTransitionType(value) {
-    return isValidType(value, VALID_TRANSITION_TYPE_MAP);
-  }
-
-  // src/form/utils/parsing/parse-element-attribute.ts
-  function parseElementAttribute(value) {
-    const trimmed = value.trim();
-    if (trimmed.includes(":")) {
-      const parts = trimmed.split(":");
-      const type = parts[0].trim();
-      assertValidElementType(type);
-      return {
-        type,
-        id: parts[1].trim()
-      };
-    }
-    assertValidElementType(trimmed);
-    return {
-      type: trimmed,
-      id: void 0
-    };
-  }
-
-  // src/form/utils/parsing/parse-number-attribute.ts
-  function parseNumberAttribute(value, defaultValue) {
-    if (value === void 0) return defaultValue;
-    const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-  }
 
   // src/form/utils/managers/hierarchy-builder.ts
   var HierarchyBuilder = class _HierarchyBuilder {
@@ -2238,6 +2099,149 @@
     }
   };
 
+  // src/form/utils/parsing/generate-id-from-title.ts
+  function generateIdFromTitle(title) {
+    return title.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  // src/form/utils/parsing/extract-title.ts
+  function extractTitleFromLegend(element) {
+    const legend = element.querySelector("legend");
+    return legend?.textContent?.trim() || null;
+  }
+  function extractTitle(element, elementType, combinedId, index) {
+    const titleAttr = element.getAttribute(`${ATTR}-${elementType}title`);
+    if (titleAttr?.trim()) {
+      const title = titleAttr.trim();
+      return {
+        title,
+        source: "attribute",
+        id: combinedId || generateIdFromTitle(title)
+      };
+    }
+    if (elementType === "set" || elementType === "group") {
+      const legendTitle = extractTitleFromLegend(element);
+      if (legendTitle) {
+        return {
+          title: legendTitle,
+          source: "legend",
+          id: combinedId || generateIdFromTitle(legendTitle)
+        };
+      }
+    }
+    if (combinedId) {
+      const title = combinedId.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+      return {
+        title,
+        source: "attribute",
+        id: combinedId
+      };
+    }
+    const generatedId = `${elementType}-${index}`;
+    const generatedTitle = `${elementType.charAt(0).toUpperCase() + elementType.slice(1)} ${index + 1}`;
+    return {
+      title: generatedTitle,
+      source: "generated",
+      id: generatedId
+    };
+  }
+
+  // src/form/utils/parsing/get-config-attributes.ts
+  function getConfigAttributes(element) {
+    const config = {};
+    Array.from(element.attributes).forEach((attr) => {
+      if (attr.name.startsWith(`${ATTR}-`)) {
+        const key = attr.name.replace(`${ATTR}-`, "");
+        config[key] = attr.value;
+      }
+    });
+    return config;
+  }
+
+  // src/form/utils/parsing/parse-boolean-attribute.ts
+  function parseBooleanAttribute(value, defaultValue = false) {
+    if (value === void 0) return defaultValue;
+    return value === "true" || value === "";
+  }
+
+  // src/form/utils/validation/is-valid-type.ts
+  function isValidType(value, typeMap) {
+    if (!value) return false;
+    return value in typeMap;
+  }
+
+  // src/form/utils/validation/assert-valid-type.ts
+  function assertValidType(value, typeMap, typeName, context) {
+    if (!isValidType(value, typeMap)) {
+      const validTypes = Object.keys(typeMap).join(", ");
+      const errorContext = context ? `${context}: ` : "";
+      throw new Error(
+        `${errorContext}Invalid ${typeName} "${value}". Valid types are: ${validTypes}`
+      );
+    }
+  }
+
+  // src/form/utils/validation/behavior-type-validators.ts
+  function isValidBehaviorType(value) {
+    return isValidType(value, VALID_BEHAVIOR_TYPE_MAP);
+  }
+
+  // src/form/utils/validation/element-type-validators.ts
+  function assertValidElementType(value, context) {
+    assertValidType(value, VALID_ELEMENT_TYPE_MAP, "element type", context);
+  }
+
+  // src/form/utils/validation/error-mode-type-validators.ts
+  function isValidErrorModeType(value) {
+    return isValidType(value, VALID_ERROR_DISPLAY_TYPE_MAP);
+  }
+
+  // src/form/utils/validation/storage-type-validators.ts
+  function isValidStorageType(value) {
+    return isValidType(value, VALID_STORAGE_TYPE_MAP);
+  }
+
+  // src/form/utils/validation/transition-type-validators.ts
+  function isValidTransitionType(value) {
+    return isValidType(value, VALID_TRANSITION_TYPE_MAP);
+  }
+
+  // src/form/utils/parsing/parse-element-attribute.ts
+  function parseElementAttribute(value) {
+    const trimmed = value.trim();
+    if (trimmed.includes(":")) {
+      const parts = trimmed.split(":");
+      const type = parts[0].trim();
+      assertValidElementType(type);
+      return {
+        type,
+        id: parts[1].trim()
+      };
+    }
+    assertValidElementType(trimmed);
+    return {
+      type: trimmed,
+      id: void 0
+    };
+  }
+
+  // src/form/utils/parsing/parse-number-attribute.ts
+  function parseNumberAttribute(value, defaultValue) {
+    if (value === void 0) return defaultValue;
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+
+  // src/form/utils/string/plural.ts
+  var plural = (word, count) => {
+    return count === 1 ? word : `${word}s`;
+  };
+
+  // src/form/utils/string/sentence-case.ts
+  var sentenceCase = (string) => {
+    return string.toLowerCase().replace(/(^\s*\w)/g, (match) => match.toUpperCase());
+  };
+
   // src/form/managers/base-manager.ts
   var BaseManager = class {
     form;
@@ -2287,7 +2291,7 @@
       this.discoverItems();
       this.setupEventListeners();
       this.applyStates(true);
-      this.form.logDebug("Initialized");
+      this.logDebug("Initialized");
       this.groupEnd();
     }
     /**
@@ -2296,7 +2300,7 @@
     destroy() {
       this.store.clear();
       this.unbindAllButtons();
-      this.form.logDebug("ButtonManager destroyed");
+      this.logDebug("ButtonManager destroyed");
     }
     // ============================================
     // Discovery
@@ -2325,11 +2329,7 @@
         if (!itemData) return;
         this.store.add(itemData);
       });
-      this.form.logDebug(`Discovered ${this.store.length} buttons`, {
-        prev: this.store.filter((item) => item.type === "prev"),
-        next: this.store.filter((item) => item.type === "next"),
-        submit: this.store.filter((item) => item.type === "submit")
-      });
+      this.logDebug(`Discovered ${this.store.length} buttons`);
     }
     createItemData(element, index) {
       if (!(element instanceof HTMLElement)) return;
@@ -2410,8 +2410,8 @@
     }
     determineEnabled(type, activeAndVisible = true) {
       if (!activeAndVisible) return false;
-      const { current, total } = this.getRelevantState();
       const valid = this.form.inputManager.getByFilter((input) => input.active && input.isIncluded).every((input) => input.isValid);
+      const { current, total } = this.getRelevantState();
       switch (type) {
         case "prev":
           return activeAndVisible;
@@ -2496,7 +2496,7 @@
         this.calculateStates();
         this.applyStates();
       });
-      this.form.logDebug("Event listeners setup");
+      this.logDebug("Event listeners setup");
     }
     // ============================================
     // Bind Listeners
@@ -2505,8 +2505,8 @@
      * Bind events to the current buttons
      */
     bindActiveButtons() {
-      let boundCount = 0;
       const activeItems = this.getActive();
+      if (activeItems.length === 0) return;
       activeItems.forEach((item) => {
         const { button } = item;
         const alreadyBound = this.activeListeners.some((listener) => listener.button === button);
@@ -2522,33 +2522,33 @@
           event: "click",
           handler
         });
-        this.logDebug(`Bound "click" events to "${item.type}" button`, {
-          ...item.parentHierarchy
-        });
-        boundCount += 1;
+        const parent = this.findParentItem(item.element);
+        if (!parent) return;
+        this.logDebug(
+          `Bound "click" events to "${item.type}" button within ${parent.type} "${parent.id}"`
+        );
       });
-      this.logDebug(`Bound listeners to ${boundCount} button${boundCount !== 1 ? "s" : ""}`);
     }
     /**
      * Unbind all inactive button listeners
      * @internal Used during cleanup
      */
     unbindInactiveButtons() {
-      let removedCount = 0;
       const activeItems = this.getActive();
+      if (activeItems.length === 0) return;
       this.activeListeners = this.activeListeners.filter((listener) => {
         const shouldRemove = !activeItems.find((item) => item.index === listener.index);
         if (shouldRemove) {
           listener.button.removeEventListener(listener.event, listener.handler);
-          const parentHierarchy = this.findParentHierarchy(listener.button);
-          this.logDebug(`Unbound "${listener.event}" events from ${listener.type} button`, {
-            ...parentHierarchy
-          });
-          removedCount += 1;
+          const parent = this.findParentItem(listener.button);
+          if (parent) {
+            this.logDebug(
+              `Unbound "${listener.event}" events from "${listener.type}" button within ${parent.type} "${parent.id}"`
+            );
+          }
         }
         return !shouldRemove;
       });
-      this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? "s" : ""}`);
     }
     /**
      * Unbind all button listeners
@@ -2568,19 +2568,17 @@
      */
     handleClick = (type) => {
       if (type === "submit") {
-        const payload2 = {};
-        this.form.logDebug("Submit clicked: requesting form submission", { payload: payload2 });
-        this.form.emit("form:submit:request", payload2);
+        const payload = {};
+        this.logDebug("Submit button clicked: requesting form submission");
+        this.form.emit("form:submit:request", payload);
         return;
       }
-      const payload = { type };
-      this.form.logDebug(`Button clicked: requesting navigation to ${type}`, { payload });
-      this.form.emit("form:navigation:request", payload);
+      this.logDebug(`${sentenceCase(type)} button clicked: requesting navigation`);
+      this.form.emit("form:navigation:request", { type });
     };
     // ============================================
     // Button State Management
     // ============================================
-    // private handleNavigationChanged(payload: NavigationChangedEvent): void {
     calculateStates() {
       this.getAll().forEach((item) => {
         const updated = this.buildItemData(item);
@@ -2682,7 +2680,7 @@
         if (!itemData) return;
         this.add(itemData);
       });
-      this.logDebug(`Discovered ${items.length} ${this.itemType}s`, {
+      this.logDebug(`Discovered ${items.length} ${plural(this.itemType, items.length)}`, {
         items
       });
     }
@@ -2700,7 +2698,6 @@
       }
       const updated = this.mergeItemData(item, data);
       this.update(updated);
-      this.logDebug(`Updated ${this.itemType} "${item.id}" data`, { updated });
     }
     /**
      * Merge item data - can be overridden
@@ -2716,13 +2713,35 @@
       };
     }
     /**
+     * Rebuild item using buildItemData()
+     * Ensures item data is fresh before calculating state
+     */
+    rebuildItem(item) {
+      const rebuilt = this.buildItemData(item);
+      this.update(rebuilt);
+    }
+    /**
+     * Rebuild all items using buildItemData()
+     * Ensures item data is fresh before calculating state
+     */
+    rebuildActive() {
+      const active = this.getActive();
+      if (active.length === 0) return;
+      this.logDebug(`Rebuilding ${active.length} active ${plural(this.itemType, active.length)}`);
+      active.forEach((item) => {
+        this.logDebug("Pre", item);
+        const rebuilt = this.buildItemData(item);
+        this.update(rebuilt);
+        this.logDebug("Post-rebuild", rebuilt);
+      });
+    }
+    /**
      * Rebuild all items using buildItemData()
      * Ensures item data is fresh before calculating state
      */
     rebuildAll() {
       this.getAll().forEach((item) => {
-        const rebuilt = this.buildItemData(item);
-        this.update(rebuilt);
+        this.rebuildItem(item);
       });
     }
     /**
@@ -2776,11 +2795,11 @@
     setCurrent(selector) {
       const item = this.getBySelector(selector);
       if (!item) {
-        this.logWarn(`Set current: ${this.itemType} not found`, { selector });
+        this.logWarn(`Cannot set current: ${this.itemType} not found`, { selector });
         return;
       }
       if (!item.active) {
-        this.logWarn(`Set current: ${this.itemType} is not active, cannot set current`, {
+        this.logWarn(`Cannot set current: ${this.itemType} is not active`, {
           id: item.id,
           index: item.index
         });
@@ -2788,36 +2807,35 @@
       }
       this.clearCurrent();
       this.updateItemData(item.index, { current: true });
-      this.logDebug(`${this.itemType}: Set current`, {
-        id: item.id,
-        index: item.index,
-        items: this.getAll()
-      });
+      this.logDebug(`Set ${this.itemType} "${item.id}" as current`);
     }
     /**
      * Clear current flag from all items
      */
     clearCurrent() {
-      this.getAll().forEach((item) => {
-        if (item.current) {
-          this.updateItemData(item.index, { current: false });
-        }
+      const items = this.getByFilter((item) => item.current);
+      if (items.length === 0) return;
+      items.forEach((item) => {
+        this.updateItemData(item.index, { current: false });
       });
-      this.logDebug(`Cleared current flag for all ${this.itemType}s`);
+      this.logDebug(
+        `Cleared current flag from ${items.length} ${plural(this.itemType, items.length)}`
+      );
     }
     /**
      * Clear all active and current flags
      * Updates storage not states
      */
     clearActiveAndCurrent() {
-      this.getAll().forEach((item) => {
+      const items = this.getByFilter((item) => item.active || item.current);
+      if (items.length === 0) return;
+      items.forEach((item) => {
         const updated = { ...item, active: false, current: false };
         this.update(updated);
       });
-      this.logDebug(`Cleared active and current flags for all ${this.itemType}s`, {
-        count: this.length,
-        items: this.getAll()
-      });
+      this.logDebug(
+        `Cleared active and current flags from ${items.length} ${plural(this.itemType, items.length)}`
+      );
     }
     /**
      * Set active flag
@@ -2826,16 +2844,12 @@
     setActive(selector) {
       const item = this.getBySelector(selector);
       if (!item) {
-        this.logWarn(`Set active: ${this.itemType} not found`, { selector });
+        this.logWarn(`Cannot set active: ${this.itemType} not found`, { selector });
         return;
       }
       const updated = { ...item, active: true };
       this.update(updated);
-      this.logDebug(`Set active flag for ${this.itemType}: ${item.id}`, {
-        id: item.id,
-        index: item.index,
-        items: this.getAll()
-      });
+      this.logDebug(`Set ${this.itemType} "${item.id}" as active`);
     }
     /**
      * Set active by parent
@@ -2856,11 +2870,9 @@
         };
         this.update(updated);
       });
-      this.logDebug(`${this.itemType}: Set active: "true" by parent ${parentType}: ${parentId}`, {
-        // count: includedChildren.length,
-        total: children.length,
-        children
-      });
+      this.logDebug(
+        `Set ${children.length} ${plural(this.itemType, children.length)} within ${parentType} "${parentId}" as active`
+      );
     }
     /**
      * Get items by parent ID
@@ -2934,15 +2946,7 @@
       this.navigationOrder = this.getByFilter(
         (item) => "isIncluded" in item ? item.isIncluded : true
       ).map((item) => item.index);
-      const orderString = this.navigationOrder.reduce(
-        (acc, index) => {
-          if (index === 0) return acc;
-          const item = this.getByIndex(index);
-          return `${acc} --> ${item?.id}`;
-        },
-        `${this.getByIndex(0)?.id}`
-      );
-      this.logDebug(`Navigation order built: ${orderString}`);
+      this.logDebug(`Navigation order built`);
     }
     /**
      * Update item inclusion and rebuild navigation order
@@ -2955,7 +2959,7 @@
       if (!item) return;
       this.updateItemData(id, { isIncluded });
       this.buildNavigationOrder();
-      this.logDebug(`Inclusion updated for ${item.type} "${id}" to ${isIncluded}`);
+      this.logDebug(`${isIncluded ? "Included" : "Excluded"} ${this.itemType} "${id}"`);
     }
     // ============================================
     // Expore Store Methods
@@ -3490,14 +3494,13 @@
       const affectedElements = this.affectedElements.get(name);
       if (!affectedElements || affectedElements.size === 0) return;
       this.logDebug(
-        `Input "${name}" changed, scheduling rebuild for ${affectedElements.size} affected elements`
+        `Rebuilding ${affectedElements.size} affected ${plural("element", affectedElements.size)}`
       );
-      this.logDebug(`Executing deferred rebuild for input "${name}"`);
-      this.form.cardManager.rebuildAll();
-      this.form.setManager.rebuildAll();
-      this.form.groupManager.rebuildAll();
-      this.form.fieldManager.rebuildAll();
-      this.form.inputManager.rebuildAll();
+      this.form.cardManager.rebuildActive();
+      this.form.setManager.rebuildActive();
+      this.form.groupManager.rebuildActive();
+      this.form.fieldManager.rebuildActive();
+      this.form.inputManager.rebuildActive();
       this.form.inputManager.applyStates();
       affectedElements.forEach((element) => {
         const attrValue = element.getAttribute(`${ATTR}-element`);
@@ -3552,8 +3555,8 @@
      * Setup event listeners for navigation events based on behavior
      */
     setupEventListeners() {
-      this.form.subscribe("state:changed", (payload) => {
-        this.handleStateChange(payload);
+      this.form.subscribe("form:navigation:changed", (payload) => {
+        this.updateDisplay(payload.target);
       });
       this.form.subscribe("form:condition:evaluated", (payload) => {
         let manager;
@@ -3578,23 +3581,8 @@
       this.logDebug("DisplayManager event listeners setup");
     }
     // ============================================
-    // Handle State Changes
+    // Handle Navigation Changes
     // ============================================
-    /**
-     * Handle state changes and update display if relevant
-     */
-    handleStateChange = (payload) => {
-      const relevantKeys = [
-        "currentCardIndex",
-        "currentSetIndex",
-        "currentGroupIndex",
-        "currentFieldIndex"
-      ];
-      const key = payload.key.includes(".") ? payload.key.split(".").pop() : payload.key;
-      if (key && relevantKeys.includes(key)) {
-        this.updateDisplay(key);
-      }
-    };
     /**
      * Initialize the display
      */
@@ -3618,11 +3606,22 @@
      * Update display depending on the state changed, no need for behavior
      */
     updateDisplay(key) {
-      const lowercaseKey = key.toLowerCase();
-      if (lowercaseKey.includes("card")) this.handleVisibility(this.form.cardManager);
-      if (lowercaseKey.includes("set")) this.handleVisibility(this.form.setManager);
-      if (lowercaseKey.includes("group")) this.handleVisibility(this.form.groupManager);
-      if (lowercaseKey.includes("field")) this.handleVisibility(this.form.fieldManager);
+      switch (key) {
+        case "card":
+          this.handleVisibility(this.form.cardManager);
+          break;
+        case "set":
+          this.handleVisibility(this.form.setManager);
+          break;
+        case "group":
+          this.handleVisibility(this.form.groupManager);
+          break;
+        case "field":
+          this.handleVisibility(this.form.fieldManager);
+          break;
+        default:
+          return;
+      }
     }
     /**
      * Handle item visibility based on data
@@ -3746,7 +3745,6 @@
       }
       const { completed, isValid } = input;
       const isIncluded = this.form.conditionManager.evaluateElementCondition(item.element);
-      console.log("buildFieldData", { ...item, completed, isValid, isIncluded });
       return {
         ...item,
         completed,
@@ -4083,10 +4081,13 @@
       };
     }
     buildItemData(item) {
-      const isValid = this.checkIfValid(item.element);
       const parentField = this.form.fieldManager.getById(item.parentHierarchy.fieldId);
       const isIncluded = parentField ? parentField.isIncluded : true;
       const isRequired = isIncluded ? item.isRequiredOriginal : false;
+      if (isRequired !== item.isRequired) {
+        this.setInputRequired(item, isRequired);
+      }
+      const isValid = this.checkIfValid(item.element);
       return {
         ...item,
         completed: isValid,
@@ -4108,11 +4109,8 @@
      */
     setupEventListeners() {
       this.bindActiveInputs();
-      this.form.subscribe("state:changed", (payload) => {
-        const relevantKeys = ["activeFieldIndices"];
-        const key = payload.key.includes(".") ? payload.key.split(".").pop() : payload.key;
-        if (!key || !relevantKeys.includes(key)) return;
-        if (key === "activeFieldIndices") {
+      this.form.subscribe("form:navigation:changed", (payload) => {
+        if (payload.target === "field") {
           this.handleActiveFieldsChanged();
         }
       });
@@ -4126,8 +4124,8 @@
      * Automatically determines the correct event type based on input type
      */
     bindActiveInputs() {
-      let boundCount = 0;
       const activeItems = this.getActive();
+      if (activeItems.length === 0) return;
       activeItems.forEach((item) => {
         const alreadyBound = item.inputs.some(
           (input) => this.activeListeners.some((listener) => listener.element === input)
@@ -4153,27 +4151,23 @@
           });
         });
         this.logDebug(`Bound "${eventType}" events to input "${item.name}"`);
-        boundCount += 1;
       });
-      this.logDebug(`Bound listeners to ${boundCount} input${boundCount !== 1 ? "s" : ""}`);
     }
     /**
      * Unbind events from inputs not associated with active field indices
      * @param activeIndices - Array of active field indices to keep bound
      */
     unbindInactiveInputs() {
-      let removedCount = 0;
       const activeItems = this.getActive();
+      if (activeItems.length === 0) return;
       this.activeListeners = this.activeListeners.filter((listener) => {
         const shouldRemove = !activeItems.find((item) => item.index === listener.index);
         if (shouldRemove) {
           listener.element.removeEventListener(listener.event, listener.handler);
           this.logDebug(`Unbound "${listener.event}" events from input "${listener.name}"`);
-          removedCount += 1;
         }
         return !shouldRemove;
       });
-      this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? "s" : ""}`);
     }
     /**
      * Unbind all active input listeners
@@ -4406,12 +4400,11 @@
      * @internal Called by event handlers
      */
     handleInputChange(name, value) {
+      this.logDebug(`Input "${name}" changed to "${value}"`);
       this.updateItemData(name, { value });
-      const payload = { name, value };
       const formData = this.form.getState("formData");
-      this.form.setState("formData", { ...formData, [payload.name]: payload.value });
-      this.form.emit("form:input:changed", payload);
-      this.logDebug(`Input "${name}" changed to:`, value);
+      this.form.setState("formData", { ...formData, [name]: value });
+      this.form.emit("form:input:changed", { name, value });
     }
     /**
      * Set required state for an input
@@ -4528,7 +4521,8 @@
         const formElement = this.form.getRootElement();
         const { activeElement } = document;
         const isWithinForm = formElement.contains(activeElement);
-        if (!isWithinForm && activeElement !== document.body) return;
+        if (!isWithinForm && activeElement !== document.body || activeElement?.tagName === "BUTTON")
+          return;
         event.preventDefault();
         this.form.emit("form:navigation:request", { type: "next" });
       };
@@ -4543,28 +4537,38 @@
      */
     handleMove(direction) {
       if (!this.navigationEnabled) return;
+      const canMove = direction === "next" && this.validateCurrent() || direction === "prev";
       const behavior = this.form.getBehavior();
-      let changedBy = void 0;
+      if (canMove) {
+        this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
+      } else {
+        this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
+        return;
+      }
       switch (behavior) {
         case "byField":
-          changedBy = this.byField(direction);
+          this.byField(direction);
           break;
         case "byGroup":
-          changedBy = this.byGroup(direction);
+          this.byGroup(direction);
           break;
         case "bySet":
-          changedBy = this.bySet(direction);
+          this.bySet(direction);
           break;
         case "byCard":
-          changedBy = this.byCard(direction);
+          this.byCard(direction);
           break;
         default:
           throw this.form.createError("Invalid behavior", "runtime", {
             cause: { behavior }
           });
       }
-      if (!changedBy) return;
-      this.form.emit("form:navigation:changed", { to: changedBy });
+    }
+    validateCurrent() {
+      const inputsToValidate = this.form.inputManager.getByFilter(
+        (input) => input.active && input.isIncluded
+      );
+      return inputsToValidate.every((input) => input.isValid);
     }
     // /**
     //  * Handle submit request
@@ -4614,7 +4618,8 @@
         });
       }
       this.clearHierarchyData("group");
-      this.form.groupManager.updateItemData(targetGroup.id, { active: true, current: true });
+      this.form.groupManager.setActive(targetGroup.id);
+      this.form.groupManager.setCurrent(targetGroup.id);
       this.setChildrenActive(targetGroup);
       this.updateHierarchyData(targetGroup);
       this.batchStateUpdates();
@@ -5268,11 +5273,20 @@
      * Called by StatefulComponent when state changes
      */
     handleStateChange(key, from, to) {
-      this.logDebug(`State changed`, {
-        key,
-        from,
-        to
-      });
+      switch (key) {
+        case "currentCardIndex":
+          return this.emit("form:navigation:changed", { target: "card" });
+        case "currentSetIndex":
+          return this.emit("form:navigation:changed", { target: "set" });
+        case "currentGroupIndex":
+          return this.emit("form:navigation:changed", { target: "group" });
+        case "currentFieldIndex":
+          return this.emit("form:navigation:changed", { target: "field" });
+        case "activeFieldIndices":
+          return this.emit("form:navigation:changed", { target: "field" });
+        default:
+          return;
+      }
     }
     /**
      * Get form name
