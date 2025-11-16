@@ -6,5 +6,5 @@ export interface NavigationRequestEvent {
 }
 
 export interface NavigationChangedEvent {
-  to: 'card' | 'set' | 'group' | 'field';
+  target: 'card' | 'set' | 'group' | 'field';
 }
