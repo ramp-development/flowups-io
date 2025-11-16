@@ -6,8 +6,7 @@ import type {
   StateForItem,
   UpdatableItemData,
 } from '../types';
-import { HierarchyBuilder } from '../utils/managers/hierarchy-builder';
-import { ItemStore } from '../utils/managers/item-store';
+import { HierarchyBuilder, ItemStore, plural } from '../utils';
 import { BaseManager } from './base-manager';
 
 /**
@@ -84,7 +83,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       this.add(itemData);
     });
 
-    this.logDebug(`Discovered ${items.length} ${this.itemType}s`, {
+    this.logDebug(`Discovered ${items.length} ${plural(this.itemType, items.length)}`, {
       items,
     });
   }
@@ -112,8 +111,6 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     // Merge data with existing item data
     const updated = this.mergeItemData(item, data);
     this.update(updated);
-
-    this.logDebug(`Updated ${this.itemType} "${item.id}" data`, { updated });
   }
 
   /**
@@ -131,13 +128,38 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   }
 
   /**
+   * Rebuild item using buildItemData()
+   * Ensures item data is fresh before calculating state
+   */
+  public rebuildItem(item: TItem): void {
+    const rebuilt = this.buildItemData(item);
+    this.update(rebuilt);
+  }
+
+  /**
+   * Rebuild all items using buildItemData()
+   * Ensures item data is fresh before calculating state
+   */
+  public rebuildActive(): void {
+    const active = this.getActive();
+    if (active.length === 0) return;
+
+    this.logDebug(`Rebuilding ${active.length} active ${plural(this.itemType, active.length)}`);
+    active.forEach((item) => {
+      this.logDebug('Pre', item);
+      const rebuilt = this.buildItemData(item);
+      this.update(rebuilt);
+      this.logDebug('Post-rebuild', rebuilt);
+    });
+  }
+
+  /**
    * Rebuild all items using buildItemData()
    * Ensures item data is fresh before calculating state
    */
   public rebuildAll(): void {
     this.getAll().forEach((item) => {
-      const rebuilt = this.buildItemData(item);
-      this.update(rebuilt);
+      this.rebuildItem(item);
     });
   }
 
@@ -203,13 +225,13 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   public setCurrent(selector: string | number): void {
     const item = this.getBySelector(selector);
     if (!item) {
-      this.logWarn(`Set current: ${this.itemType} not found`, { selector });
+      this.logWarn(`Cannot set current: ${this.itemType} not found`, { selector });
       return;
     }
 
     // Validate: current item must be active
     if (!item.active) {
-      this.logWarn(`Set current: ${this.itemType} is not active, cannot set current`, {
+      this.logWarn(`Cannot set current: ${this.itemType} is not active`, {
         id: item.id,
         index: item.index,
       });
@@ -217,28 +239,27 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       return;
     }
 
-    // Clear current flag from all items
+    // Clear current flag from current item
     this.clearCurrent();
     this.updateItemData(item.index, { current: true } as UpdatableItemData<TItem>);
 
-    this.logDebug(`${this.itemType}: Set current`, {
-      id: item.id,
-      index: item.index,
-      items: this.getAll(),
-    });
+    this.logDebug(`Set ${this.itemType} "${item.id}" as current`);
   }
 
   /**
    * Clear current flag from all items
    */
   public clearCurrent(): void {
-    this.getAll().forEach((item) => {
-      if (item.current) {
-        this.updateItemData(item.index, { current: false } as UpdatableItemData<TItem>);
-      }
+    const items = this.getByFilter((item) => item.current);
+    if (items.length === 0) return;
+
+    items.forEach((item) => {
+      this.updateItemData(item.index, { current: false } as UpdatableItemData<TItem>);
     });
 
-    this.logDebug(`Cleared current flag for all ${this.itemType}s`);
+    this.logDebug(
+      `Cleared current flag from ${items.length} ${plural(this.itemType, items.length)}`
+    );
   }
 
   /**
@@ -246,15 +267,17 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
    * Updates storage not states
    */
   public clearActiveAndCurrent(): void {
-    this.getAll().forEach((item) => {
+    const items = this.getByFilter((item) => item.active || item.current);
+    if (items.length === 0) return;
+
+    items.forEach((item) => {
       const updated = { ...item, active: false, current: false } as TItem;
       this.update(updated);
     });
 
-    this.logDebug(`Cleared active and current flags for all ${this.itemType}s`, {
-      count: this.length,
-      items: this.getAll(),
-    });
+    this.logDebug(
+      `Cleared active and current flags from ${items.length} ${plural(this.itemType, items.length)}`
+    );
   }
 
   /**
@@ -264,18 +287,14 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
   public setActive(selector: string | number): void {
     const item = this.getBySelector(selector);
     if (!item) {
-      this.logWarn(`Set active: ${this.itemType} not found`, { selector });
+      this.logWarn(`Cannot set active: ${this.itemType} not found`, { selector });
       return;
     }
 
     const updated = { ...item, active: true } as TItem;
     this.update(updated);
 
-    this.logDebug(`Set active flag for ${this.itemType}: ${item.id}`, {
-      id: item.id,
-      index: item.index,
-      items: this.getAll(),
-    });
+    this.logDebug(`Set ${this.itemType} "${item.id}" as active`);
   }
 
   /**
@@ -294,13 +313,6 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
 
     const children = this.getItemsByParentId(parentId, parentType);
 
-    // // Filter to only included items
-    // const includedChildren = children.filter((item) => {
-    //   return this.form.conditionManager.evaluateElementCondition(item.element);
-    // });
-
-    // console.log('includedChildren', includedChildren);
-
     children.forEach((item, index) => {
       const builtItem = this.buildItemData(item);
       const updated = {
@@ -311,11 +323,9 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       this.update(updated);
     });
 
-    this.logDebug(`${this.itemType}: Set active: "true" by parent ${parentType}: ${parentId}`, {
-      // count: includedChildren.length,
-      total: children.length,
-      children,
-    });
+    this.logDebug(
+      `Set ${children.length} ${plural(this.itemType, children.length)} within ${parentType} "${parentId}" as active`
+    );
   }
 
   /**
@@ -410,17 +420,17 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
       'isIncluded' in item ? item.isIncluded : true
     ).map((item) => item.index);
 
-    // reduce the navigation order array to say "${index[0].id} --> ${index[1].id} --> ${index[2].id} --> ..."
-    const orderString = this.navigationOrder.reduce(
-      (acc, index) => {
-        if (index === 0) return acc;
-        const item = this.getByIndex(index);
-        return `${acc} --> ${item?.id}`;
-      },
-      `${this.getByIndex(0)?.id}`
-    );
+    // // reduce the navigation order array to say "${index[0].id} --> ${index[1].id} --> ${index[2].id} --> ..."
+    // const orderString = this.navigationOrder.reduce(
+    //   (acc, index) => {
+    //     if (index === 0) return acc;
+    //     const item = this.getByIndex(index);
+    //     return `${acc} --> ${item?.id}`;
+    //   },
+    //   `${this.getByIndex(0)?.id}`
+    // );
 
-    this.logDebug(`Navigation order built: ${orderString}`);
+    this.logDebug(`Navigation order built`);
   }
 
   /**
@@ -439,7 +449,7 @@ export abstract class ItemManager<TItem extends ItemData> extends BaseManager {
     // Rebuild navigation order (excludes items with isIncluded: false)
     this.buildNavigationOrder();
 
-    this.logDebug(`Inclusion updated for ${item.type} "${id}" to ${isIncluded}`);
+    this.logDebug(`${isIncluded ? 'Included' : 'Excluded'} ${this.itemType} "${id}"`);
   }
 
   // ============================================
