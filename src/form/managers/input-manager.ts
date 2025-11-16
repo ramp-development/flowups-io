@@ -6,13 +6,10 @@
  * Only binds events to the current field's input for optimal performance.
  */
 
-import type { StateChangePayload } from '$lib/types';
-
 import { ATTR } from '../constants';
 import type {
   FieldItem,
   FormInputState,
-  FormStateKeys,
   InputElement,
   InputItem,
   InputParentHierarchy,
@@ -203,14 +200,20 @@ export class InputManager extends ItemManager<InputItem> {
   }
 
   protected buildItemData(item: InputItem): InputItem {
-    const isValid = this.checkIfValid(item.element);
-
     // Get parent field to check if it's included
     const parentField = this.form.fieldManager.getById(item.parentHierarchy.fieldId);
     const isIncluded = parentField ? parentField.isIncluded : true;
 
     // Input is only required if parent field is included AND input was originally required
     const isRequired = isIncluded ? item.isRequiredOriginal : false;
+
+    // Set required state if it has changed
+    if (isRequired !== item.isRequired) {
+      this.setInputRequired(item, isRequired);
+    }
+
+    // Check if input is valid
+    const isValid = this.checkIfValid(item.element);
 
     return {
       ...item,
@@ -235,18 +238,8 @@ export class InputManager extends ItemManager<InputItem> {
    */
   private setupEventListeners(): void {
     this.bindActiveInputs();
-    this.form.subscribe('state:changed', (payload: StateChangePayload) => {
-      // Only update display if relevant state changed
-      const relevantKeys: readonly FormStateKeys[] = ['activeFieldIndices'];
-
-      // payload.key follows pattern `${formName}.${key}`
-      const key = payload.key.includes('.')
-        ? (payload.key.split('.').pop() as FormStateKeys)
-        : (payload.key as FormStateKeys);
-
-      if (!key || !relevantKeys.includes(key)) return;
-
-      if (key === 'activeFieldIndices') {
+    this.form.subscribe('form:navigation:changed', (payload) => {
+      if (payload.target === 'field') {
         this.handleActiveFieldsChanged();
       }
     });
@@ -262,9 +255,9 @@ export class InputManager extends ItemManager<InputItem> {
    * Automatically determines the correct event type based on input type
    */
   public bindActiveInputs(): void {
-    let boundCount = 0;
-
     const activeItems = this.getActive();
+    if (activeItems.length === 0) return;
+
     activeItems.forEach((item) => {
       // If already bound, skip - check if any of this item's inputs are already bound
       const alreadyBound = item.inputs.some((input) =>
@@ -305,10 +298,7 @@ export class InputManager extends ItemManager<InputItem> {
       });
 
       this.logDebug(`Bound "${eventType}" events to input "${item.name}"`);
-      boundCount += 1;
     });
-
-    this.logDebug(`Bound listeners to ${boundCount} input${boundCount !== 1 ? 's' : ''}`);
   }
 
   /**
@@ -316,8 +306,8 @@ export class InputManager extends ItemManager<InputItem> {
    * @param activeIndices - Array of active field indices to keep bound
    */
   public unbindInactiveInputs(): void {
-    let removedCount = 0;
     const activeItems = this.getActive();
+    if (activeItems.length === 0) return;
 
     this.activeListeners = this.activeListeners.filter((listener) => {
       const shouldRemove = !activeItems.find((item) => item.index === listener.index);
@@ -325,13 +315,10 @@ export class InputManager extends ItemManager<InputItem> {
       if (shouldRemove) {
         listener.element.removeEventListener(listener.event, listener.handler);
         this.logDebug(`Unbound "${listener.event}" events from input "${listener.name}"`);
-        removedCount += 1;
       }
 
       return !shouldRemove; // Keep listeners that should NOT be removed
     });
-
-    this.logDebug(`Unbound listeners from ${removedCount} input${removedCount !== 1 ? 's' : ''}`);
   }
 
   /**
@@ -651,14 +638,12 @@ export class InputManager extends ItemManager<InputItem> {
    * @internal Called by event handlers
    */
   private handleInputChange(name: string, value: unknown): void {
-    this.updateItemData(name, { value } as UpdatableItemData<InputItem>);
-    // Update formData state
-    const payload = { name, value };
-    const formData = this.form.getState('formData');
-    this.form.setState('formData', { ...formData, [payload.name]: payload.value });
-    this.form.emit('form:input:changed', payload);
+    this.logDebug(`Input "${name}" changed to "${value}"`);
 
-    this.logDebug(`Input "${name}" changed to:`, value);
+    this.updateItemData(name, { value } as UpdatableItemData<InputItem>);
+    const formData = this.form.getState('formData');
+    this.form.setState('formData', { ...formData, [name]: value });
+    this.form.emit('form:input:changed', { name, value });
   }
 
   /**
