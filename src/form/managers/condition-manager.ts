@@ -16,7 +16,7 @@ import type {
   InputChangedEvent,
   LogicalOperator,
 } from '../types';
-import { parseElementAttribute } from '../utils';
+import { parseElementAttribute, plural } from '../utils';
 import { BaseManager } from './base-manager';
 
 /**
@@ -390,23 +390,17 @@ export class ConditionManager extends BaseManager {
     if (!affectedElements || affectedElements.size === 0) return;
 
     this.logDebug(
-      `Input "${name}" changed, scheduling rebuild for ${affectedElements.size} affected elements`
+      `Rebuilding ${affectedElements.size} affected ${plural('element', affectedElements.size)}`
     );
-
-    // Defer rebuild to next tick to ensure all input values are fresh
-    // This allows the current event loop to complete, including any other
-    // input change handlers that might update values
-    // queueMicrotask(() => {
-    this.logDebug(`Executing deferred rebuild for input "${name}"`);
 
     // Trigger rebuild for all hierarchy managers
     // This will cause buildItemData() to be called, which will re-evaluate conditions
     // The rebuild will update isIncluded flags for all affected items
-    this.form.cardManager.rebuildAll();
-    this.form.setManager.rebuildAll();
-    this.form.groupManager.rebuildAll();
-    this.form.fieldManager.rebuildAll();
-    this.form.inputManager.rebuildAll();
+    this.form.cardManager.rebuildActive();
+    this.form.setManager.rebuildActive();
+    this.form.groupManager.rebuildActive();
+    this.form.fieldManager.rebuildActive();
+    this.form.inputManager.rebuildActive();
     this.form.inputManager.applyStates();
 
     // Emit event for each affected element so DisplayManager can update visibility
@@ -422,7 +416,6 @@ export class ConditionManager extends BaseManager {
         type: parsed.type as 'card' | 'set' | 'group' | 'field',
       });
     });
-    // });
   }
 
   // ============================================
