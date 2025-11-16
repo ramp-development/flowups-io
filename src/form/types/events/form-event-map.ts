@@ -17,18 +17,19 @@ import type {
  * Extends AppEventMap to include base events as well
  */
 export interface FormEventMap extends AppEventMap {
-  // Navigation commands
+  // Navigation
   'form:navigation:request': NavigationRequestEvent;
   'form:navigation:changed': NavigationChangedEvent;
+
+  // Input
+  'form:input:changed': InputChangedEvent;
+
+  // Condition
+  'form:condition:evaluated': ConditionEvaluatedEvent;
 
   // Data
   'form:data:changed': DataChangedEvent;
   'form:data:updated': FormDataUpdatedEvent;
-
-  // Input
-  'form:input:changed': InputChangedEvent;
-  // Conditions
-  'form:condition:evaluated': ConditionEvaluatedEvent;
 
   // Submission
   'form:submit:requested': SubmitRequestedEvent;
