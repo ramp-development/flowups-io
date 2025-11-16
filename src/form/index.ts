@@ -311,14 +311,25 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    */
   protected handleStateChange<K extends keyof FormState>(
     key: K,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     from: FormState[K],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     to: FormState[K]
   ): void {
-    this.logDebug(`State changed`, {
-      key,
-      from,
-      to,
-    });
+    switch (key) {
+      case 'currentCardIndex':
+        return this.emit('form:navigation:changed', { target: 'card' });
+      case 'currentSetIndex':
+        return this.emit('form:navigation:changed', { target: 'set' });
+      case 'currentGroupIndex':
+        return this.emit('form:navigation:changed', { target: 'group' });
+      case 'currentFieldIndex':
+        return this.emit('form:navigation:changed', { target: 'field' });
+      case 'activeFieldIndices':
+        return this.emit('form:navigation:changed', { target: 'field' });
+      default:
+        return;
+    }
   }
 
   /**
