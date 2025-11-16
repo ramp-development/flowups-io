@@ -7,10 +7,8 @@
  * Will be replaced/enhanced by AnimationManager in future phases.
  */
 
-import type { StateChangePayload } from '$lib/types';
-
 import { ATTR } from '../constants';
-import type { FormStateKeys, ItemData, UpdatableItemData } from '../types';
+import type { ItemData, UpdatableItemData } from '../types';
 import { BaseManager } from './base-manager';
 import type { ItemManager } from './item-manager';
 
@@ -52,8 +50,8 @@ export class DisplayManager extends BaseManager {
    * Setup event listeners for navigation events based on behavior
    */
   private setupEventListeners(): void {
-    this.form.subscribe('state:changed', (payload) => {
-      this.handleStateChange(payload);
+    this.form.subscribe('form:navigation:changed', (payload) => {
+      this.updateDisplay(payload.target);
     });
 
     // Listen for condition evaluation events to immediately update visibility
@@ -85,29 +83,8 @@ export class DisplayManager extends BaseManager {
   }
 
   // ============================================
-  // Handle State Changes
+  // Handle Navigation Changes
   // ============================================
-  /**
-   * Handle state changes and update display if relevant
-   */
-  private handleStateChange = (payload: StateChangePayload): void => {
-    // Only update display if relevant state changed
-    const relevantKeys: readonly FormStateKeys[] = [
-      'currentCardIndex',
-      'currentSetIndex',
-      'currentGroupIndex',
-      'currentFieldIndex',
-    ];
-
-    // payload.key follows pattern `${formName}.${key}`
-    const key = payload.key.includes('.')
-      ? (payload.key.split('.').pop() as FormStateKeys)
-      : (payload.key as FormStateKeys);
-
-    if (key && relevantKeys.includes(key)) {
-      this.updateDisplay(key);
-    }
-  };
 
   /**
    * Initialize the display
@@ -133,12 +110,23 @@ export class DisplayManager extends BaseManager {
   /**
    * Update display depending on the state changed, no need for behavior
    */
-  private updateDisplay(key: FormStateKeys): void {
-    const lowercaseKey = key.toLowerCase();
-    if (lowercaseKey.includes('card')) this.handleVisibility(this.form.cardManager);
-    if (lowercaseKey.includes('set')) this.handleVisibility(this.form.setManager);
-    if (lowercaseKey.includes('group')) this.handleVisibility(this.form.groupManager);
-    if (lowercaseKey.includes('field')) this.handleVisibility(this.form.fieldManager);
+  private updateDisplay(key: 'card' | 'set' | 'group' | 'field'): void {
+    switch (key) {
+      case 'card':
+        this.handleVisibility(this.form.cardManager);
+        break;
+      case 'set':
+        this.handleVisibility(this.form.setManager);
+        break;
+      case 'group':
+        this.handleVisibility(this.form.groupManager);
+        break;
+      case 'field':
+        this.handleVisibility(this.form.fieldManager);
+        break;
+      default:
+        return;
+    }
   }
 
   /**
