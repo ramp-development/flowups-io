@@ -86,8 +86,16 @@ export class NavigationManager extends BaseManager {
       // Prevent default form submission or other Enter key behaviors
       event.preventDefault();
 
-      // Request navigation to next step
-      this.form.emit('form:navigation:request', { type: 'next' });
+      // determine whether to navigate or submit
+      const nextOrSubmit = this.form.buttonManager.determineNextOrSubmit();
+
+      if (nextOrSubmit === 'next') {
+        // Request navigation to next step
+        this.form.emit('form:navigation:request', { type: 'next' });
+      } else {
+        // Request form submission
+        this.form.emit('form:submit:requested', {});
+      }
     };
 
     document.addEventListener('keydown', this.enterKeyHandler);
