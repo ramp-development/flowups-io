@@ -18,12 +18,13 @@ export class ProgressManager extends BaseManager {
     this.discoverItems();
     this.setupEventListeners();
 
-    this.form.logDebug('Initialized');
+    this.logDebug('Initialized');
     this.groupEnd();
   }
 
   public destroy(): void {
     this.store.clear();
+    this.logDebug('ProgressManager destroyed');
   }
 
   private discoverItems(): void {
@@ -46,7 +47,7 @@ export class ProgressManager extends BaseManager {
       this.store.add(itemData);
     });
 
-    this.form.logDebug(`Discovered ${this.store.length} progress lines`, {
+    this.logDebug(`Discovered ${this.store.length} progress lines`, {
       items: this.store.getAll(),
     });
   }
@@ -59,6 +60,9 @@ export class ProgressManager extends BaseManager {
 
     const parsed = parseElementAttribute(attrValue);
     if (!parsed) return;
+
+    // Skip if not a progress line
+    if (parsed.type !== 'progress-line') return;
 
     return this.buildItemData({
       element,
@@ -87,10 +91,10 @@ export class ProgressManager extends BaseManager {
   }
 
   /**
-   * Find the parent item for a field
+   * Find the parent item for a progress line
    *
-   * @param element - The field element
-   * @returns Parent data or null
+   * @param element - The progress line element
+   * @returns Parent data or undefined
    */
   protected findParentItem(element: HTMLElement): ProgressParentElement | undefined {
     const parentGroup = HierarchyBuilder.findParentByElement(element, 'group', () =>
