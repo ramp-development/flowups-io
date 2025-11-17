@@ -22,6 +22,10 @@ export class FocusManager extends BaseManager {
     this.form.subscribe('form:navigation:changed', () => {
       this.handleNavigationChanged();
     });
+
+    this.form.subscribe('form:navigation:denied', () => {
+      this.handleNavigationDenied();
+    });
   }
 
   // ============================================
@@ -83,5 +87,21 @@ export class FocusManager extends BaseManager {
     if (!currentInput || !currentInput.active) return;
 
     this.focusElement(currentInput.element);
+  };
+
+  /**
+   * Handle navigation denied
+   */
+  private handleNavigationDenied = (): void => {
+    const activeInputs = this.form.inputManager.getByFilter(
+      (input) => input.active && input.isIncluded
+    );
+
+    if (activeInputs.length === 0) return;
+
+    const firstInvalidInput = activeInputs.find((input) => !input.isValid);
+    if (!firstInvalidInput) return;
+
+    this.focusElement(firstInvalidInput.element);
   };
 }

@@ -3,7 +3,11 @@ import type { AppEventMap } from '$lib/types';
 import type { ConditionEvaluatedEvent } from './condition-events';
 import type { DataChangedEvent, FormDataUpdatedEvent } from './data-events';
 import type { InputChangedEvent } from './input-events';
-import type { NavigationChangedEvent, NavigationRequestEvent } from './navigation-events';
+import type {
+  NavigationChangedEvent,
+  NavigationDeniedEvent,
+  NavigationRequestEvent,
+} from './navigation-events';
 import type {
   SubmitErrorEvent,
   SubmitRequestedEvent,
@@ -20,6 +24,7 @@ export interface FormEventMap extends AppEventMap {
   // Navigation
   'form:navigation:request': NavigationRequestEvent;
   'form:navigation:changed': NavigationChangedEvent;
+  'form:navigation:denied': NavigationDeniedEvent;
 
   // Input
   'form:input:changed': InputChangedEvent;

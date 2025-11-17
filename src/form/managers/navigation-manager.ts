@@ -111,6 +111,7 @@ export class NavigationManager extends BaseManager {
       this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
     } else {
       this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
+      this.form.emit('form:navigation:denied', { reason: 'invalid' });
       return;
     }
 

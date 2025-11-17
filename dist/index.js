@@ -3792,6 +3792,9 @@
       this.form.subscribe("form:navigation:changed", () => {
         this.handleNavigationChanged();
       });
+      this.form.subscribe("form:navigation:denied", () => {
+        this.handleNavigationDenied();
+      });
     }
     // ============================================
     // Focus Utilities
@@ -3840,6 +3843,18 @@
       const currentInput = this.form.inputManager.getByIndex(currentFieldIndex);
       if (!currentInput || !currentInput.active) return;
       this.focusElement(currentInput.element);
+    };
+    /**
+     * Handle navigation denied
+     */
+    handleNavigationDenied = () => {
+      const activeInputs = this.form.inputManager.getByFilter(
+        (input) => input.active && input.isIncluded
+      );
+      if (activeInputs.length === 0) return;
+      const firstInvalidInput = activeInputs.find((input) => !input.isValid);
+      if (!firstInvalidInput) return;
+      this.focusElement(firstInvalidInput.element);
     };
   };
 
@@ -4625,6 +4640,7 @@
         this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
       } else {
         this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
+        this.form.emit("form:navigation:denied", { reason: "invalid" });
         return;
       }
       switch (behavior) {
