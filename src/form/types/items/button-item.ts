@@ -25,6 +25,9 @@ export interface ButtonItem extends BaseItem {
   /** The button DOM element */
   button: HTMLButtonElement;
 
+  /** Original button text */
+  originalText: string;
+
   /** Whether button is currently disabled */
   disabled: boolean;
 }
