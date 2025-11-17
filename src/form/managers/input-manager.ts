@@ -444,10 +444,6 @@ export class InputManager extends ItemManager<InputItem> {
       return checked ? checked.value : null;
     }
 
-    // Default - return value as string, stripping formatting if pattern exists
-    if (item.format) {
-      return this.stripFormatting(element.value);
-    }
     return element.value;
   }
 
