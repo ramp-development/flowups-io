@@ -12,6 +12,7 @@ import {
   CardManager,
   ConditionManager,
   DisplayManager,
+  ErrorManager,
   FieldManager,
   FocusManager,
   GroupManager,
@@ -19,6 +20,7 @@ import {
   NavigationManager,
   ProgressManager,
   SetManager,
+  SubmitManager,
 } from './managers';
 import type {
   FlowupsFormConfig,
@@ -53,6 +55,8 @@ import {
  */
 export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   protected readonly config: FlowupsFormConfig;
+  public submitManager: SubmitManager;
+  public errorManager: ErrorManager;
   public cardManager: CardManager;
   public setManager: SetManager;
   public groupManager: GroupManager;
@@ -66,7 +70,6 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
   public conditionManager: ConditionManager;
   // private accessibilityManager: AccessibilityManager;
   // private animationManager: AnimationManager;
-  // private errorManager: ErrorManager;
   // private renderManager: RenderManager;
   // private validationManager: ValidationManager;
 
@@ -83,6 +86,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.config = this.parseConfiguration();
 
     // Initialize managers
+    this.submitManager = new SubmitManager(this);
+    this.errorManager = new ErrorManager(this);
     this.cardManager = new CardManager(this);
     this.setManager = new SetManager(this);
     this.groupManager = new GroupManager(this);
@@ -240,9 +245,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
    * Set up event listeners
    * Required by InteractiveComponent
    */
-  protected async setupEventListeners(): Promise<void> {
-    // Set up form submit listener
-  }
+  protected async setupEventListeners(): Promise<void> {}
 
   /**
    * Initialize the form
@@ -255,9 +258,9 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.logDebug(`Started at ${new Date().toISOString()}`);
     this.timeDebug('form:init');
 
-    // Initialize ConditionManager first so conditions can be evaluated during hierarchy discovery
+    this.submitManager.init();
+    this.errorManager.init();
     this.conditionManager.init();
-
     this.cardManager.init();
     this.setManager.init();
     this.groupManager.init();
@@ -273,6 +276,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
       state: this.getAllState(),
       timestamp: new Date().toISOString(),
     });
+
+    this.emit('form:initialized', { formId: this.getId() });
 
     this.timeDebug('form:init', true);
 
@@ -290,6 +295,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     // - Destroy all managers
     // - Emit form:destroyed event
 
+    this.submitManager.destroy();
+    this.errorManager.destroy();
     this.cardManager.destroy();
     this.setManager.destroy();
     this.groupManager.destroy();
@@ -303,6 +310,8 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
     this.conditionManager.destroy();
 
     await super.onDestroy();
+
+    this.emit('form:destroyed', { formId: this.getId() });
   }
 
   /**
