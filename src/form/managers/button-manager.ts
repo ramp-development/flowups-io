@@ -133,6 +133,7 @@ export class ButtonManager extends BaseManager {
       type: parsed.type as ButtonType,
       parentHierarchy: this.findParentHierarchy(element),
       button,
+      originalText: this.getText(button),
       disabled: true, // Calculated
       visible: false, // Calculated
     });
@@ -455,5 +456,56 @@ export class ButtonManager extends BaseManager {
   private getTypeByParent(parentHierarchy: ButtonParentHierarchy, type: ButtonType): ButtonItem[] {
     const allByParent = this.getAllByParent(parentHierarchy);
     return allByParent.filter((button) => button.type === type);
+  }
+
+  /** Get the button text */
+  private getText(element: HTMLElement): string {
+    const textElement = element.querySelector(`[${ATTR}-element="button-text"]`);
+    if (!textElement) return element.textContent ?? '';
+    return textElement.textContent ?? '';
+  }
+
+  // ============================================
+  // Public Helpers
+  // ============================================
+
+  /** Set the button text */
+  public setText(element: HTMLElement, text?: string): void {
+    const itemElement = element.dataset.button
+      ? element
+      : element.closest<HTMLElement>('[data-button]');
+    if (!itemElement) return;
+
+    const item = this.store.getByDOM(itemElement);
+    const setText = text ?? item?.originalText ?? '';
+    if (!setText) return;
+
+    const textElement = itemElement.querySelector(`[${ATTR}-element="button-text"]`);
+    if (!textElement) element.textContent = setText;
+    else textElement.textContent = setText;
+  }
+
+  /** Get the submit button */
+  public getSubmit(): ButtonItem | undefined {
+    return this.store.getAll().find((item) => item.active && item.type === 'submit');
+  }
+
+  /**  */
+  public determineNextOrSubmit(): 'next' | 'submit' {
+    const active = this.getActive();
+
+    const next = active.find((button) => button.type === 'next');
+    if (next) {
+      this.logDebug('Next button found');
+      return 'next';
+    }
+
+    const submit = active.find((button) => button.type === 'submit');
+    if (submit) {
+      this.logDebug('Submit button found');
+      return 'submit';
+    }
+
+    return 'next';
   }
 }
