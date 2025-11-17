@@ -15,6 +15,9 @@ export type ProgressParentHierarchy =
  * @extends BaseItem
  */
 export interface ProgressItem extends BaseItem {
+  /** Type identifier */
+  type: 'progress-line';
+
   /** Parent hierarchy */
   parentHierarchy: ProgressParentHierarchy;
 }
