@@ -1935,6 +1935,7 @@
     prev: true,
     next: true,
     submit: true,
+    error: true,
     "progress-line": true
   };
 
@@ -2358,6 +2359,7 @@
         type: parsed.type,
         parentHierarchy: this.findParentHierarchy(element),
         button,
+        originalText: this.getText(button),
         disabled: true,
         // Calculated
         visible: false
@@ -2630,6 +2632,45 @@
     getTypeByParent(parentHierarchy, type) {
       const allByParent = this.getAllByParent(parentHierarchy);
       return allByParent.filter((button) => button.type === type);
+    }
+    /** Get the button text */
+    getText(element) {
+      const textElement = element.querySelector(`[${ATTR}-element="button-text"]`);
+      if (!textElement) return element.textContent ?? "";
+      return textElement.textContent ?? "";
+    }
+    // ============================================
+    // Public Helpers
+    // ============================================
+    /** Set the button text */
+    setText(element, text) {
+      const itemElement = element.dataset.button ? element : element.closest("[data-button]");
+      if (!itemElement) return;
+      const item = this.store.getByDOM(itemElement);
+      const setText = text ?? item?.originalText ?? "";
+      if (!setText) return;
+      const textElement = itemElement.querySelector(`[${ATTR}-element="button-text"]`);
+      if (!textElement) element.textContent = setText;
+      else textElement.textContent = setText;
+    }
+    /** Get the submit button */
+    getSubmit() {
+      return this.store.getAll().find((item) => item.active && item.type === "submit");
+    }
+    /**  */
+    determineNextOrSubmit() {
+      const active = this.getActive();
+      const next = active.find((button) => button.type === "next");
+      if (next) {
+        this.logDebug("Next button found");
+        return "next";
+      }
+      const submit = active.find((button) => button.type === "submit");
+      if (submit) {
+        this.logDebug("Submit button found");
+        return "submit";
+      }
+      return "next";
     }
   };
 
@@ -3649,6 +3690,126 @@
     }
   };
 
+  // src/form/managers/error-manager.ts
+  var ErrorManager = class extends BaseManager {
+    store = new ItemStore();
+    itemType = "error";
+    /**
+     * Initialize the manager
+     */
+    init() {
+      this.groupStart(`Initializing Error`);
+      this.discoverItems();
+      this.initializeErrors();
+      this.setupEventListeners();
+      this.logDebug("Initialized");
+      this.groupEnd();
+    }
+    /**
+     * Cleanup manager resources
+     */
+    destroy() {
+      this.store.clear();
+      this.logDebug("ErrorManager destroyed");
+    }
+    discoverItems() {
+      const rootElement = this.form.getRootElement();
+      if (!rootElement) {
+        throw this.form.createError("Cannot discover error items: root element is null", "init", {
+          cause: rootElement
+        });
+      }
+      const items = this.form.queryAll(`[${ATTR}-element="error"]`);
+      this.store.clear();
+      items.forEach((item, index) => {
+        const itemData = this.createItemData(item, index);
+        if (!itemData) return;
+        this.store.add(itemData);
+      });
+      this.logDebug(`Discovered ${this.store.length} error items`, {
+        items: this.store.getAll()
+      });
+    }
+    createItemData(element, index) {
+      if (!(element instanceof HTMLElement)) return;
+      const attrValue = element.getAttribute(`${ATTR}-element`);
+      if (!attrValue) return;
+      const parsed = parseElementAttribute(attrValue);
+      if (!parsed) return;
+      if (parsed.type !== "error") return;
+      return this.buildItemData({
+        element,
+        index,
+        id: parsed.id ?? `error-${index}`,
+        visible: false,
+        active: false,
+        type: parsed.type,
+        parentHierarchy: this.findParentHierarchy(element)
+      });
+    }
+    buildItemData(item) {
+      return {
+        ...item
+      };
+    }
+    findParentHierarchy(child) {
+      return HierarchyBuilder.findParentHierarchy(
+        child,
+        this.form,
+        (element) => this.findParentItem(element)
+      );
+    }
+    /**
+     * Find the parent item for an error
+     *
+     * @param element - The error element
+     * @returns Parent data or undefined
+     */
+    findParentItem(element) {
+      const parentGroup = HierarchyBuilder.findParentByElement(
+        element,
+        "group",
+        () => this.form.groupManager.getAll()
+      );
+      const parentSet = HierarchyBuilder.findParentByElement(
+        element,
+        "set",
+        () => this.form.setManager.getAll()
+      );
+      const parentCard = HierarchyBuilder.findParentByElement(
+        element,
+        "card",
+        () => this.form.cardManager.getAll()
+      );
+      return parentGroup ?? parentSet ?? parentCard;
+    }
+    initializeErrors() {
+      this.store.getAll().forEach((item) => {
+        item.element.style.setProperty("display", "none");
+      });
+    }
+    setupEventListeners() {
+      this.form.subscribe("form:error:triggered", (payload) => this.handleErrorTriggered(payload));
+      this.form.subscribe("form:error:cleared", () => this.handleErrorCleared());
+    }
+    handleErrorTriggered(payload) {
+      this.store.getAll().forEach((item) => {
+        item.element.textContent = payload.message;
+        item.element.style.removeProperty("display");
+      });
+      if (payload.timeout) {
+        setTimeout(() => {
+          this.handleErrorCleared();
+        }, payload.timeout);
+      }
+    }
+    handleErrorCleared() {
+      this.store.getAll().forEach((item) => {
+        item.element.style.setProperty("display", "none");
+      });
+    }
+  };
+
   // src/form/managers/field-manager.ts
   var FieldManager = class extends ItemManager {
     itemType = "field";
@@ -4260,9 +4421,6 @@
         const checked = item.inputs.find((r) => r.checked);
         return checked ? checked.value : null;
       }
-      if (item.format) {
-        return this.stripFormatting(element.value);
-      }
       return element.value;
     }
     /**
@@ -4332,7 +4490,7 @@
      */
     getFormData() {
       const formData = {};
-      this.getAll().forEach((item) => {
+      this.getByFilter((item) => item.isIncluded).forEach((item) => {
         formData[item.name] = this.extractInputValue(item);
       });
       return formData;
@@ -4492,6 +4650,7 @@
       const formData = this.form.getState("formData");
       this.form.setState("formData", { ...formData, [name]: value });
       this.form.emit("form:input:changed", { name, value });
+      this.logDebug("Form data updated", { formData: this.form.getState("formData") });
     }
     /**
      * Set required state for an input
@@ -4617,7 +4776,12 @@
         if (!isWithinForm && activeElement !== document.body || activeElement?.tagName === "BUTTON")
           return;
         event.preventDefault();
-        this.form.emit("form:navigation:request", { type: "next" });
+        const nextOrSubmit = this.form.buttonManager.determineNextOrSubmit();
+        if (nextOrSubmit === "next") {
+          this.form.emit("form:navigation:request", { type: "next" });
+        } else {
+          this.form.emit("form:submit:requested", {});
+        }
       };
       document.addEventListener("keydown", this.enterKeyHandler);
       this.form.logDebug("Global Enter key listener setup");
@@ -4632,10 +4796,11 @@
       if (!this.navigationEnabled) return;
       const canMove = direction === "next" && this.validateCurrent() || direction === "prev";
       const behavior = this.form.getBehavior();
+      const destination = behavior.toLowerCase().replace("by", "");
       if (canMove) {
-        this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
+        this.logDebug(`Navigating to ${direction} ${destination}`);
       } else {
-        this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace("by", "")}`);
+        this.logDebug(`Cannot navigate to ${direction} ${destination}`);
         this.form.emit("form:navigation:denied", { reason: "invalid" });
         return;
       }
@@ -4664,19 +4829,6 @@
       );
       return inputsToValidate.every((input) => input.isValid);
     }
-    // /**
-    //  * Handle submit request
-    //  * Emits form:submit:requested event with button metadata
-    //  * @param button - Button element that triggered the submit
-    //  */
-    // public async handleSubmit(): Promise<void> {
-    //   const behavior = this.form.getBehavior();
-    //   // // Emit submit requested event
-    //   // this.form.emit('form:submit:requested', { behavior });
-    //   this.form.logDebug('Form submit requested', {
-    //     behavior,
-    //   });
-    // }
     /**
      * Navigate to next field (byField behavior)
      */
@@ -4861,11 +5013,12 @@
       this.groupStart(`Initializing Progress`);
       this.discoverItems();
       this.setupEventListeners();
-      this.form.logDebug("Initialized");
+      this.logDebug("Initialized");
       this.groupEnd();
     }
     destroy() {
       this.store.clear();
+      this.logDebug("ProgressManager destroyed");
     }
     discoverItems() {
       const rootElement = this.form.getRootElement();
@@ -4881,7 +5034,7 @@
         if (!itemData) return;
         this.store.add(itemData);
       });
-      this.form.logDebug(`Discovered ${this.store.length} progress lines`, {
+      this.logDebug(`Discovered ${this.store.length} progress lines`, {
         items: this.store.getAll()
       });
     }
@@ -4891,6 +5044,7 @@
       if (!attrValue) return;
       const parsed = parseElementAttribute(attrValue);
       if (!parsed) return;
+      if (parsed.type !== "progress-line") return;
       return this.buildItemData({
         element,
         index,
@@ -4916,10 +5070,10 @@
       );
     }
     /**
-     * Find the parent item for a field
+     * Find the parent item for a progress line
      *
-     * @param element - The field element
-     * @returns Parent data or null
+     * @param element - The progress line element
+     * @returns Parent data or undefined
      */
     findParentItem(element) {
       const parentGroup = HierarchyBuilder.findParentByElement(
@@ -5157,9 +5311,84 @@
     }
   };
 
+  // src/form/managers/submit-manager.ts
+  var SubmitManager = class extends BaseManager {
+    formElement;
+    constructor(form) {
+      super(form);
+      this.formElement = this.discoverForm();
+    }
+    init() {
+      this.groupStart(`Initializing Submit`);
+      this.discoverForm();
+      this.setupEventListeners();
+      this.logDebug("Initialized", {
+        formElement: this.formElement
+      });
+      this.groupEnd();
+    }
+    destroy() {
+      this.logDebug("SubmitManager destroyed");
+    }
+    setupEventListeners() {
+      this.form.subscribe("form:submit:requested", () => {
+        this.handleSubmit();
+      });
+      this.formElement.addEventListener("submit", (event) => {
+        event.preventDefault();
+        this.handleSubmit();
+      });
+      this.form.subscribe("form:submit:error", (payload) => {
+        this.showError(payload.error.message);
+      });
+    }
+    discoverForm() {
+      const rootElement = this.form.getRootElement();
+      if (!rootElement) {
+        throw this.form.createError("Cannot discover form: root element is null", "init", {
+          cause: rootElement
+        });
+      }
+      let formElement;
+      if (!(rootElement instanceof HTMLFormElement)) {
+        const childForm = rootElement.querySelector("form");
+        if (!childForm) {
+          throw this.form.createError("Cannot discover form: child form is null", "init", {
+            cause: rootElement
+          });
+        }
+        formElement = childForm;
+      } else {
+        formElement = rootElement;
+      }
+      return formElement;
+    }
+    handleSubmit() {
+      this.logDebug("Form submit requested", {
+        data: this.form.getState("formData")
+      });
+      this.form.emit("form:submit:started", {});
+    }
+    setLoading(isLoading) {
+      const submit = this.form.buttonManager.getSubmit();
+      if (!submit) return;
+      submit.button.disabled = isLoading;
+      this.form.buttonManager.setText(submit.button, isLoading ? "Submitting..." : void 0);
+    }
+    showSuccess() {
+      this.form.emit("form:submit:success", {});
+    }
+    showError(message) {
+      if (!message) this.form.emit("form:error:cleared", {});
+      else this.form.emit("form:error:triggered", { message });
+    }
+  };
+
   // src/form/index.ts
   var FlowupsForm = class extends StatefulComponent {
     config;
+    submitManager;
+    errorManager;
     cardManager;
     setManager;
     groupManager;
@@ -5173,7 +5402,6 @@
     conditionManager;
     // private accessibilityManager: AccessibilityManager;
     // private animationManager: AnimationManager;
-    // private errorManager: ErrorManager;
     // private renderManager: RenderManager;
     // private validationManager: ValidationManager;
     /**
@@ -5184,6 +5412,8 @@
       super(props);
       this.setRootElement(props.selector);
       this.config = this.parseConfiguration();
+      this.submitManager = new SubmitManager(this);
+      this.errorManager = new ErrorManager(this);
       this.cardManager = new CardManager(this);
       this.setManager = new SetManager(this);
       this.groupManager = new GroupManager(this);
@@ -5325,6 +5555,8 @@
       this.groupStart(`[FLOWUPS-DEBUG] Form: Initializing "${this.getId()}"`, false);
       this.logDebug(`Started at ${(/* @__PURE__ */ new Date()).toISOString()}`);
       this.timeDebug("form:init");
+      this.submitManager.init();
+      this.errorManager.init();
       this.conditionManager.init();
       this.cardManager.init();
       this.setManager.init();
@@ -5340,6 +5572,7 @@
         state: this.getAllState(),
         timestamp: (/* @__PURE__ */ new Date()).toISOString()
       });
+      this.emit("form:initialized", { formId: this.getId() });
       this.timeDebug("form:init", true);
       this.groupEnd();
     }
@@ -5349,6 +5582,8 @@
      */
     async onDestroy() {
       this.logDebug(`Destroying form`);
+      this.submitManager.destroy();
+      this.errorManager.destroy();
       this.cardManager.destroy();
       this.setManager.destroy();
       this.groupManager.destroy();
@@ -5361,6 +5596,7 @@
       this.focusManager.destroy();
       this.conditionManager.destroy();
       await super.onDestroy();
+      this.emit("form:destroyed", { formId: this.getId() });
     }
     /**
      * Handle state changes
@@ -5409,18 +5645,62 @@
   };
 
   // src/index.ts
+  var initQueue = window.MotifForm || [];
   window.Webflow ||= [];
   window.Webflow.push(() => {
     const form = document.querySelector(`form[${ATTR}-element="form"]`);
     if (!form || !(form instanceof HTMLFormElement)) return;
     const name = form.getAttribute("name") ?? "untitled-form";
-    new FlowupsForm({
+    const flowupsForm = new FlowupsForm({
       group: "FORM",
       id: name,
       debug: true,
       autoInit: false,
       selector: form
     });
+    window.MotifForm = {
+      id: flowupsForm.getFormName(),
+      getAllState: () => {
+        return flowupsForm.getAllState();
+      },
+      getBehavior: () => {
+        return flowupsForm.getBehavior();
+      },
+      getFormConfig: () => {
+        return flowupsForm.getFormConfig();
+      },
+      getFormData: () => {
+        return flowupsForm.getState("formData");
+      },
+      setLoading: (isLoading) => {
+        flowupsForm.submitManager.setLoading(isLoading);
+      },
+      showSuccess: () => {
+        flowupsForm.submitManager.showSuccess();
+      },
+      showError: (message) => {
+        flowupsForm.submitManager.showError(message);
+      },
+      onSubmit: (callback) => {
+        flowupsForm.subscribe("form:submit:started", () => {
+          const formData = flowupsForm.getState("formData");
+          callback(formData);
+        });
+      },
+      onMount: (callback) => {
+        flowupsForm.subscribe("form:initialized", ({ formId }) => {
+          if (formId !== name) return;
+          callback();
+        });
+      },
+      onUnmount: (callback) => {
+        flowupsForm.subscribe("form:destroyed", ({ formId }) => {
+          if (formId !== name) return;
+          callback();
+        });
+      }
+    };
+    initQueue.forEach((cb) => cb());
   });
 })();
 //# sourceMappingURL=index.js.map
