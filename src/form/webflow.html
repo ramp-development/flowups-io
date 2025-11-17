@@ -1,14 +1,53 @@
+<!-- Form keys -->
+<script>
+    const FORM_KEYS = {
+        "full_name": "Greg Faulkner",
+        "city": "LA",
+        "state": "California",
+        "email": "greg@weareramp.co.uk",
+        "phone": "(123) 456-7890",
+        "dob": "09/10/1999",
+        "company_website": "",
+        "has_mdd": "yes",
+        "has_tried_other_medications": "yes",
+        "has_psycho_conditions": "yes",
+        "has_amnestic_disorder": "yes",
+        "had_brain_injury": "yes",
+        "has_implant": "yes",
+        "responded_to_tms": "yes",
+        "responded_to_ect": "yes",
+        "responded_to_vns": "yes",
+        "responded_to_dbs": "yes",
+        "mdd_date": "0-6m",
+        "other_medications": "Medication",
+        "psycho_conditions": "Other conditions",
+        "emnestic_disorder_date": "0-6m",
+        "brain_injury_date": "6-12m",
+        "implant_list": [
+            "Cranial implant",
+            "Neurostimulator",
+            "Pacemaker",
+            "Implantable cardioverter-defibrillator"
+        ],
+        "tms_experience": "Experience",
+        "tms_better": "yes",
+        "tms_better_duration": "6-12m",
+        "ect_treatment_date": "3-5y",
+        "ect_better": "yes",
+        "ect_better_duration": "3y+",
+        "vns_treatment_date": "0-6m",
+        "vns_better": "yes",
+        "vns_better_duration": "<1m",
+        "dbs_treatment_date": "0-6m",
+        "dbs_better": "yes",
+        "dbs_better_duration": "<1m"
+    }
+</script>
+
 /**
 * Secshe Webflow Embed Code
 *
 * COPY THIS ENTIRE FILE into Webflow: Project Settings → Custom Code → Footer Code
-*
-* Steps to use:
-* 1. Copy everything from this file
-* 2. Paste into Webflow Footer Code
-* 3. Update API_URL to your API endpoint - already done
-* 4. Update init() calls with your form IDs
-* 5. No external libraries needed - uses native Web Crypto API!
 */
 
 <!-- Secshe Form Handler -->
