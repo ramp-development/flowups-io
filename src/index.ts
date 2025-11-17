@@ -1,6 +1,9 @@
 import { FlowupsForm } from './form';
 import { ATTR } from './form/constants';
 
+// Preserve any queued callbacks from early initialization
+const initQueue = (window.MotifForm as Array<() => void>) || [];
+
 window.Webflow ||= [];
 window.Webflow.push(() => {
   const form = document.querySelector(`form[${ATTR}-element="form"]`);
@@ -8,11 +11,58 @@ window.Webflow.push(() => {
 
   const name = form.getAttribute('name') ?? 'untitled-form';
 
-  new FlowupsForm({
+  const flowupsForm = new FlowupsForm({
     group: 'FORM',
     id: name,
     debug: true,
     autoInit: false,
     selector: form,
   });
+
+  // Replace with actual implementation
+  window.MotifForm = {
+    id: flowupsForm.getFormName(),
+    getAllState: () => {
+      return flowupsForm.getAllState();
+    },
+    getBehavior: () => {
+      return flowupsForm.getBehavior();
+    },
+    getFormConfig: () => {
+      return flowupsForm.getFormConfig();
+    },
+    getFormData: () => {
+      return flowupsForm.getState('formData');
+    },
+    setLoading: (isLoading: boolean) => {
+      flowupsForm.submitManager.setLoading(isLoading);
+    },
+    showSuccess: () => {
+      flowupsForm.submitManager.showSuccess();
+    },
+    showError: (message?: string) => {
+      flowupsForm.submitManager.showError(message);
+    },
+    onSubmit: (callback: (formData: Record<string, unknown>) => void) => {
+      flowupsForm.subscribe('form:submit:started', () => {
+        const formData = flowupsForm.getState('formData');
+        callback(formData);
+      });
+    },
+    onMount: (callback: () => void) => {
+      flowupsForm.subscribe('form:initialized', ({ formId }) => {
+        if (formId !== name) return;
+        callback();
+      });
+    },
+    onUnmount: (callback: () => void) => {
+      flowupsForm.subscribe('form:destroyed', ({ formId }) => {
+        if (formId !== name) return;
+        callback();
+      });
+    },
+  };
+
+  // Process any queued initialization callbacks
+  initQueue.forEach((cb) => cb());
 });
