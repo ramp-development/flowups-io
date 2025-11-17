@@ -2,6 +2,12 @@ import type { AppEventMap } from '$lib/types';
 
 import type { ConditionEvaluatedEvent } from './condition-events';
 import type { DataChangedEvent, FormDataUpdatedEvent } from './data-events';
+import type {
+  ErrorClearedEvent,
+  ErrorDisplayedEvent,
+  ErrorHiddenEvent,
+  ErrorTriggeredEvent,
+} from './error-events';
 import type { InputChangedEvent } from './input-events';
 import type {
   NavigationChangedEvent,
@@ -21,6 +27,10 @@ import type {
  * Extends AppEventMap to include base events as well
  */
 export interface FormEventMap extends AppEventMap {
+  // Form lifecycle
+  'form:initialized': { formId: string };
+  'form:destroyed': { formId: string };
+
   // Navigation
   'form:navigation:request': NavigationRequestEvent;
   'form:navigation:changed': NavigationChangedEvent;
@@ -35,6 +45,12 @@ export interface FormEventMap extends AppEventMap {
   // Data
   'form:data:changed': DataChangedEvent;
   'form:data:updated': FormDataUpdatedEvent;
+
+  // Error
+  'form:error:triggered': ErrorTriggeredEvent;
+  'form:error:cleared': ErrorClearedEvent;
+  'form:error:displayed': ErrorDisplayedEvent;
+  'form:error:hidden': ErrorHiddenEvent;
 
   // Submission
   'form:submit:requested': SubmitRequestedEvent;
