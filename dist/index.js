@@ -2727,12 +2727,9 @@
     rebuildActive() {
       const active = this.getActive();
       if (active.length === 0) return;
-      this.logDebug(`Rebuilding ${active.length} active ${plural(this.itemType, active.length)}`);
       active.forEach((item) => {
-        this.logDebug("Pre", item);
         const rebuilt = this.buildItemData(item);
         this.update(rebuilt);
-        this.logDebug("Post-rebuild", rebuilt);
       });
     }
     /**
