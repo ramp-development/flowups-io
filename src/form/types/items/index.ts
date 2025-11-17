@@ -19,11 +19,13 @@ export type FormElementType =
   | 'prev'
   | 'next'
   | 'submit'
+  | 'error'
   | 'progress-line';
 
 export * from './base-item';
 export * from './button-item';
 export * from './card-item';
+export * from './error-item';
 export * from './field-item';
 export * from './group-item';
 export * from './input-item';
