@@ -1,0 +1,182 @@
+/**
+* Secshe Webflow Embed Code
+*
+* COPY THIS ENTIRE FILE into Webflow: Project Settings → Custom Code → Footer Code
+*
+* Steps to use:
+* 1. Copy everything from this file
+* 2. Paste into Webflow Footer Code
+* 3. Update API_URL to your API endpoint - already done
+* 4. Update init() calls with your form IDs
+* 5. No external libraries needed - uses native Web Crypto API!
+*/
+
+<!-- Secshe Form Handler -->
+<script>
+    const SecsheForm = {
+        form_id: null,
+        API_URL: '',
+
+        init: function (formId, API_URL) {
+            this.form_id = formId;
+            this.API_URL = API_URL;
+        },
+
+        fetchToken: async function () {
+            try {
+                const response = await fetch(`${this.API_URL}/api/v1/token`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Token fetch failed: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Failed to fetch token:', error);
+                throw error;
+            }
+        },
+
+        encryptFormData: async function (formData, publicKey) {
+            try {
+                const aesKey = crypto.getRandomValues(new Uint8Array(32));
+
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+
+                const jsonStr = JSON.stringify({ form_data: formData });
+                const encoder = new TextEncoder();
+                const plaintext = encoder.encode(jsonStr);
+
+                const cryptoKey = await crypto.subtle.importKey(
+                    'raw',
+                    aesKey,
+                    { name: 'AES-GCM' },
+                    false,
+                    ['encrypt']
+                );
+
+                const encryptedData = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    cryptoKey,
+                    plaintext
+                );
+
+                const pemHeader = "-----BEGIN PUBLIC KEY-----";
+                const pemFooter = "-----END PUBLIC KEY-----";
+                const pemContents = publicKey.substring(
+                    publicKey.indexOf(pemHeader) + pemHeader.length,
+                    publicKey.indexOf(pemFooter)
+                ).replace(/\s/g, '');
+                const binaryDer = atob(pemContents);
+                const binaryDerArray = new Uint8Array(binaryDer.length);
+                for (let i = 0; i < binaryDer.length; i++) {
+                    binaryDerArray[i] = binaryDer.charCodeAt(i);
+                }
+
+                const rsaKey = await crypto.subtle.importKey(
+                    'spki',
+                    binaryDerArray,
+                    {
+                        name: 'RSA-OAEP',
+                        hash: 'SHA-256'
+                    },
+                    false,
+                    ['encrypt']
+                );
+
+                const encryptedKeyArrayBuffer = await crypto.subtle.encrypt(
+                    {
+                        name: 'RSA-OAEP'
+                    },
+                    rsaKey,
+                    aesKey
+                );
+
+                const encryptedKeyBytes = new Uint8Array(encryptedKeyArrayBuffer);
+                const encryptedKey = btoa(String.fromCharCode.apply(null, encryptedKeyBytes));
+
+                const encryptedDataB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(encryptedData)));
+                const ivB64 = btoa(String.fromCharCode.apply(null, iv));
+
+                return {
+                    encrypted_key: encryptedKey,
+                    encrypted_data: encryptedDataB64,
+                    iv: ivB64
+                };
+            } catch (error) {
+                console.error('Hybrid encryption failed:', error);
+                return null;
+            }
+        },
+
+        handleSubmit: async function (allFormData) {
+            window.MotifForm.setLoading(true);
+
+            try {
+                const formData = allFormData;
+                const companyWebsite = formData.company_website;
+                delete formData.company_website;
+
+                const tokenData = await this.fetchToken();
+
+                const encrypted = await this.encryptFormData(formData, tokenData.public_key);
+
+                if (!encrypted) {
+                    throw new Error('Encryption failed');
+                }
+
+                const timestamp = Math.floor(Date.now() / 1000);
+
+                const payload = {
+                    token: tokenData.token,
+                    timestamp: timestamp,
+                    encrypted_key: encrypted.encrypted_key,
+                    encrypted_data: encrypted.encrypted_data,
+                    iv: encrypted.iv,
+                    form_id: this.form_id,
+                    company_website: companyWebsite
+                };
+
+                const response = await fetch(`${this.API_URL}/api/v1/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    window.MotifForm.showSuccess();
+                } else {
+                    throw new Error(result.detail || result.message || 'Submission failed');
+                }
+
+            } catch (error) {
+                console.error('Form submission error:', error);
+                window.MotifForm.showError(error.message);
+            } finally {
+                window.MotifForm.setLoading(false);
+            }
+        }
+    };
+</script>
+
+<!-- Initialize your forms -->
+<script>
+    // Queue initialization if MotifForm isn't ready yet
+    window.MotifForm ||= [];
+    window.MotifForm.push?.(() => {
+        window.MotifForm.onMount(() => {
+            SecsheForm.init(window.MotifForm.id, 'https://secshe.motifneuro.tech');
+            window.MotifForm.onSubmit((formData) => SecsheForm.handleSubmit(formData));
+        });
+    });
+</script>
