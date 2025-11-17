@@ -163,6 +163,42 @@ export class InputManager extends ItemManager<InputItem> {
     // Check for format attribute
     const format = input.getAttribute(`${ATTR}-format`) || undefined;
 
+    // Initialize formatConfig if format exists and input is text-based
+    let formatConfig: InputItem['formatConfig'];
+    if (format && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) {
+      const { formattedLength, rawLength } = this.calculateFormatLengths(format);
+      const originalMaxLength = input.maxLength > -1 ? input.maxLength : null;
+
+      // IMPORTANT: Set maxLength BEFORE minLength to avoid constraint violation
+      // (cannot set minLength > current maxLength)
+
+      // Adjust maxLength based on original constraint
+      if (originalMaxLength !== null && originalMaxLength < formattedLength) {
+        // Case 1: Original maxLength is too short for format - extend it to allow format
+        input.maxLength = formattedLength;
+      } else if (originalMaxLength !== null && originalMaxLength > rawLength) {
+        // Case 2: Original maxLength allows more than raw length
+        // Allow typing beyond formatted length to reach originalMaxLength
+        // Formula: originalMaxLength - rawLength + formattedLength
+        // Example: 15 - 10 + 14 = 19 (allows typing past format to trigger removal)
+        input.maxLength = originalMaxLength - rawLength + formattedLength;
+      } else {
+        // Case 3: No maxLength or originalMaxLength <= rawLength
+        // Set to formatted length
+        input.maxLength = formattedLength;
+      }
+
+      // Set initial minLength to formatted length (after maxLength is set)
+      input.minLength = formattedLength;
+
+      formatConfig = {
+        pattern: format,
+        formattedLength,
+        rawLength,
+        originalMaxLength,
+      };
+    }
+
     return {
       element: input,
       index,
@@ -184,6 +220,7 @@ export class InputManager extends ItemManager<InputItem> {
       isValid,
       isIncluded,
       format,
+      formatConfig,
     };
   }
 
@@ -279,7 +316,11 @@ export class InputManager extends ItemManager<InputItem> {
           // Apply formatting FIRST if pattern exists
           // This ensures the value is formatted before extraction and validation
           if (needsFormatting) {
-            this.handleFormatting(input as HTMLInputElement | HTMLTextAreaElement, item.format!);
+            this.handleFormatting(
+              input as HTMLInputElement | HTMLTextAreaElement,
+              item.format!,
+              item
+            );
           }
 
           // Then extract and handle the change
@@ -515,17 +556,96 @@ export class InputManager extends ItemManager<InputItem> {
   // ============================================
 
   /**
+   * Calculate format lengths from pattern string
+   * @param pattern - Format pattern (e.g., "(xxx) xxx-xxxx")
+   * @returns Object with formattedLength and rawLength
+   */
+  private calculateFormatLengths(pattern: string): { formattedLength: number; rawLength: number } {
+    const rawLength = (pattern.match(/[Xx]/g) || []).length;
+    const formattedLength = pattern.length;
+    return { formattedLength, rawLength };
+  }
+
+  /**
+   * Update minLength and maxLength attributes based on current raw value length
+   * Dynamically adjusts constraints when user exceeds or returns within format capacity
+   *
+   * IMPORTANT: Attribute order matters to avoid browser constraint violations:
+   * - When increasing (raw → formatted): Set maxLength first, then minLength
+   * - When decreasing (formatted → raw): Set minLength first, then maxLength
+   *
+   * @param input - Input element to update
+   * @param item - InputItem containing formatConfig
+   * @param rawLength - Current length of raw (digits only) value
+   */
+  private updateLengthConstraints(
+    input: HTMLInputElement | HTMLTextAreaElement,
+    item: InputItem,
+    rawLength: number
+  ): void {
+    if (!item.formatConfig) return;
+
+    const { formattedLength, rawLength: maxRawLength, originalMaxLength } = item.formatConfig;
+
+    // Determine if we're within format capacity
+    const withinFormatCapacity = rawLength <= maxRawLength;
+
+    if (withinFormatCapacity) {
+      // Within capacity - use formatted constraints
+      // Set maxLength FIRST to avoid minLength > maxLength error
+
+      // Determine correct maxLength for format mode
+      let targetMaxLength: number;
+      if (originalMaxLength !== null && originalMaxLength > maxRawLength) {
+        // Allow typing beyond formatted length to reach originalMaxLength
+        // Formula: originalMaxLength - rawLength + formattedLength
+        targetMaxLength = originalMaxLength - maxRawLength + formattedLength;
+      } else {
+        // Standard case: maxLength = formatted length
+        targetMaxLength = formattedLength;
+      }
+
+      if (input.maxLength !== targetMaxLength) {
+        input.maxLength = targetMaxLength;
+      }
+      if (input.minLength !== formattedLength) {
+        input.minLength = formattedLength;
+      }
+    } else {
+      // Exceeds capacity - use raw constraints
+      // Set minLength FIRST to avoid minLength > maxLength error
+      if (input.minLength !== maxRawLength) {
+        input.minLength = maxRawLength;
+      }
+      // Restore original maxLength or remove constraint
+      const newMaxLength = originalMaxLength !== null ? originalMaxLength : -1;
+      if (input.maxLength !== newMaxLength) {
+        input.maxLength = newMaxLength;
+      }
+    }
+  }
+
+  /**
    * Apply format pattern to input value
    * Formats the value according to pattern (e.g., "(XXX) XXX-XXXX")
    * Maintains cursor position after formatting
+   * Updates minLength and maxLength constraints dynamically
    *
    * @param input - Input element to format
    * @param pattern - Format pattern (X = digit placeholder)
+   * @param item - InputItem containing formatConfig
    */
-  private handleFormatting(input: HTMLInputElement | HTMLTextAreaElement, pattern: string): void {
+  private handleFormatting(
+    input: HTMLInputElement | HTMLTextAreaElement,
+    pattern: string,
+    item: InputItem
+  ): void {
     const cursorPosition = input.selectionStart || 0;
     const oldValue = input.value;
     const rawValue = this.stripFormatting(oldValue);
+
+    // Update length constraints based on current raw value length
+    this.updateLengthConstraints(input, item, rawValue.length);
 
     // Apply formatting
     const formattedValue = this.applyFormat(rawValue, pattern);
@@ -713,6 +833,15 @@ export class InputManager extends ItemManager<InputItem> {
    * Check if an input is valid
    */
   private checkIfValid(element: InputElement): boolean {
+    if (element instanceof HTMLInputElement) {
+      const { minLength, maxLength, value } = element;
+      if (
+        (minLength > -1 && value.length < minLength) ||
+        (maxLength > -1 && value.length > maxLength)
+      ) {
+        return false;
+      }
+    }
     return element.checkValidity();
   }
 }

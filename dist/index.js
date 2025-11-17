@@ -4046,6 +4046,25 @@
       const isValid = this.checkIfValid(input);
       const { visited, active, current, isIncluded } = field;
       const format = input.getAttribute(`${ATTR}-format`) || void 0;
+      let formatConfig;
+      if (format && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) {
+        const { formattedLength, rawLength } = this.calculateFormatLengths(format);
+        const originalMaxLength = input.maxLength > -1 ? input.maxLength : null;
+        if (originalMaxLength !== null && originalMaxLength < formattedLength) {
+          input.maxLength = formattedLength;
+        } else if (originalMaxLength !== null && originalMaxLength > rawLength) {
+          input.maxLength = originalMaxLength - rawLength + formattedLength;
+        } else {
+          input.maxLength = formattedLength;
+        }
+        input.minLength = formattedLength;
+        formatConfig = {
+          pattern: format,
+          formattedLength,
+          rawLength,
+          originalMaxLength
+        };
+      }
       return {
         element: input,
         index,
@@ -4066,7 +4085,8 @@
         isRequired,
         isValid,
         isIncluded,
-        format
+        format,
+        formatConfig
       };
     }
     /**
@@ -4136,7 +4156,11 @@
           const needsFormatting = item.format && (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement);
           const handler = () => {
             if (needsFormatting) {
-              this.handleFormatting(input, item.format);
+              this.handleFormatting(
+                input,
+                item.format,
+                item
+              );
             }
             const value = this.extractInputValue(item);
             this.handleInputChange(item.name, value);
@@ -4306,17 +4330,69 @@
     // Input Formatting
     // ============================================
     /**
+     * Calculate format lengths from pattern string
+     * @param pattern - Format pattern (e.g., "(xxx) xxx-xxxx")
+     * @returns Object with formattedLength and rawLength
+     */
+    calculateFormatLengths(pattern) {
+      const rawLength = (pattern.match(/[Xx]/g) || []).length;
+      const formattedLength = pattern.length;
+      return { formattedLength, rawLength };
+    }
+    /**
+     * Update minLength and maxLength attributes based on current raw value length
+     * Dynamically adjusts constraints when user exceeds or returns within format capacity
+     *
+     * IMPORTANT: Attribute order matters to avoid browser constraint violations:
+     * - When increasing (raw → formatted): Set maxLength first, then minLength
+     * - When decreasing (formatted → raw): Set minLength first, then maxLength
+     *
+     * @param input - Input element to update
+     * @param item - InputItem containing formatConfig
+     * @param rawLength - Current length of raw (digits only) value
+     */
+    updateLengthConstraints(input, item, rawLength) {
+      if (!item.formatConfig) return;
+      const { formattedLength, rawLength: maxRawLength, originalMaxLength } = item.formatConfig;
+      const withinFormatCapacity = rawLength <= maxRawLength;
+      if (withinFormatCapacity) {
+        let targetMaxLength;
+        if (originalMaxLength !== null && originalMaxLength > maxRawLength) {
+          targetMaxLength = originalMaxLength - maxRawLength + formattedLength;
+        } else {
+          targetMaxLength = formattedLength;
+        }
+        if (input.maxLength !== targetMaxLength) {
+          input.maxLength = targetMaxLength;
+        }
+        if (input.minLength !== formattedLength) {
+          input.minLength = formattedLength;
+        }
+      } else {
+        if (input.minLength !== maxRawLength) {
+          input.minLength = maxRawLength;
+        }
+        const newMaxLength = originalMaxLength !== null ? originalMaxLength : -1;
+        if (input.maxLength !== newMaxLength) {
+          input.maxLength = newMaxLength;
+        }
+      }
+    }
+    /**
      * Apply format pattern to input value
      * Formats the value according to pattern (e.g., "(XXX) XXX-XXXX")
      * Maintains cursor position after formatting
+     * Updates minLength and maxLength constraints dynamically
      *
      * @param input - Input element to format
      * @param pattern - Format pattern (X = digit placeholder)
+     * @param item - InputItem containing formatConfig
      */
-    handleFormatting(input, pattern) {
+    handleFormatting(input, pattern, item) {
       const cursorPosition = input.selectionStart || 0;
       const oldValue = input.value;
       const rawValue = this.stripFormatting(oldValue);
+      this.updateLengthConstraints(input, item, rawValue.length);
       const formattedValue = this.applyFormat(rawValue, pattern);
       if (formattedValue !== oldValue) {
         input.value = formattedValue;
@@ -4464,6 +4540,12 @@
      * Check if an input is valid
      */
     checkIfValid(element) {
+      if (element instanceof HTMLInputElement) {
+        const { minLength, maxLength, value } = element;
+        if (minLength > -1 && value.length < minLength || maxLength > -1 && value.length > maxLength) {
+          return false;
+        }
+      }
       return element.checkValidity();
     }
   };

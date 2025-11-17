@@ -53,4 +53,16 @@ export interface InputItem extends NavigableItem {
 
   /** Format pattern for input (e.g., "(XXX) XXX-XXXX" for phone numbers) */
   format?: string;
+
+  /** Format configuration for length validation (only present if format is defined) */
+  formatConfig?: {
+    /** Format pattern string (e.g., "(xxx) xxx-xxxx") */
+    pattern: string;
+    /** Length of formatted string including literal characters (e.g., 14) */
+    formattedLength: number;
+    /** Number of digit placeholders in pattern (e.g., 10) */
+    rawLength: number;
+    /** Original maxLength attribute value from input element (null if not set) */
+    originalMaxLength: number | null;
+  };
 }
