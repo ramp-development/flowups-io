@@ -106,11 +106,12 @@ export class NavigationManager extends BaseManager {
 
     const canMove = (direction === 'next' && this.validateCurrent()) || direction === 'prev';
     const behavior = this.form.getBehavior();
+    const destination = behavior.toLowerCase().replace('by', '');
 
     if (canMove) {
-      this.logDebug(`Moving to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
+      this.logDebug(`Navigating to ${direction} ${destination}`);
     } else {
-      this.logDebug(`Cannot move to ${direction} ${behavior.toLowerCase().replace('by', '')}`);
+      this.logDebug(`Cannot navigate to ${direction} ${destination}`);
       this.form.emit('form:navigation:denied', { reason: 'invalid' });
       return;
     }
@@ -142,22 +143,6 @@ export class NavigationManager extends BaseManager {
 
     return inputsToValidate.every((input) => input.isValid);
   }
-
-  // /**
-  //  * Handle submit request
-  //  * Emits form:submit:requested event with button metadata
-  //  * @param button - Button element that triggered the submit
-  //  */
-  // public async handleSubmit(): Promise<void> {
-  //   const behavior = this.form.getBehavior();
-
-  //   // // Emit submit requested event
-  //   // this.form.emit('form:submit:requested', { behavior });
-
-  //   this.form.logDebug('Form submit requested', {
-  //     behavior,
-  //   });
-  // }
 
   /**
    * Navigate to next field (byField behavior)
