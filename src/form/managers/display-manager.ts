@@ -76,7 +76,7 @@ export class DisplayManager extends BaseManager {
           return;
       }
 
-      this.handleVisibility(manager, true);
+      this.handleVisibility(manager);
     });
 
     this.logDebug('DisplayManager event listeners setup');
@@ -132,13 +132,8 @@ export class DisplayManager extends BaseManager {
   /**
    * Handle item visibility based on data
    */
-  private handleVisibility<TItem extends ItemData>(
-    manager: ItemManager<TItem>,
-    isCondition: boolean = false
-  ): void {
+  private handleVisibility<TItem extends ItemData>(manager: ItemManager<TItem>): void {
     const items = manager.getAll();
-    // const items = manager.getByFilter((item) => item.visible !== item.active);
-    if (isCondition) console.log('items', items);
     items.forEach((item) => {
       this.showElement(item, (visible) =>
         manager.updateItemData(item.index, { visible } as UpdatableItemData<TItem>)

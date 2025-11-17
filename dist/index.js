@@ -3576,7 +3576,7 @@
           default:
             return;
         }
-        this.handleVisibility(manager, true);
+        this.handleVisibility(manager);
       });
       this.logDebug("DisplayManager event listeners setup");
     }
@@ -3626,9 +3626,8 @@
     /**
      * Handle item visibility based on data
      */
-    handleVisibility(manager, isCondition = false) {
+    handleVisibility(manager) {
       const items = manager.getAll();
-      if (isCondition) console.log("items", items);
       items.forEach((item) => {
         this.showElement(
           item,
