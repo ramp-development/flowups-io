@@ -540,7 +540,7 @@ export class InputManager extends ItemManager<InputItem> {
   public getFormData(): Record<string, unknown> {
     const formData: Record<string, unknown> = {};
 
-    this.getAll().forEach((item) => {
+    this.getByFilter((item) => item.isIncluded).forEach((item) => {
       formData[item.name] = this.extractInputValue(item);
     });
 
@@ -760,6 +760,7 @@ export class InputManager extends ItemManager<InputItem> {
     const formData = this.form.getState('formData');
     this.form.setState('formData', { ...formData, [name]: value });
     this.form.emit('form:input:changed', { name, value });
+    this.logDebug('Form data updated', { formData: this.form.getState('formData') });
   }
 
   /**
