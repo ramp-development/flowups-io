@@ -82,7 +82,7 @@ export class SubmitManager extends BaseManager {
   }
 
   public showSuccess(): void {
-    this.form.emit('form:submit:success', {});
+    this.form.emit('form:navigation:request', { type: 'next' });
   }
 
   public showError(message?: string): void {
