@@ -14,7 +14,9 @@ export interface SubmitRequestedEvent {}
 export interface SubmitStartedEvent {}
 
 export interface SubmitSuccessEvent {
-  response: unknown;
+  success: true;
+  submission_id: string;
+  message: string;
 }
 
 export interface SubmitErrorEvent {
