@@ -35,6 +35,7 @@ export class SubmitManager extends BaseManager {
     });
 
     this.form.subscribe('form:submit:error', (payload) => {
+      this.logDebug('Form submit error', { error: payload.error });
       this.showError(payload.error.message);
     });
   }
@@ -85,8 +86,7 @@ export class SubmitManager extends BaseManager {
     this.form.emit('form:navigation:request', { type: 'next' });
   }
 
-  public showError(message?: string): void {
-    if (!message) this.form.emit('form:error:cleared', {});
-    else this.form.emit('form:error:triggered', { message });
+  public showError(message: string, timeout?: number): void {
+    this.form.emit('form:error:triggered', { message, timeout });
   }
 }
