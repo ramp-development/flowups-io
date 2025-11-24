@@ -431,7 +431,12 @@ export class InputManager extends ItemManager<InputItem> {
     if (type === 'checkbox') {
       if (item.isGroup) {
         // Checkbox group - return array of checked values
-        return (item.inputs as HTMLInputElement[]).filter((cb) => cb.checked).map((cb) => cb.value);
+
+        // Return a comma-separated string of checked values
+        return (item.inputs as HTMLInputElement[])
+          .filter((cb) => cb.checked)
+          .map((cb) => cb.value)
+          .join(', ');
       }
 
       // Single checkbox - return boolean
