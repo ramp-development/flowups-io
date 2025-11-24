@@ -129,7 +129,7 @@ export class ErrorManager extends BaseManager {
   private handleErrorTriggered(payload: ErrorTriggeredEvent): void {
     this.store.getAll().forEach((item) => {
       item.element.textContent = payload.message;
-      item.element.style.removeProperty('display');
+      item.element.style.setProperty('display', 'flex');
     });
 
     if (payload.timeout) {
@@ -141,7 +141,7 @@ export class ErrorManager extends BaseManager {
 
   private handleErrorCleared(): void {
     this.store.getAll().forEach((item) => {
-      item.element.style.setProperty('display', 'none');
+      item.element.style.removeProperty('display');
     });
   }
 }
