@@ -34,7 +34,7 @@ window.Webflow.push(() => {
   const flowupsForm = new FlowupsForm({
     group: 'FORM',
     id: name,
-    debug: true,
+    debug: window.location.host.includes('webflow.io'),
     autoInit: false,
     selector: form,
   });
