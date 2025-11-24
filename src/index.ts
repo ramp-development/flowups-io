@@ -13,6 +13,7 @@ interface MotifFormAPI {
   onSubmit: (callback: (formData: Record<string, unknown>) => void) => void;
   onMount: (callback: () => void) => void;
   onUnmount: (callback: () => void) => void;
+  push: (callback: () => void) => void;
 }
 
 declare global {
@@ -32,6 +33,11 @@ window.Webflow.push(() => {
   const name = form.getAttribute('name') ?? 'untitled-form';
 
   const flowupsForm = new FlowupsForm({ selector: form });
+
+  // Helper to process queued callbacks once API is ready
+  const processQueue = () => {
+    initQueue.forEach((cb) => cb());
+  };
 
   // Replace with actual implementation
   window.MotifForm = {
@@ -64,10 +70,14 @@ window.Webflow.push(() => {
       });
     },
     onMount: (callback: () => void) => {
-      flowupsForm.subscribe('form:initialized', ({ formId }) => {
-        if (formId !== name) return;
+      if (flowupsForm.isInitialized()) {
         callback();
-      });
+      } else {
+        flowupsForm.subscribe('form:initialized', ({ formId }) => {
+          if (formId !== name) return;
+          callback();
+        });
+      }
     },
     onUnmount: (callback: () => void) => {
       flowupsForm.subscribe('form:destroyed', ({ formId }) => {
@@ -75,8 +85,19 @@ window.Webflow.push(() => {
         callback();
       });
     },
+
+    // Support late initialization - execute callbacks immediately since API is ready
+    push: (callback: () => void) => {
+      callback();
+    },
   };
 
-  // Process any queued initialization callbacks
-  initQueue.forEach((cb) => cb());
+  // Process queued callbacks after form is fully initialized
+  if (flowupsForm.isInitialized()) {
+    processQueue();
+  } else {
+    flowupsForm.subscribe('form:initialized', () => {
+      processQueue();
+    });
+  }
 });
