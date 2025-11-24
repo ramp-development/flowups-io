@@ -31,13 +31,7 @@ window.Webflow.push(() => {
 
   const name = form.getAttribute('name') ?? 'untitled-form';
 
-  const flowupsForm = new FlowupsForm({
-    group: 'FORM',
-    id: name,
-    debug: window.location.host.includes('webflow.io'),
-    autoInit: false,
-    selector: form,
-  });
+  const flowupsForm = new FlowupsForm({ selector: form });
 
   // Replace with actual implementation
   window.MotifForm = {

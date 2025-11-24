@@ -220,6 +220,15 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
       });
     }
 
+    // Parse debug
+    let debug: boolean = false;
+    if (attrs.debug === 'staging') debug = window.location.hostname.includes('webflow.io');
+    else if (attrs.debug && ['true', 'false', ''].includes(attrs.debug)) {
+      debug = parseBooleanAttribute(attrs.debug, false);
+    }
+
+    this.props.debug = debug;
+
     // Set defaults if not provided
     return {
       name: attrs.name || 'untitled-form',
@@ -233,7 +242,7 @@ export class FlowupsForm extends StatefulComponent<FormState, FormEventMap> {
       focusOnChange: parseBooleanAttribute(attrs.focusonchange, true),
       autoInit: parseBooleanAttribute(attrs.autoinit, false),
       persist: (attrs.persist as StorageType) || 'memory',
-      debug: parseBooleanAttribute(attrs.debug, false),
+      debug,
     };
   }
 
