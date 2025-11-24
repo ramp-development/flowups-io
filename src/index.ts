@@ -1,6 +1,26 @@
 import { FlowupsForm } from './form';
 import { ATTR } from './form/constants';
 
+interface MotifFormAPI {
+  id: string;
+  getAllState: () => Record<string, unknown>;
+  getBehavior: () => ReturnType<FlowupsForm['getBehavior']>;
+  getFormConfig: () => ReturnType<FlowupsForm['getFormConfig']>;
+  getFormData: () => Record<string, unknown>;
+  setLoading: (isLoading: boolean) => void;
+  showSuccess: () => void;
+  showError: (message: string, timeout?: number) => void;
+  onSubmit: (callback: (formData: Record<string, unknown>) => void) => void;
+  onMount: (callback: () => void) => void;
+  onUnmount: (callback: () => void) => void;
+}
+
+declare global {
+  interface Window {
+    MotifForm: MotifFormAPI | Array<() => void>;
+  }
+}
+
 // Preserve any queued callbacks from early initialization
 const initQueue = (window.MotifForm as Array<() => void>) || [];
 
@@ -40,8 +60,8 @@ window.Webflow.push(() => {
     showSuccess: () => {
       flowupsForm.submitManager.showSuccess();
     },
-    showError: (message?: string) => {
-      flowupsForm.submitManager.showError(message);
+    showError: (message: string, timeout?: number) => {
+      flowupsForm.submitManager.showError(message, timeout);
     },
     onSubmit: (callback: (formData: Record<string, unknown>) => void) => {
       flowupsForm.subscribe('form:submit:started', () => {
